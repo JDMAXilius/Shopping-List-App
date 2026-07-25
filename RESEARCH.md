@@ -143,27 +143,77 @@ repository layer so the sync engine is swappable.
 
 ---
 
-## 6. Monetization
+## 6. Positioning: consumer app, not a brand platform
 
-Three proven models in this exact category:
+**Decision: this is a direct-to-consumer household app. The shopper is the customer.**
 
-1. **Cheap annual subscription** — AnyList ($10–15/yr), OurGroceries ($8/yr + $20 lifetime).
-   Low friction, no ads, aligns incentives with the user. Best for a quality-first product.
-2. **Ads / retail media** — Listonic (~90% of revenue from banners, profitable, 50% YoY growth),
-   Bring! (native FMCG ad formats + a full commerce media platform). Enormous ceiling but
-   requires scale (millions of MAU) and degrades the product until you get there.
-3. **Affiliate / delivery handoff** — "send this list to Instacart/Kroger." Small but clean.
+That rules one model out on purpose. Bring! and Listonic are, commercially, advertising
+businesses — Bring! Labs sells native FMCG ad formats and a commerce media platform to brands
+and retailers; Listonic draws ~90% of revenue from banners. In both, the paying customer is a
+brand and the shopper is the inventory being sold. That model has an enormous ceiling, but it
+inverts who the product serves, and it only pays at millions of MAU — meaning years of a
+degraded free experience before the revenue arrives.
 
-Recommendation for a new entrant: **freemium subscription, no ads.** "Ad-free" is a concrete,
-marketable wedge against the two highest-volume competitors. Free tier must include unlimited
-shared lists and offline sync — paywalling sharing kills the viral loop. Paywall pantry
-tracking, receipt scanning, price history, and unlimited store profiles.
+Consequences of choosing consumer:
 
-Price anchor: $9.99/yr household is under the leader's price and above the floor.
+- No ads, no sponsored items, no "recommended brand" slots in the list. Ever — this is the
+  marketing wedge, and it's only credible if it's unconditional.
+- No B2B surface: no retailer dashboards, no brand analytics, no team/workspace/permissions
+  model. Household sharing means *named people*, not roles and seats.
+- Data stays the user's. No selling shopping behavior to FMCG brands — the thing the two
+  highest-volume competitors are built to do.
+
+### Monetization
+
+**Freemium subscription at ~$9.99/yr household.** Under AnyList's $14.99 household tier and
+above OurGroceries' $7.99 floor. A lifetime option (~$25) is worth testing — OurGroceries'
+$20 lifetime is one of its most-cited draws.
+
+- **Free forever:** unlimited lists, unlimited shared members, offline sync, aisle grouping.
+  Paywalling sharing kills the viral loop — the whole growth model is one household member
+  inviting the others.
+- **Paid:** pantry tracking, receipt scanning, price history, multiple store profiles,
+  recipe import.
+
+Secondary, non-conflicting: affiliate handoff ("send this list to Instacart/Kroger"). Small
+revenue, but it serves the shopper rather than monetizing their attention, so it's compatible
+with the positioning.
 
 ---
 
-## 7. Suggested MVP (v0.1)
+## 7. Design direction
+
+Reference apps are consumer utilities, not retail or work tools. The e-commerce apps
+(Amazon Fresh, Instacart's store) and the work trackers (Trello, Notion, monday.com) both
+solve a different problem and should not drive the layout.
+
+**Item rendering — follow Tiimo.** One rounded card per item, emoji/illustration tile on the
+left, large tappable circle on the right, colored group-header pills with counts. It stays
+legible at arm's length while pushing a cart, which Todoist/Trello-grade density does not.
+Confetti or similar on completion — this is a chore app, small delight matters.
+
+**Quick add.** Inline "type to begin" field with a voice button as a visual *peer* of the
+keyboard, not a buried icon (Tiimo). Add is a persistent full-width button or inline field —
+no floating action button; none of the consumer references use one.
+
+**Sharing.** Sell it warmly and put it in the way. Instacart's "Family cart" invite screen is
+the model: illustrated preview of "Items you added / Items Maria added," colored initial
+avatars, big invite slots, copy like "everyone pitches in." TimeTree shows the same idea in a
+plain "Me / Member List" split with photo avatars.
+
+**Attribution.** A small caption under the row — Telegram's group checklist ("Alex Smith Lee"
+under a completed item, "2 of 3 completed" footer). Never an assignment UI with owners and
+due dates; that's the work-tool failure mode.
+
+**Spend.** A running trip total pinned to the bottom of the list, with per-item unit price
+(Woolworths, Instacart both do this well). This is the feature AnyList and OurGroceries
+don't have.
+
+---
+
+## 8. Suggested MVP (v0.1)
+
+---
 
 Ship this, nothing more:
 
@@ -210,3 +260,13 @@ shared list update lands on the other phone in under a second on a normal connec
 - [Top Grocery Price APIs — Actowiz](https://www.actowizsolutions.com/top-grocery-price-apis-live-grocery-price-tracking.php)
 - [9 UX Best Practice Design Patterns for Autocomplete Suggestions — Baymard](https://baymard.com/blog/autocomplete-design)
 - [Autocomplete suggestions: benefits & UX best practices — Fresh Consulting](https://www.freshconsulting.com/insights/blog/autocomplete-benefits-ux-best-practices/)
+
+### UI references (Mobbin)
+
+- [Tiimo — grouped list, card rows, colored group pills](https://mobbin.com/screens/6a638201-90d4-4373-817c-03aced9c0744)
+- [Tiimo — quick add with voice as a peer to typing](https://mobbin.com/screens/e151c051-959a-4110-b01b-5c99bff12580)
+- [Instacart — "Family cart" household invite](https://mobbin.com/screens/d5a5c097-9786-4570-9e33-d40c347c921b)
+- [TimeTree — shared memo with Me / Member List](https://mobbin.com/screens/a0573db7-640e-478c-a59b-364800552a46)
+- [Telegram — group checklist with per-item attribution](https://mobbin.com/screens/6a478604-82a6-441a-8688-2b68e118d3c3)
+- [Woolworths — aisle grouping, unit price, running trip total](https://mobbin.com/screens/922e06ed-4f48-410e-a077-9ea26daeefd2)
+- [Todoist — dense grouped list (counter-example: too dense for in-store)](https://mobbin.com/screens/72a63d08-af72-40e9-a73e-52e222379894)

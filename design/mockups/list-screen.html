@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shopping List — list screen mockup</title>
+<style>
+  :root {
+    --bg: #f6f4f1;
+    --card: #ffffff;
+    --ink: #1b1a18;
+    --muted: #8d8880;
+    --line: #ebe7e2;
+    --accent: #1f7a4d;
+    --produce: #e8f2e4;
+    --produce-ink: #3f6b39;
+    --dairy: #fdf0dc;
+    --dairy-ink: #96652a;
+    --pantry: #eceaf6;
+    --pantry-ink: #5b53943;
+    --pantry-ink: #565095;
+    --done: #f0eeea;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  body {
+    width: 393px; height: 852px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    background: var(--bg); color: var(--ink);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  /* status bar */
+  .status { display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 26px 4px; font-size: 15px; font-weight: 600; letter-spacing: .2px; }
+  .status .right { display: flex; gap: 5px; align-items: center; font-size: 13px; }
+
+  /* header */
+  header { padding: 6px 20px 12px; }
+  .crumb { display: flex; justify-content: space-between; align-items: center; }
+  .progress-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #fff; border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 13px 6px 10px; font-size: 13px; font-weight: 600; color: var(--muted);
+  }
+  .progress-chip b { color: var(--ink); }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 50%; background: #fff;
+    border: 1px solid var(--line); display: grid; place-items: center;
+    font-size: 18px; color: var(--ink); line-height: 1;
+  }
+  h1 { font-size: 30px; letter-spacing: -.6px; margin: 10px 0 3px; font-weight: 650; }
+  .sub { font-size: 13.5px; color: var(--muted); display: flex; align-items: center; gap: 7px; }
+  .avatars { display: flex; }
+  .avatars span {
+    width: 21px; height: 21px; border-radius: 50%; border: 2px solid var(--bg);
+    margin-left: -6px; display: grid; place-items: center;
+    font-size: 10px; font-weight: 700; color: #fff;
+  }
+  .avatars span:first-child { margin-left: 0; }
+  .a1 { background: #d9743f; } .a2 { background: #5a7fd0; } .a3 { background: #8a63b5; }
+
+  /* list */
+  .scroll { flex: 1; overflow: hidden; padding: 4px 20px 0; }
+  .group { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 7px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; border-radius: 999px;
+    padding: 5px 13px; font-size: 12.5px; font-weight: 700; letter-spacing: .3px;
+  }
+  .pill.produce { background: var(--produce); color: var(--produce-ink); }
+  .pill.dairy   { background: var(--dairy);   color: var(--dairy-ink); }
+  .pill.pantry  { background: var(--pantry);  color: var(--pantry-ink); }
+  .pill.done    { background: var(--done);    color: var(--muted); }
+  .plus { color: #c3bdb4; font-size: 21px; line-height: 1; padding-right: 3px; }
+
+  .row {
+    display: flex; align-items: center; gap: 12px; background: var(--card);
+    border-radius: 16px; padding: 10px 14px; margin-bottom: 7px;
+    box-shadow: 0 1px 2px rgba(27,26,24,.05);
+  }
+  .tile {
+    width: 37px; height: 37px; border-radius: 11px; flex: none;
+    display: grid; place-items: center; font-size: 20px; background: #f4f2ee;
+  }
+  .body { flex: 1; min-width: 0; }
+  .name { font-size: 15.5px; font-weight: 550; letter-spacing: -.1px; }
+  .meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .meta .who { color: #a7a199; }
+  .price { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+  .circle { width: 25px; height: 25px; border-radius: 50%; border: 2px solid #d8d3cc; flex: none; }
+  .circle.on {
+    background: var(--accent); border-color: var(--accent);
+    display: grid; place-items: center;
+  }
+  .circle.on::after { content: "✓"; color: #fff; font-size: 14px; font-weight: 700; }
+  .row.checked { background: #f2f0ec; box-shadow: none; }
+  .row.checked .name { color: var(--muted); text-decoration: line-through; }
+  .row.checked .tile { opacity: .5; }
+
+  /* footer */
+  .total {
+    margin: 0 20px; padding: 13px 17px; background: #fff;
+    border: 1px solid var(--line); border-top-left-radius: 17px; border-top-right-radius: 17px;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .total .lbl { font-size: 13px; color: var(--muted); }
+  .total .amt { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .total .amt small { font-size: 12.5px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+
+  .addbar { padding: 10px 20px 8px; display: flex; gap: 9px; align-items: center; }
+  .field {
+    flex: 1; background: #fff; border: 1px solid var(--line); border-radius: 999px;
+    padding: 13px 18px; font-size: 15px; color: #b3ada4;
+  }
+  .mic {
+    width: 47px; height: 47px; border-radius: 50%; background: var(--ink);
+    display: grid; place-items: center; font-size: 19px; flex: none;
+  }
+  .home { width: 134px; height: 5px; border-radius: 3px; background: #d3cec7; margin: 6px auto 9px; }
+</style>
+</head>
+<body>
+
+  <div class="status">
+    <span>9:41</span>
+    <span class="right">▮▮▮ ᯤ 🔋</span>
+  </div>
+
+  <header>
+    <div class="crumb">
+      <span class="progress-chip">🛒 <b>2</b> / 7</span>
+      <span class="icon-btn">⋯</span>
+    </div>
+    <h1>Weekly shop</h1>
+    <div class="sub">
+      <span class="avatars"><span class="a1">J</span><span class="a2">M</span><span class="a3">A</span></span>
+      Shared with Maria &amp; Ariel
+    </div>
+  </header>
+
+  <div class="scroll">
+
+    <div class="group">
+      <span class="pill produce">🥬 PRODUCE · 3</span>
+      <span class="plus">+</span>
+    </div>
+    <div class="row">
+      <div class="tile">🍌</div>
+      <div class="body">
+        <div class="name">Bananas</div>
+        <div class="meta">6 · <span class="who">Maria added</span></div>
+      </div>
+      <div class="price">$1.80</div>
+      <div class="circle"></div>
+    </div>
+    <div class="row">
+      <div class="tile">🍓</div>
+      <div class="body">
+        <div class="name">Strawberries</div>
+        <div class="meta">1 punnet</div>
+      </div>
+      <div class="price">$4.50</div>
+      <div class="circle"></div>
+    </div>
+    <div class="row">
+      <div class="tile">🥑</div>
+      <div class="body">
+        <div class="name">Avocados</div>
+        <div class="meta">3 · <span class="who">you added</span></div>
+      </div>
+      <div class="price">$5.25</div>
+      <div class="circle"></div>
+    </div>
+
+    <div class="group">
+      <span class="pill dairy">🧀 DAIRY · 2</span>
+      <span class="plus">+</span>
+    </div>
+    <div class="row">
+      <div class="tile">🥛</div>
+      <div class="body">
+        <div class="name">Whole milk</div>
+        <div class="meta">2 L · <span class="who">usually every 6 days</span></div>
+      </div>
+      <div class="price">$3.40</div>
+      <div class="circle"></div>
+    </div>
+    <div class="row">
+      <div class="tile">🧈</div>
+      <div class="body">
+        <div class="name">Butter</div>
+        <div class="meta">250 g</div>
+      </div>
+      <div class="price">$4.10</div>
+      <div class="circle"></div>
+    </div>
+
+    <div class="group">
+      <span class="pill done">✓ IN THE CART · 2</span>
+    </div>
+    <div class="row checked">
+      <div class="tile">🍞</div>
+      <div class="body">
+        <div class="name">Sourdough loaf</div>
+        <div class="meta"><span class="who">Ariel got this</span></div>
+      </div>
+      <div class="price">$6.00</div>
+      <div class="circle on"></div>
+    </div>
+    <div class="row checked">
+      <div class="tile">🥚</div>
+      <div class="body">
+        <div class="name">Free-range eggs</div>
+        <div class="meta"><span class="who">you got this</span></div>
+      </div>
+      <div class="price">$7.20</div>
+      <div class="circle on"></div>
+    </div>
+
+  </div>
+
+  <div class="total">
+    <span class="lbl">Trip total so far</span>
+    <span class="amt">$32.25 <small>· $13.20 in cart</small></span>
+  </div>
+
+  <div class="addbar">
+    <div class="field">Add an item…</div>
+    <div class="mic">🎙️</div>
+  </div>
+  <div class="home"></div>
+
+</body>
+</html>
