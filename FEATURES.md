@@ -234,6 +234,70 @@ and resolves anyway.
 - **Handwriting is the weak spot.** Vision reads print well and handwriting unevenly. This is the
   one place cloud earns its cost, and the one place to put it behind the paywall
 
+### The split: iPhone vs Claude API
+
+**Everything on the free tier and everything high-frequency stays on-device.** Cloud is reserved
+for low-frequency, paid-tier work. That rule is what makes the economics safe — see the trap below.
+
+| Job | Where | Why | Cost |
+|---|---|---|---|
+| Speech → text | **iPhone** — `SFSpeechRecognizer`, on-device | Works offline, no quota | $0 |
+| "Hey Siri, add milk" | **iPhone** — App Intents | System handles it; app needn't launch | $0 |
+| Text → item | **iPhone** — our catalog resolver | Already built and tested | $0 |
+| Barcode scan | **iPhone** — Vision / AVFoundation | Native, instant | $0 |
+| **Printed** list photo → items | **iPhone** — Vision text recognition | Vision reads print reliably | $0 |
+| Loose phrasing → items | **iPhone** — Foundation Models (iOS 26) | On-device LLM, no API key | $0 |
+| **Receipt → line items + prices** | **Claude API** | Messy layouts, wrapped lines, abbreviations, tax/discount rows. Beyond a 3B on-device model | see below |
+| **Handwriting → items** | **Claude API** | Vision reads handwriting unevenly; this is the one place it genuinely fails | see below |
+| Recipe URL/text → ingredients | **Claude API** | Long, unstructured, quantity parsing | see below |
+
+### What the cloud calls actually cost
+
+Current API pricing (per million tokens):
+
+| Model | Input | Output |
+|---|---|---|
+| Claude Opus 5 | $5.00 | $25.00 |
+| Claude Sonnet 5 | $3.00 ($2.00 intro through 2026-08-31) | $15.00 ($10.00 intro) |
+| Claude Haiku 4.5 | $1.00 | $5.00 |
+
+A receipt scan is roughly **2,000 input tokens** (downsampled photo + prompt) and **500 output
+tokens** (structured JSON) **[model]**:
+
+| Model | Per receipt | 4 trips/mo | Per year |
+|---|---|---|---|
+| Haiku 4.5 | ~$0.0045 | ~$0.018 | **~$0.22** |
+| Sonnet 5 | ~$0.0135 | ~$0.054 | ~$0.65 |
+| Opus 5 | ~$0.0225 | ~$0.090 | ~$1.08 |
+
+**Against $29.99/yr revenue, even the most expensive option is ~3.6% of the subscription.** Cloud
+AI is affordable here — but only because it's gated behind the paywall and runs a handful of times
+a month.
+
+Three levers cut it further:
+
+- **Batch API — 50% off.** Receipts aren't latency-critical. Queue them and process asynchronously;
+  most batches finish within the hour.
+- **Prompt caching** — the system prompt and JSON schema are identical on every call. Cache reads
+  cost ~0.1× (minimum cacheable prefix is 512 tokens on Opus 5, 1024 on Sonnet 5).
+- **Structured outputs** — `output_config.format` with a JSON schema guarantees parseable output,
+  so no retry loop on malformed JSON.
+
+### The trap that would actually hurt
+
+**Never put a high-frequency or free-tier action on the cloud.** Voice add is the obvious
+temptation and the clearest example: 20 adds/week × 100,000 free users ≈ 1M calls/year. Even at
+a tenth of a cent each that's five figures annually, paid on users who by definition generate no
+revenue.
+
+The rule that keeps this safe:
+
+> **Free tier → on-device only. Paid tier → cloud allowed, low-frequency only.**
+
+Receipt scanning satisfies both halves: it's paid, and it runs ~4× a month. Voice add satisfies
+neither, which is why rung 1 matters so much — and why the resolver we already built is doing
+more strategic work than it looks.
+
 ### What this means strategically
 
 The plan already says never to sell "AI" as a headline — Listonic put a "With AI" badge on their
