@@ -57,7 +57,16 @@ Nothing else can be finalised until a name clears. From `NAMING.md`:
 | 3 | **Sundry** | Most precisely apt ("sundries" = small goods). Some will hear "Sunday." | `Sundry: Shared Grocery List` |
 
 **Recommendation: screen Bagged and Dozen simultaneously; ship whichever clears.** They cost the
-same to check and either supports this positioning.
+same to check and either supports this positioning. Add **BagList** as a third if maximum
+plainness is wanted — it is the most literal option still available, and correspondingly the
+weakest mark.
+
+**Do not spend effort hunting a plainer, more self-explanatory name.** `NAMING.md` §8 checked
+that band: Grocer, Grocery, OneList, HomeList, Basket, Trolley, Cart, Shelf, Aisle, Stockup and
+Milkrun are all taken, most several times over. Plain means obvious, and obvious went first.
+The category keyword belongs in the **store title**, not the name — every competitor does this,
+including Bring!, a meaningless verb that leads Europe with 3.6M MAU behind the title
+`Bring! Grocery Shopping List`.
 
 **Action, week 1, before any other spend:** USPTO **Class 9 and 42**, phonetic variants
 included; common-law search; both app stores; `.com` and `.app`; social handles. Expect one to

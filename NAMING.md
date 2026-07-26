@@ -201,3 +201,67 @@ precisely because they're not obvious, and they're easier to own outright.
 because the double meaning does work no oblique name can.** If you want ownable and
 distinctive: Dozen. Both are worth putting through Class 9/42 screening in parallel; they cost
 the same to check and you only need one to clear.
+
+
+---
+
+## 8. The "simple and self-explanatory" band — it's exhausted
+
+Brief: a simpler name that represents the product without needing explanation. Checked against
+live listings. **Every plain construction is taken, most of them several times over.**
+
+| Name | Finding | Verdict |
+|---|---|---|
+| **Grocer / Grocery** | [Grocery — Smart Shopping List](https://apps.apple.com/us/app/grocery-smart-shopping-list/id1195676848) exists and was **App Store App of the Day** in 2021. Plus [GetGrocer](https://apps.apple.com/do/app/getgrocer/id6462829044), [GrocList](https://apps.apple.com/no/app/id6737623313). | **Drop** — crowded and near-generic |
+| **OneList** | Four separate apps: [OneList](https://apps.apple.com/us/app/onelist/id702711062), [IQX OneList](https://apps.apple.com/us/app/iqx-onelist/id1464890514), [OneList — Minimalist](https://apps.apple.com/us/app/onelist-minimalist/id1449484075), [OneList ADHD Tasks](https://apps.apple.com/us/app/onelist-achieve-your-goals/id6449262868). | **Drop** |
+| **HomeList** | [HomeList — Smart Checklists](https://apps.apple.com/us/app/homelist-smart-checklists/id1658796834), [HomeList — Home Management](https://apps.apple.com/us/app/homelist-home-management/id6450123162), a Portuguese Homelist, and `homelist.ai`. One explicitly covers "household task lists… and grocery shopping." | **Drop** |
+| Basket · Trolley · Cart · Shelf · Aisle · Larder · Peck · Stockup · Milkrun | All taken — see §2 and §7 | **Drop** |
+
+Also live in the plain band: BudList, BigBag, ShoppyList, Shopping Bag, Grocery List ◎.
+
+**The rule this reveals:** *simple and self-explanatory* means *obvious*, and obvious names went
+first. The plainer the name, the more certain it's gone. There is no unclaimed plain-English
+compound left in this category.
+
+### The reframe: the name never carries the category — the store title does
+
+Look at what every competitor actually ships as its App Store title:
+
+| Name alone | Full store title |
+|---|---|
+| **AnyList** — says nothing about groceries | `AnyList: Grocery Shopping List` |
+| **Listonic** — invented, meaningless | `Grocery List - Listonic` |
+| **Bring!** — one syllable, no food meaning at all | `Bring! Grocery Shopping List` |
+| **Our Groceries** | `Our Groceries Shopping List` |
+
+Even OurGroceries, whose name *does* say groceries, appends "Shopping List." And **Bring!** —
+a meaningless imperative verb — is the market leader in Europe with 3.6M MAU.
+
+So "the name needs a subtitle to explain itself" is not a real cost. Every app in this category
+pays it, because the 30-character store title is where the category keyword belongs, and putting
+it in the name too is a wasted repetition that ASO guidance explicitly warns against.
+
+### Simple *and* available
+
+What's left after screening, ranked by how well it meets "simple and representative":
+
+| Name | Simple? | Represents? | Status |
+|---|---|---|---|
+| **Bagged** (6) | One common word, one syllable-and-a-half, unmisspellable | **Yes** — bagging is the last act of a supermarket trip, and "bagged it" is the check-off gesture | **Clean** (§7) |
+| **Dozen** (5) | Simplest to say in the whole pool | Partly — grocery-native via "a dozen eggs", but doesn't announce the category | **Clean** |
+| **BagList** (7) | Very plain; bag + list reads instantly | **Yes**, most literally of any available option | Nothing found; needs screening |
+| **Bagly** (5) | Simple | Weakly | Nothing found, but `-ly` reads as 2012-startup and dates the brand. **Not recommended** |
+
+### Recommendation
+
+**Bagged already is the answer to this brief.** It is one ordinary word that a supermarket
+shopper understands instantly, it needs no explanation, and it doubles as the app's core gesture.
+Paired with `Bagged: Shared Grocery List` as the store title, nothing is left unexplained.
+
+If it must be plainer still, **BagList** is the most literal available option — screen it
+alongside Bagged. It is more descriptive and therefore weaker as a mark, easier to confuse with
+BudList and BigBag, and harder to own. That's the price of maximum plainness.
+
+**Do not** stretch for a plainer name than BagList. Below that line everything is either taken
+or unregistrable, and a name you can't defend costs more than a name that needs four extra
+words in a store title.
