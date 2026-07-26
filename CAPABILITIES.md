@@ -68,7 +68,9 @@ The complete capability list in plain bullets, so it can be read in one pass. De
 - ✅ Siri without the wake word — hold the side button
 - ✅ "Hey Siri, add milk to my list" — fully hands-free, app never opens
 - 🔹 Photo of a printed list → items
-- 🔹 Loose phrasing → items ("stuff for tacos")
+- 🔹 Meal → ingredients ("stuff for tacos", "chicken parm and a stir fry")
+- ✅ **Quick-pick grid** — tap through ~40 likely items instead of facing a blank list. Catalog-based on trip 1, history-based after
+- ❌ **Not** "generate my weekly list" — a generic list is worthless and a wrong one is worse than blank. History does this better (see `FEATURES.md` §10)
 - 🔹 Handwritten list → items
 - ⬜ Recipe link → ingredients
 

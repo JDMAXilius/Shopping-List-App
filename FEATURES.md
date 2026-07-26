@@ -364,6 +364,55 @@ That cuts both ways, and both are worth stating:
   whole `reminders` cluster, not a single intent. Custom schemas for Siri are not possible —
   you adopt Apple's shape or you get no Siri language understanding at all.
 
+### "Make me a list for the week" — can the on-device LLM do it?
+
+**Technically yes, for free. But a generated weekly list is the weak version of this idea, and
+the strong version barely uses the model.**
+
+Foundation Models with `@Generable` and `@Guide` gives constrained decoding straight into a Swift
+type — ask for `[GroceryItem]` and you get typed, well-formed output on-device, no API key, no
+per-token bill. Generating 30 grocery items is trivially within a ~3B model's ability.
+
+#### Why "make my weekly list" fails anyway
+
+- **A generic list is worthless.** Milk, eggs, bread, chicken, rice — the user already knows.
+  It isn't personal, so it isn't useful.
+- **A wrong list is worse than a blank one.** Now they have to *read and delete* 30 items. That's
+  more work than typing the 12 they wanted, and it's exactly the friction this app exists to
+  remove.
+- **The model is the wrong tool for the job it's aimed at.** The genuine question is *"what does
+  this household buy?"* — and after three trips **we already know**, from history. Recurring
+  staples (v1.1) is plain statistics and beats any generated guess: *"you usually buy milk every
+  5 days; it's been 6."* No model can compete with the actual answer.
+- **It drifts into meal planning**, which is AnyList's territory, held for 14 years at 4.9★, and
+  which `PLAN.md` explicitly says not to fight.
+
+#### The strong version — three tiers, and the model is the smallest
+
+The real problem is genuine: **task initiation, a blank list, the moment the app is most likely
+to be abandoned** (`INTERACTION.md` §2). Solve it in this order:
+
+| Tier | Mechanism | When it works |
+|---|---|---|
+| **1. History** | Recurring staples from purchase intervals — **plain statistics, no model** | From trip 3 onward. The best answer, and it gets better with use |
+| **2. Recognition, not recall** | A tappable grid of ~40 likely items — from the catalog for a new user, from history for a returning one | **Trip 1.** Solves the cold start |
+| **3. Foundation Models** | Bounded generation: *"tacos"* → ingredients, *"chicken parm and a stir fry"* → items | Any time the user names a **meal**, not a timespan |
+
+**Tier 2 is the one worth dwelling on.** For an ADHD brain, **recognition is far easier than
+recall** — picking from options costs a fraction of what generating from a blank page does. A grid
+of forty common items you tap through in twenty seconds beats both a blank list *and* a generated
+one, and it needs no model, no hardware floor, and no network.
+
+**So the model's job is narrow and it should stay narrow:** the user supplies the intent
+(*"tacos"*), the model supplies knowledge they might not have (tortillas, cumin, lime, cotija),
+and the output is short enough to verify at a glance. That's already planned as rung 4 — this
+question just confirms the boundary rather than moving it.
+
+> ⚠️ **The hardware floor makes this a non-negotiable enhancement.** Foundation Models needs
+> **iOS 26 and an A17 Pro or M1 chip** — iPhone 15 Pro and later. Tiers 1 and 2 run everywhere.
+> Any design where the blank-list problem is solved *only* by the model fails for most of the
+> install base.
+
 ### Adding by voice without saying "Hey Siri"
 
 **"Hey Siri" is a trigger, not the feature.** The feature is an App Intent, and the same intent
