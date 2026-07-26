@@ -235,7 +235,13 @@ overlap almost entirely:
 - **Contrast**: 4.5:1 for body text. Grey estimate text is the risk — verify it, don't assume it
 - **Reduce Motion** and **Reduce Transparency** honoured throughout
 - **Never colour alone.** Estimated versus observed prices are distinguished by the `~` prefix
-  *and* weight *and* colour
+  *and* weight *and* colour. Tiimo does the same for task priority — `▲ HIGH` / `● MEDIUM` /
+  `▼ LOW`, shape carrying the meaning and colour merely reinforcing it
+- **Write every empty state in its own voice.** Tiimo gives each section its own placeholder —
+  *"Anytime today works"*, *"What's on your morning list?"*, *"End the day your way"* — rather
+  than repeating one string. It costs nothing and it's most of why their empty screen reads as
+  warm rather than unfinished. **Ours needs the same for empty aisle sections and for the
+  first-ever list**
 
 ---
 

@@ -257,6 +257,47 @@ aggressive**, and it directly softens `PLAN.md` §8's "pricing above the categor
 | **`Allow live activities`** is a tutorial card | Confirms the Live Activity recommendation in §8 — they're actively pushing users to enable it |
 | **Their To-do has `Work · Groceries · Home · Wishlist` tabs** | ⚠️ **Tiimo ships a groceries list.** Not a competitor — no prices, no aisles, no sharing — but the App of the Year has a grocery surface, and it's worth watching |
 
+### The streak is permanent chrome, not a Stats-tab detail
+
+A further correction on my own correction. **The streak and Spark counters sit in the top-left of
+every screen** — `🔥 2` and `✦ 0` — on the To-do tab and the Calendar tab alike. They are not
+tucked away on Stats; they are **persistent app furniture, present before you've done anything.**
+
+One screenshot also catches a **transient streak panel mid-dismissal** — a row of day circles with
+one filled and checked, labelled `DAY STREAK`, ghosting out over the main screen. So there's an
+animated streak reveal as well as the permanent counter.
+
+**That's more committed to the mechanic than "they added a streak" implies.** It doesn't change
+the cadence argument for us, but it does mean this was a deliberate, prominent product decision
+rather than a quiet experiment.
+
+### Two craft details worth taking, from the empty screens
+
+**1. Empty-state copy is written per context, not repeated.** Four sections, four different
+prompts:
+
+| Section | Placeholder |
+|---|---|
+| `ANYTIME (0)` | *"Anytime today works"* |
+| `MORNING (0)` | *"What's on your morning list?"* |
+| `AFTERNOON (0)` | *"What's happening today?"* |
+| `EVENING (0)` | *"End the day your way"* |
+
+Most apps ship one placeholder string repeated. **Writing each slot in its own voice is nearly
+free and it's most of why the empty screen feels warm rather than unfinished.** Directly
+applicable to our empty aisle sections.
+
+**2. Priority uses shape *and* colour, never colour alone.** On the To-do tab:
+`▲ HIGH` (pink) · `● MEDIUM` (peach) · `▼ LOW` (blue) — a triangle up, a filled circle, a triangle
+down. This is exactly the rule in `INTERACTION.md` §7, executed by an App of the Year winner, and
+it's the one we most need for **estimated vs observed prices**: `~` prefix *and* weight *and*
+colour, never colour by itself.
+
+Also observed: **empty sections stay visible with a `(0)` count** rather than being hidden — the
+structure of the day persists whether or not it's full. And a third accent appears, a bold
+**chartreuse** onboarding card among the pale blue and lavender ones, which stops the pastel
+palette from going soft everywhere.
+
 ### The shape of the drift
 
 Post-award, Tiimo added **streaks, collectibles, stats, mood tracking, and in-app video**. That is
