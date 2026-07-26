@@ -138,3 +138,66 @@ If all three fail screening, Tier 2 is ranked as listed — start with **Chit** 
 
 Note that the brand sheet in `design/brand-sheet.html` still renders "Errand" as a placeholder.
 It needs re-rendering once a name clears; nothing else in the visual system depends on the name.
+
+---
+
+## 7. Category-evocative names — names that read "grocery" on sight
+
+Requested as an alternative direction to the oblique names above. There's a real ASO argument
+for it: if the name itself signals groceries, the subtitle is freed to carry *different*
+keywords instead of repeating the category, which is otherwise wasted characters.
+
+**The finding: this band is almost entirely taken, and that's structural.** Obvious names are
+obvious to everyone, so they went first. Checked against live listings:
+
+| Name | Finding | Verdict |
+|---|---|---|
+| **Basket** | [grocery list — Basket](https://apps.apple.com/us/app/grocery-list-basket/id6670761900) is a live grocery list app. [Basket Savings](https://basketsavings.com/index.html) does list-building **plus cross-store price tracking** — our differentiator, under our name. | **Drop** |
+| **Trolley** | [Trolley Space — Grocery List](https://apps.apple.com/lk/app/trolley-space-grocery-list/id1551514262) does real-time household collaboration — our exact feature. A second [Trolley](https://apps.apple.com/app/trolley-app/id6753972895) shopping wishlist app also exists. | **Drop** |
+| **Milkrun** | [MILKRUN](https://apps.apple.com/us/app/milkrun/id1595511993) is owned by **Woolworths Group**. A major grocery retailer holds it. | **Drop** |
+| **Stockup** | Crowded: [StockUp Grocery Prices](https://apps.apple.com/au/app/stockup-grocery-prices/id6760887575), [StockUp Pantry Organizer](https://apps.apple.com/us/app/stockup-pantry-organizer/id6760556351), StockUp food storage tracker, StockUp Resell Manager. | **Drop** |
+| **Shelf** | [Shelf Control](https://apps.apple.com/us/app/shelf-control/id6758061316) organizes lists **by store aisle** — again, our differentiator. Plus Shelf (music/books) and Shelves. | **Drop** |
+| **Cart / Aisle / Grocer / Market / Pantry** | All heavily contested in and around the category. | **Drop** |
+
+### The survivor
+
+**Bagged** (6) — *recommended in this band*
+
+No App Store app of that name found. The nearest is *Bagged n' Brought*, a California food
+delivery service, and *Bag It!*, a puzzle game — neither a real conflict.
+
+It works on two levels at once, which is the quality that made *Tally* attractive before it
+turned out to be blocked:
+
+- **Grocery-native.** Bagging is the literal last step of a supermarket trip. It reads as
+  groceries instantly, no subtitle required.
+- **It's the check-off word.** "Bagged it" is what you say when something's done and secured.
+  The name describes the app's central gesture — tapping an item off the list.
+
+Past tense as a name is slightly unusual, which here works in its favour: it's confident and
+distinctive rather than descriptive, so it's registrable in a way "Grocery List Pro" is not.
+
+ASO title: `Bagged: Shared Grocery List` — 27 / 30. And because the name carries the category,
+the subtitle can spend its 30 characters on entirely fresh keywords —
+`Aisle order, prices, no ads`.
+
+*Snags:* British slang uses "bagged" for claimed-it (reinforcing, fine) and occasionally for
+drunk (context makes it a non-issue). Worth a quick sanity check in any market you launch in.
+
+### Unchecked, if you want more in this band
+
+Not yet collision-checked — screen before considering: **Sack** (4) · **Bagsy** (5, very
+British) · **Bagger** (6) · **Bigshop** (7, from the British "the big shop") · **Topup** (5,
+from "a top-up shop") · **Provisions** (10, evocative but long).
+
+### Honest tradeoff
+
+Naming into this band buys instant category recognition and frees the subtitle. It costs
+distinctiveness — you'll sit on a shelf of Baskets, Trolleys, and Carts, and you're more likely
+to be confused with a competitor. The oblique names (**Dozen**, **Sundry**) are available
+precisely because they're not obvious, and they're easier to own outright.
+
+**If you want category-evident: Bagged, and it's genuinely good — arguably better than Dozen,
+because the double meaning does work no oblique name can.** If you want ownable and
+distinctive: Dozen. Both are worth putting through Class 9/42 screening in parallel; they cost
+the same to check and you only need one to clear.
