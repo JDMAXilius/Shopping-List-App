@@ -192,3 +192,156 @@ apps with a 14-year head start, so they are not optional and must not be cut und
   build estimate and Android reach
 - **Item imagery** — emoji at v1 versus commissioned art. AnyList and OurGroceries both use real
   product photography, so this is a known gap rather than a settled choice
+
+---
+
+## 10. Voice and AI — on-device first, and it's nearly free
+
+**Verified: yes, the phone can do this, and for the common case you need no cloud AI at all.**
+
+### The ladder
+
+Each rung is tried before the next. Everything in rungs 1–3 is **free, offline, and private.**
+
+| Rung | Tech | Cost | Covers |
+|---|---|---|---|
+| **1. Transcribe + resolve** | `SFSpeechRecognizer` with `requiresOnDeviceRecognition = true` → our existing catalog resolver | **$0** | ~90% of voice adds |
+| **2. Siri, no app launch** | **App Intents** — "add milk to my list" handled by the system | **$0** | Hands-free while driving or cooking |
+| **3. Photo of a printed list** | Vision framework on-device text recognition | **$0** | Typed/printed notes, receipts |
+| **4. Messy phrasing** | **Foundation Models** — Apple's ~3B on-device LLM (iOS 26), no API key, no per-token bill, no network | **$0** | "get stuff for tacos" → items |
+| **5. Genuinely hard cases** | Cloud model | **paid** | Bad handwriting, recipe URL parsing. **Gate behind the subscription so revenue covers it** |
+
+### Why rung 1 covers most of it — we already built the hard part
+
+Voice add is usually framed as an AI problem. It isn't. It's *transcription* + *resolution*, and
+**the resolver already exists** (`data/catalog/`, §1). Apple transcribes "two pounds of chicken
+breast" for free; our pipeline strips the qualifier and the quantity and lands on `chicken breast`.
+No model call anywhere.
+
+Better still, the two halves cover each other's weaknesses. `SFSpeechRecognizer` **cannot be
+trained on custom vocabulary**, so it will mangle unusual grocery words — but the resolver already
+does bounded edit-distance matching for typos, so a mis-transcription behaves exactly like a typo
+and resolves anyway.
+
+### Constraints to design around
+
+- **On-device model downloads on first use.** It isn't available the instant the app installs —
+  fall back to typing and never block
+- **1 minute of audio per request; 1,000 requests per device per hour.** Irrelevant for adding
+  groceries, fatal if you tried to stream continuously
+- **Foundation Models needs an Apple Intelligence-capable device.** So rung 4 is an *enhancement*,
+  never a dependency. Rungs 1–3 work on far older hardware
+- **Handwriting is the weak spot.** Vision reads print well and handwriting unevenly. This is the
+  one place cloud earns its cost, and the one place to put it behind the paywall
+
+### What this means strategically
+
+The plan already says never to sell "AI" as a headline — Listonic put a "With AI" badge on their
+lead screenshot, so it's furniture now. This architecture lets us go further: **we can ship voice
+and photo capture with a marginal cost of approximately zero, and market them as speed rather than
+as AI.** "Say it and it's on the list" beats "AI-powered" and costs less to run.
+
+---
+
+## 11. Scope: groceries only, or any list?
+
+**Decision: market as groceries, support one deliberately plainer "simple list" type. Never
+become a general list app.**
+
+### What the evidence says
+
+Every successful app in this category supports multiple list types:
+
+| App | List types | Result |
+|---|---|---|
+| **AnyList** | Grocery, to-do, gift ideas, movies to watch, packing | 79K ratings, 4.9★, ~$900k/yr |
+| **MinimaList** | To-do app *with* a grocery mode | 46K, 4.8★ |
+| **Komorebi** | Titled "Shopping List — Grocery & ToDo" | 29K, 4.8★ |
+| **Opulogic** | Grocery, to-do, recipe, "things to buy online" | 1.4K, 4.6★ |
+| **Bring!** | Groceries only | 3.6M MAU, but retail-media model in Europe |
+
+**The decisive detail:** AnyList is *named* AnyList and supports five list types — and its App
+Store title is **`AnyList: Grocery Shopping List`**. The category leader markets groceries and
+supports anything. That's the pattern, and it resolves the debate: this is not a choice between
+positioning and capability. **Position narrow, support broad.**
+
+### Why it doesn't break fidelity — if done as a subtraction
+
+Both differentiators are grocery-only: prices and aisle order are meaningless for "movies to
+watch." So the second list type isn't a parallel product to design — it's the grocery list with
+features *removed*:
+
+| | Grocery list | Simple list |
+|---|---|---|
+| Add + check off | ✓ | ✓ |
+| Household sharing | ✓ | ✓ |
+| Offline | ✓ | ✓ |
+| Catalog autocomplete | ✓ | — |
+| Aisle grouping | ✓ | — |
+| Prices, subtotals, total | ✓ | — |
+
+That's **less code and less UI**, not more. It ships almost free because lists are already a
+first-class entity with sharing, sync and offline built in — a simple list is a flag that turns
+three things off.
+
+### The rules that protect fidelity
+
+1. **Store positioning is 100% groceries.** Title, subtitle, keywords, all six screenshots. The
+   simple list is never marketed and never appears in a screenshot
+2. **Grocery is the default** on first run. Creating a grocery list takes zero decisions
+3. **No mode switcher in the main UI.** Type is chosen once at list creation and never surfaces again
+4. **No tab bar.** The list is still the app (§6)
+5. **Zero further investment.** No movie metadata, no packing templates, no due dates, no
+   reminders, no assignees, no projects, no priorities. If someone asks for those, the answer is
+   permanently no — that's the work-tool failure mode already banned in §7
+
+### What we are refusing
+
+The failure your instinct is pointing at is real, and it has a name: **becoming a general
+productivity app.** That happens by accretion — a due date here, a priority flag there — until the
+grocery experience is a mode inside something generic, and the app is worse at everything than the
+specialists. Todoist is better at tasks than we will ever be. AnyList is better at recipes.
+
+So: one narrow, excellent grocery app, plus a plain list for the times a household needs one.
+Less, on purpose.
+
+---
+
+## 12. What works and what doesn't — from competitor screens
+
+Drawn from `research/store-teardown.md`. Adopt the left column; refuse the right.
+
+### Works — adopt
+
+| Pattern | Where seen |
+|---|---|
+| Big bold caption above a device mockup | All five listings |
+| **Colour carries state**, not decoration | Bring! — coral = needed, green = recently used |
+| **Light and dark mode in one screenshot** | Bring!, OurGroceries. Doubles as a craft signal |
+| **Per-category subtotals + trip total** | MinimaList. The best single idea in the category |
+| **"I need …"** as the add-field placeholder | Bring!. Beats "Add an item" |
+| **Interactive widget checkbox** — tap without opening the app | Komorebi |
+| Attribution as a small caption under the row | Amazon Alexa, Telegram |
+| Per-item notes ("Honeycrisp or Envy") | OurGroceries |
+| Progress as plain text ("5 of 6 items remaining") | AnyList |
+| Award/editorial badge as social proof | Listonic |
+
+### Doesn't work — refuse
+
+| Pattern | Why |
+|---|---|
+| **Icon-only tiles** | Bring!'s known weakness: breaks on long or unusual items. Our text label is always primary |
+| **Dense to-do UI** | Todoist/Trello density is unreadable at arm's length in a store |
+| **Tab bars** competing with the list | Erodes "the list is the app" |
+| **"With AI" badges** | Table stakes since Listonic used one. Now noise |
+| **3D mascots** | Works commercially — Listonic is Apple-featured — but off-brand for us (§7, knowingly) |
+| **Typos in store assets** | Listonic shipped "Wasihing liquid" on the #1 app. Free credibility to take |
+| **Stale screenshots** | Opulogic still shows a pre-iOS 11 "Carrier" status bar |
+| Assignment UI — owners, due dates, roles | The work-tool failure mode |
+| A price on every row at launch | Unrealistic. Unpriced renders `—`, and the total waits |
+
+### Known gap, stated honestly
+
+**AnyList and OurGroceries both use real product photography** per item. We ship emoji. That is a
+visible deficit against the two largest competitors, not a considered win — treat commissioned
+item art as the first funded upgrade once there's revenue.
