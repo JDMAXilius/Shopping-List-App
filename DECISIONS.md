@@ -27,11 +27,11 @@ One page. Everything decided, everything recommended, and what's still open.
 
 ## Platform
 
-- ⭐ **iOS native, Swift + SwiftUI.** Six screens against five Tier-1 features that need Swift regardless — that ratio is backwards for React Native
-- ⭐ **Do not plan an Android app.** Defer it until iOS clears a retention bar; if it ever happens, write it native then
-- ✅ Minimum **iOS 18**. Foundation Models (iOS 26) is feature-gated, never a dependency
-- ⚠️ **Currently the plan of record says React Native.** Say the word and `PLAN.md` §3.0 + `STACK.md` get rewritten
-- If React Native is kept: **Expo SDK 57, New Architecture, config plugins** — and treat the database schema and op-log as **cross-language contracts**, because a widget can't boot the JS runtime
+- ✅ **iOS native, Swift 6 + SwiftUI.** Six screens against five Tier-1 features that need Swift regardless — that ratio is backwards for React Native
+- ✅ **No Android app, and specifically not a second native one.** Two native codebases is ~1.8× the work for a platform where this architecture doesn't run. **If both platforms ever become genuinely required, the answer is React Native — not Android Studio alongside Xcode**
+- ✅ Minimum **iOS 18**. Foundation Models (iOS 26) is availability-gated, never a dependency
+- ✅ **Three dependencies total** — GRDB, RevenueCat, supabase-swift. Everything else is a system framework. React Native would have needed ~12
+- ✅ **App Group container shared by app, widget and intents.** Under React Native this was a cross-language contract; native, it's a shared Swift package
 
 ## Architecture
 
@@ -113,19 +113,22 @@ One page. Everything decided, everything recommended, and what's still open.
 
 ## What to do next, in order
 
-1. **Confirm the platform** — native or React Native. Blocks the first line of code
-2. **Accept the Paid Applications Agreement**, complete banking and tax. Longest lead time, zero work
-3. **Buy `bagged.app` and the social handles**
-4. **Run the paid Class 9 + 42 trademark search** on BAGGED
-5. **Register Google Play as an organization**, start the D-U-N-S process
-6. **Stand up `support@`** and publish the privacy policy
-7. **Write the RLS policies and the op-log conflict test** — before any UI
-8. **Write the image specification**, rank the catalog by frequency, generate the top 100
-9. **Then** the UI layer and the file architecture
+~~1. Confirm the platform~~ — ✅ **decided: iOS native**
+
+1. **Accept the Paid Applications Agreement**, complete banking and tax. Longest lead time, zero work
+2. **Buy `bagged.app` and the social handles**
+3. **Run the paid Class 9 + 42 trademark search** on BAGGED
+4. **Stand up `support@`** and publish the privacy policy
+5. **Build `Core` + `Catalog`** — port the resolver, write the op-log and its conflict harness. No UI, no device, no signing
+6. **Write the RLS policies**, tested with two accounts, before any UI
+7. **Write the image specification**, rank the catalog by frequency, generate the top 100
+8. **Then** the UI layer and the screen architecture
+
+*Google Play registration drops off the list — no Android app. If that ever changes, register as
+an organization (`OPS.md` §3).*
 
 ## Still genuinely open
 
-- ❓ **Platform** — native vs React Native *(blocks everything)*
 - ❓ **Quantity placement in the list row** — the chip truncates long names, and it collides with the Dynamic Type requirement
 - ❓ **Which 100 items get photos first** — the frequency ranking doesn't exist yet
 - ❓ Opt-in anonymous price pooling between households

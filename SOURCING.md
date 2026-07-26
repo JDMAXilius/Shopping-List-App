@@ -120,14 +120,14 @@ Rules:
 
 ### Size, which decides how many we ship
 
-React Native already costs us ~10 MB (`STACK.md` §5), so the budget is tighter than it was:
+Against the native baseline of ~17–25 MB (`STACK.md` §6):
 
 | Approach | Added | Total app **[estimate]** |
 |---|---|---|
-| Emoji only | 0 MB | 25–37 MB |
-| **Top 100 items bundled** | **~3.5 MB** | **29–41 MB** |
-| Top 250 | ~9 MB | 34–46 MB |
-| All 414 | ~15 MB | 40–52 MB — **past AnyList** |
+| Emoji only | 0 MB | 17–25 MB |
+| **Top 100 items bundled** | **~3.5 MB** | **21–29 MB** — under the 30 MB ceiling |
+| Top 250 | ~9 MB | 26–34 MB |
+| All 414 | ~15 MB | 32–40 MB — over the ceiling, near AnyList |
 
 > 414 × ~35 KB HEIC at 480 px. HEIC over WebP because iOS decodes it natively.
 

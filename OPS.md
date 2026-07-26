@@ -4,6 +4,9 @@
 
 ## 1. The platform answer: yes, native — but not "native both"
 
+> ✅ **Decided, July 2026: iOS native. No Android app.** This section is the argument that
+> produced the decision, kept for the record.
+
 **Recommendation: build iOS native in Swift/SwiftUI. Do not plan an Android app yet.**
 
 Not "SwiftUI *and* Android Studio." Those are two products. The recommendation is one product, on
@@ -74,9 +77,14 @@ Two things narrow that gap, though:
 > to a SQLite file both platforms read unchanged, so the port is the UI and the platform
 > integration, which was never shareable anyway.
 
-**This is a recommendation, not a change to the plan of record.** `PLAN.md` §3.0 and `STACK.md`
-still describe React Native. Say the word and both get rewritten; the research in `SOURCING.md`
-and `INTERACTION.md` is platform-independent and stands either way.
+**Outcome: accepted.** `PLAN.md` §3.0 and `STACK.md` were rewritten for native. `SOURCING.md` and
+`INTERACTION.md` were platform-independent and needed only their size figures and haptic API
+names updated.
+
+**One clarification worth keeping, since it was nearly misread:** the decision is *iOS native and
+no Android*, not *native on both platforms*. Two native codebases is the one option to avoid in
+every scenario — if both platforms ever become genuinely required, React Native is the answer,
+not Xcode alongside Android Studio.
 
 ---
 

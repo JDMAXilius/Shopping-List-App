@@ -134,14 +134,19 @@ That's a well-understood three-layer pattern: **local store → sync queue → c
 
 ### Stack options
 
+> ⚠️ **Superseded — this survey predates the platform decision.** The options below were written
+> when cross-platform was still open. **Decided: iOS native, Swift 6 + SwiftUI, GRDB + Supabase,
+> with our own sync queue** — see `STACK.md` and `PLAN.md` §3.0. The three-layer pattern above
+> still holds; only the language changed.
+
 | Option | Stack | Trade-off |
 |---|---|---|
-| **A. Pragmatic (recommended)** | Expo / React Native + SQLite (expo-sqlite) locally + Supabase (Postgres + Realtime + Auth) | One codebase for iOS/Android/web, mature offline story, cheap to run, easy to hire for. Write your own thin sync queue. |
+| **A. Pragmatic** | Expo / React Native + SQLite (expo-sqlite) locally + Supabase (Postgres + Realtime + Auth) | One codebase for iOS/Android/web, mature offline story, cheap to run, easy to hire for. Write your own thin sync queue. |
 | **B. Managed sync** | Expo + **PowerSync** + Supabase, or ElectricSQL | Sync is solved for you; you pay per-seat/vendor lock-in. Fastest path to bulletproof offline. |
 | **C. Local-first purist** | SQLite + `sqlite-sync` (CRDT) or Automerge, any backend | Best conflict semantics, most complexity, largest bundle. Overkill for a list. |
 
-Recommendation: **A, structured so B can be dropped in.** Keep all reads/writes behind a
-repository layer so the sync engine is swappable.
+The surviving principle: **keep all reads and writes behind a repository layer so the sync engine
+stays swappable.** That holds in Swift exactly as it would have in TypeScript.
 
 ### Data sources — decision
 

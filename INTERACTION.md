@@ -115,7 +115,7 @@ they work with the phone on silent, they work in a pocket, and they don't demand
 
 ### The map
 
-| Event | Pattern (`expo-haptics`) | Why |
+| Event | Pattern (`UIFeedbackGenerator`) | Why |
 |---|---|---|
 | **Check off an item** | `impactLight` | The core gesture, done 20–40× a trip. **Must be light** — anything heavier becomes irritating by item ten |
 | Uncheck | `selection` | Distinct from checking, deliberately smaller |

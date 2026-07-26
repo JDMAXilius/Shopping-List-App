@@ -144,33 +144,28 @@ Nothing is shipped yet, so this is a *first* brand, not a repair. The work:
 
 Sequenced so the differentiator is real at launch rather than promised.
 
-### 3.0 Platform — React Native, decided
+### 3.0 Platform — iOS native, decided
 
-**React Native via Expo SDK 57 (RN 0.86), New Architecture, iOS-first. Minimum iOS 18.**
-Full stack in `STACK.md`.
+**Swift 6 + SwiftUI, iOS only. Minimum iOS 18. Android deferred indefinitely, and explicitly not
+a second native app.** Full stack in `STACK.md`; the argument is in `OPS.md` §1.
 
-> **Decision history.** This section previously recommended Swift + SwiftUI. **The owner decided
-> React Native**; that is the decision of record and the plan is built on it. The analysis that
-> produced the earlier recommendation is kept below because it is still true, and it is what
-> defines the native work React Native does not remove.
+> **Decision history.** Recommended as native → changed to React Native → **confirmed back to
+> native, July 2026.** Recorded because the reasoning was tested rather than assumed, and because
+> the React Native analysis is what defines the native work that exists either way.
 
-**What the decision costs, stated once and then designed around:** every Tier-1 differentiator is
-an Apple API with no JavaScript equivalent, so five things get written in Swift regardless —
-the widget extension, App Intents and the `reminders` schema domain, on-device speech, Vision
-text recognition, and the Foundation Models bridge. React Native does not avoid that work; it
-adds a seam across it.
+**What settled it:** React Native's advantage scales with UI surface and its cost scales with
+platform integration. This app has ~6 screens against **five Tier-1 features that require Swift
+with no JavaScript equivalent** — the widget, App Intents and the `reminders` schema domain,
+on-device speech, Vision, and Foundation Models. That ratio is backwards for React Native: you
+write all the Swift anyway, then add a cross-language seam on top of it.
 
-**The seam is the thing to manage.** A widget cannot boot the JS runtime, so the SQLite file lives
-in a shared App Group container and Swift reads and writes it directly. **The database schema and
-the op-log format become contracts between JavaScript and Swift**, not implementation details.
-Managed deliberately from day one this is fine. Discovered late, it eats a month — see
-`STACK.md` §3.
+**And Android is not a second native app.** Two native apps is ~1.8× the work for a platform
+where this architecture doesn't run — Gemini Nano needs 12 GB RAM, on-device speech isn't
+guaranteed across OEMs, AppFunctions is a private preview — and where the category leader is
+~90% ad-funded, a model we've ruled out. **If both platforms are ever genuinely required, the
+answer is React Native, not two native codebases.**
 
-**What it buys:** a faster path to Android when Android comes, and a UI layer one person can move
-quickly in. Against the earlier analysis of Android's on-device AI floor, that second platform is
-still a post-PMF question, not a launch one.
-
-The original analysis, unchanged:
+The analysis that produced this, unchanged:
 
 | Tier-1 feature | The API it needs | Cross-platform equivalent |
 |---|---|---|
@@ -220,9 +215,10 @@ Vision. **Foundation Models needs iOS 26 and is feature-gated, not assumed** —
 loose-phrasing path falls back to the existing resolver, which already handles qualifier
 stripping and typos without a model at all. Nothing in v1.0 requires iOS 26.
 
-**What this decides downstream:** `expo-sqlite` + Drizzle for the local store, RevenueCat for the
-subscription, Supabase for the op-log sync peer, and an App Group shared with the native targets
-from day one. Full reasoning and the rejected alternatives are in `STACK.md` §2.
+**What this decides downstream:** GRDB for the local SQLite store, RevenueCat over bare StoreKit 2
+for paywall experimentation, Supabase as the op-log sync peer, and an App Group container shared
+between app, widget and intents from day one. **Three dependencies in total.** Full reasoning and
+the rejected alternatives are in `STACK.md` §2.
 
 ### v1.0 — the wedge, complete
 
