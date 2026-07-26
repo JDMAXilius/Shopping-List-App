@@ -23,7 +23,7 @@ tier. MinimaList — a *to-do* app — proved demand for cost tracking and took 
 | **Primary wedge** | Cost visibility — per-item, per-category subtotal, trip total, price history |
 | **Secondary wedge** | Learned per-store aisle order |
 | **Values, not headlines** | Ad-free · offline-first · data not sold |
-| **Price** | Subscription only — **$4.99/mo or $29.99/yr** ($19.99 launch), 7-day trial on annual, owner pays, joiners free forever, no lifetime tier |
+| **Price** | Subscription only — **$2.99/mo or $29.99/yr** ($19.99 launch), 7-day trial on annual, owner pays, joiners free forever, no lifetime tier |
 | **Platform** | iOS-first (that's where the money and the ratings are) |
 | **Target** | 35–54 parent coordinating a household |
 | **Success** | 4.7★ minimum; break-even on one person's time by year 2 |
@@ -169,30 +169,64 @@ dates, workspaces · a retailer price API integration (`RESEARCH.md` §5)
 | Tier | Price | Notes |
 |---|---|---|
 | **Free forever** | $0 | Unlimited lists, unlimited household members, offline sync, aisle grouping, **seeded price estimates** |
-| **Monthly** | **$4.99/mo** | Priced so annual is obviously the better deal |
-| **Annual** | **$29.99/yr** | ≈$2.50/mo — **save 50%**. The tier that carries revenue |
+| **Monthly** | **$2.99/mo** | Low barrier. Expect this to be the popular choice — see below |
+| **Annual** | **$29.99/yr** | ≈$2.50/mo — save 17% vs monthly. Present as "$2.50/mo, billed yearly" |
 | Trial | **7 days** on annual | One week. See the note below on what this does and doesn't buy |
 | **Joiners** | Free forever, no account | The invite loop is the growth engine. Never tax it |
 | **No lifetime tier** | — | OurGroceries' $20 lifetime is beloved *and* caps them at under half AnyList's revenue |
 
-### Why $4.99/mo and not $2.99
+### $2.99/mo + $29.99/yr — decided, and what follows from it
 
-The requested pair was ~$3/mo and ~$30/yr. Those two numbers fight each other:
+The 17% gap between $29.99 and 12×$2.99 ($35.88) means **annual is not an obvious win, so expect
+monthly to be the popular plan.** That's a legitimate model, not a mistake — plenty of good apps
+are monthly-dominant. But it moves where the risk lives, so plan for it deliberately.
 
-| Monthly | Annual | 12× monthly | Annual saving |
-|---|---|---|---|
-| $2.99 | $29.99 | $35.88 | **only 17%** ❌ |
-| **$4.99** | **$29.99** | $59.88 | **50%** ✅ |
-| $5.99 | $29.99 | $71.88 | 58% |
+**The break-even that now matters:** a monthly subscriber must last **10 months** to equal one
+annual payment ($2.99 × 10 = $29.90). Above 10 months monthly is *better* than annual; below it,
+worse.
 
-At a 17% saving, annual stops being a decision and most buyers take monthly — which is the worse
-outcome for you: revenue arrives in dribbles, churn is measured monthly instead of yearly, and a
-subscriber who lasts five months returns $15 against $29.99 upfront. The annual discount has to
-be wide enough to make the yearly plan the obvious pick. **50% is the standard, and $4.99 gets
-you there while keeping the $30 annual price you wanted.**
+| Monthly subscriber lasts | Revenue | vs $29.99 annual |
+|---|---|---|
+| 3 months | $8.97 | −70% |
+| 6 months | $17.94 | −40% |
+| **10 months** | $29.90 | **break-even** |
+| 12 months | $35.88 | +20% |
+| 18 months | $53.82 | +79% |
 
-If you'd rather keep $2.99/mo, the coherent annual price is **$17.99** (50% off). Pick which
-number you care about — the annual price or the monthly one — because the ratio is not free.
+This is genuinely winnable. Utilities lead every app category in first-renewal retention at
+**58.1%**, and a grocery list is tied to a real weekly behaviour rather than a resolution — so
+a 12-month average monthly lifetime is plausible, which would make monthly-dominant *more*
+profitable than annual-dominant.
+
+**But the risk concentrates in early churn.** Someone who subscribes, uses it for three trips and
+quits in month 3 leaves $8.97 instead of $29.99. With annual-dominant pricing that user would have
+paid a full year upfront.
+
+**So the metric that decides this pricing is month-3 monthly churn.** Not conversion, not the
+annual/monthly split — month-3 retention on the monthly plan. Instrument it before launch.
+
+### Presenting it so annual still wins where it can
+
+Prices are set; presentation is still free:
+
+- **Show annual first and pre-selected**, with monthly below it
+- Label annual **"$2.50/mo, billed yearly"** rather than "$29.99/yr" — the per-month framing is
+  what makes 17% feel like a saving
+- Add "Save 17%" or "2 months free" to the annual row (12×$2.99 − $29.99 = $5.89, near two months)
+- **Trial on annual only.** This is the strongest available nudge and it's already the plan —
+  the free trial is a reason to pick the yearly plan
+- Don't hide monthly or make it awkward. A visibly grudging monthly option reads as a trick
+
+### If monthly churn disappoints
+
+Two moves, in order of preference:
+
+1. **Raise monthly to $3.99** — restores a 37% annual gap without touching the $29.99 price you
+   chose, and pushes the split toward annual
+2. **Remove monthly entirely.** Annual-only converts worse but every conversion is worth $29.99
+
+Don't discount annual below $29.99 to widen the gap — that gives up revenue from the buyers who
+are already choosing correctly.
 
 ### The risk this creates, stated plainly
 
@@ -240,18 +274,22 @@ for exactly the reason above.
 
 ### Revised economics **[model]**
 
-Blended ARPU ≈ **$28/payer/yr** (~75% annual at $29.99, ~25% monthly at $4.99 averaging ~5
-months). 100k downloads/yr sustained, 3% conversion, 58% renewal, 15% store fee:
+With monthly likely to dominate, blended ARPU depends almost entirely on how long monthly
+subscribers stay — so the honest output is a **range**, not a number. Assuming 60% pick monthly
+and 40% annual, at 100k downloads/yr, 3% conversion, 15% store fee:
 
-| Year | Active payers | Gross | Net |
+| Monthly lifetime | Blended ARPU | Year 1 net | Year 5 net |
 |---|---|---|---|
-| 1 | 3,000 | $90k | **$76k** |
-| 3 | 5,750 | $172k | **$146k** |
-| 5 | ~6,600 | $198k | **$168k** |
+| 4 months | ~$19 | ~$48k | ~$107k |
+| 8 months | ~$26 | ~$66k | ~$146k |
+| 12 months | ~$34 | ~$87k | ~$191k |
 
-Roughly 2× the $14.99 model. The trade is conversion risk: if pricing at 2× the category leader
-halves your conversion rate to 1.5%, you end up level with $14.99 and with fewer users, less
-word of mouth, and a thinner invite loop. **That is the actual bet in this decision.**
+**The spread between the best and worst case is roughly 2×, and it turns on one unknown.** Which
+is why month-3 monthly churn is the number to instrument first — it's worth more to you right now
+than any conversion-rate optimisation.
+
+Layered on top is the conversion risk from pricing above the category anchor: if 2× AnyList's
+price halves conversion to 1.5%, halve every figure above.
 
 **Test it, don't assume it.** Ship at $19.99 launch pricing, watch trial-to-paid for the first
 500 households, then move to $29.99 if conversion holds above 5%. If it drops below 3%, the
@@ -364,9 +402,11 @@ priced above the category anchor — that's the bet.
    This is why "households with a price by trip 3" is a headline metric — it's the falsification
    test for the whole strategy.
 4. **Pricing above the category anchor.** $29.99/yr is 2× AnyList and ~4× OurGroceries. If
-   conversion halves to 1.5%, the higher price nets the same as $14.99 with fewer users and a
-   thinner invite loop. Mitigate with $19.99 launch pricing and a real conversion read before
-   raising it.
+   conversion halves to 1.5%, the higher price nets no more than $14.99 would, with fewer users
+   and a thinner invite loop. Mitigate with $19.99 launch pricing and a real conversion read.
+5. **Monthly-dominant revenue.** At a 17% annual gap most buyers take $2.99/mo, which must last
+   **10 months** to match one annual payment. Early churn is the exposure. Instrument month-3
+   retention before launch; if it disappoints, raise monthly to $3.99 rather than cutting annual.
 5. **Receipt-scan window closes** — Listonic's existing OCR pipeline makes this a quarter's work
    for them.
 6. **One-person bandwidth.** Six phases is 12–18 months solo. Scope is already cut to the wedge;
@@ -379,6 +419,6 @@ priced above the category anchor — that's the bet.
 1. **Bagged or Dozen** — screen both, but state a preference now
 2. **iOS-only or Expo cross-platform** — the open architecture fork; iOS-only is faster to
    4.7★, Expo is cheaper to reach Android where Listonic is strong
-3. ~~Price~~ — **decided: $4.99/mo, $29.99/yr, $19.99 launch, no lifetime** (§4). Open sub-question: keep $29.99 annual (monthly must be $4.99) or keep $2.99 monthly (annual must be $17.99)
+3. ~~Price~~ — **decided: $2.99/mo, $29.99/yr, $19.99 launch annual, 7-day trial, no lifetime** (§4)
 4. **Store category at launch** — Shopping recommended
 5. **Is this a one-person business or a funded one** — the numbers only support the former
