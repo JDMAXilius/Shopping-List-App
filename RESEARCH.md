@@ -132,14 +132,84 @@ That's a well-understood three-layer pattern: **local store → sync queue → c
 Recommendation: **A, structured so B can be dropped in.** Keep all reads/writes behind a
 repository layer so the sync engine is swappable.
 
-### Data
-- **Open Food Facts** — free, open barcode/UPC → product data. Start here.
-- **Kroger Products API** — real product + price data (13-digit product ID; drop the barcode
-  check digit). Good US pilot for price features.
-- Instacart/Walmart-derived scraper APIs (Apify et al.) exist for cross-retailer pricing but
-  are third-party and carry ToS/cost risk — don't build the MVP on them.
-- Seed a hand-curated ~1,000-item catalog with categories/aisles. This matters more than any
-  API: it's what makes autocomplete feel instant on day one.
+### Data sources — decision
+
+**No retailer API in v1.** Kroger's Products API means one chain, one country, a partnership
+that can change terms, and a corporate dependency that cuts against the consumer positioning
+in §6. Scraper feeds (Apify/Instacart-derived) cover more retailers but violate retailer ToS
+and carry legal exposure. Neither is a foundation. Revisit only as a per-market integration
+if users demand a specific chain.
+
+Layered instead, each layer filling in more optional fields on the same row:
+
+1. **v1 — bundled item catalog.** ~1,000 hand-curated generic grocery *items*, shipped in the
+   app binary. No network call, works in a supermarket dead zone. Matters more than any API:
+   it's what makes autocomplete feel instant on day one.
+2. **v1.1 — barcode scan via Open Food Facts.** Free, open, global, no partnership. Covers the
+   long tail the catalog misses; cache locally so each scan enriches the user's own data.
+   ODbL-licensed — verify attribution/share-alike terms before building a paid feature on it.
+3. **v2 — receipt scan.** Backfills real prices for a whole trip from one photo. Makes the
+   price book *precise*; the seed estimates below make it *exist*.
+
+### Data model — items, prices, and the catalog
+
+**The catalog holds items, not products.** "Milk", "bananas", "sourdough bread" — the words
+people write on lists. No brands, no SKUs, no `brand`/`product_variant` tables. That
+normalization is the road back to a retail catalog, a data pipeline, and staleness.
+
+```
+item          id, canonical_name, category_id, emoji, default_unit, locale
+item_synonym  item_id, term          -- cilantro/coriander, courgette/zucchini
+category      id, name, emoji, default_aisle_order
+```
+
+- **Synonyms from day one.** They're the multi-market path — launching UK/AU becomes a data
+  task, not a search-layer rewrite.
+- **Category ≠ aisle.** Category ("Dairy") is a global property of the item. Aisle order is
+  per-store and per-user. Separate tables, or the learned store layout can never be built.
+- **The catalog is a fallback, not the source of truth.** Autocomplete ranks personal history
+  first, then household, then catalog. Within weeks a real user's suggestions are mostly their
+  own items. The catalog exists so week one isn't empty.
+- **Every field optional.** A typed "mangoes" with no `item_id`, no emoji, no price is a valid
+  item. Later layers fill fields in; nothing is a migration.
+
+**Prices never live on the item row.** A price is a property of *(item, store, date,
+currency)*, different for every user. Two separate tables:
+
+```
+price_observation  id, item_id (nullable), item_name, store_id, amount, currency,
+                   unit, observed_at, source (manual|receipt|corrected), household_id
+price_seed         item_id, base_amount, currency, region_multiplier_key,
+                   compiled_year, seed_version
+```
+
+Current price = most recent observation for (item, store), falling back to the seed estimate.
+History comes free, and history is the better insight ("milk is up 40¢ since March").
+
+### Estimated prices — rules
+
+Shipping seed estimates is correct, and fixes the cold start that otherwise leaves the trip
+total empty until receipt scanning matures. Instacart and Woolworths both label their totals
+"Est. total" — estimation is the category convention and users accept it. The failure mode is
+not inaccuracy; it is **unlabeled** inaccuracy and **false precision**. Therefore:
+
+- **Round hard.** Nearest $0.50 under $10, nearest dollar above. "$3.47" reads as a looked-up
+  fact; "~$3.50" reads as a guess and is judged as one. Rounding is the honesty signal and
+  costs nothing when the number is a guess anyway.
+- **Never visually equivalent.** Estimates render grey with a `~` prefix; confirmed prices
+  render in solid ink. Trip total reads "≈ $85 estimated" until enough items are confirmed.
+- **Observations always override**, permanently, for that household.
+- **Region via multiplier.** One base price per item plus a per-region multiplier — a few dozen
+  numbers, not thousands of regional rows.
+- **Stamp and version the seed.** A 2026 price seed is embarrassing by 2029. Refresh with app
+  releases or apply an annual adjustment; ranges age better than point values.
+- **Separate table, always.** Same data on the item row would blur estimated and observed
+  together in the code within six months — which is how unlabeled estimates actually happen.
+
+**Open question (deliberate, not drifted into):** pooling anonymized observations across users
+at the same store would eliminate the cold start entirely, but means shipping shopping data to
+a server — cutting against both local-first and "your data isn't the product," even though the
+beneficiary is other shoppers rather than brands. If done, explicitly opt-in.
 
 ---
 

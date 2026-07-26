@@ -84,7 +84,11 @@
   .name { font-size: 15.5px; font-weight: 550; letter-spacing: -.1px; }
   .meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
   .meta .who { color: #a7a199; }
-  .price { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+  /* estimated price: grey, tilde-prefixed, rounded. confirmed: solid ink. */
+  .price { font-size: 13.5px; color: var(--ink); font-weight: 550;
+    font-variant-numeric: tabular-nums; text-align: right; }
+  .price.est { color: #b3ada4; font-weight: 400; }
+  .price.none { color: #d6d1ca; font-weight: 400; }
   .circle { width: 25px; height: 25px; border-radius: 50%; border: 2px solid #d8d3cc; flex: none; }
   .circle.on {
     background: var(--accent); border-color: var(--accent);
@@ -97,13 +101,14 @@
 
   /* footer */
   .total {
-    margin: 0 20px; padding: 13px 17px; background: #fff;
+    margin: 0 20px; padding: 11px 17px; background: #fff; white-space: nowrap;
     border: 1px solid var(--line); border-top-left-radius: 17px; border-top-right-radius: 17px;
     display: flex; justify-content: space-between; align-items: baseline;
   }
   .total .lbl { font-size: 13px; color: var(--muted); }
+  .total .lbl small { display: block; font-size: 11.5px; color: #b3ada4; margin-top: 2px; }
   .total .amt { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .total .amt small { font-size: 12.5px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+  .total .amt small { font-size: 12.5px; font-weight: 500; color: var(--muted); margin-left: 5px; }
 
   .addbar { padding: 10px 20px 8px; display: flex; gap: 9px; align-items: center; }
   .field {
@@ -148,7 +153,7 @@
         <div class="name">Bananas</div>
         <div class="meta">6 · <span class="who">Maria added</span></div>
       </div>
-      <div class="price">$1.80</div>
+      <div class="price est">~$2</div>
       <div class="circle"></div>
     </div>
     <div class="row">
@@ -157,7 +162,7 @@
         <div class="name">Strawberries</div>
         <div class="meta">1 punnet</div>
       </div>
-      <div class="price">$4.50</div>
+      <div class="price none">—</div>
       <div class="circle"></div>
     </div>
     <div class="row">
@@ -166,7 +171,7 @@
         <div class="name">Avocados</div>
         <div class="meta">3 · <span class="who">you added</span></div>
       </div>
-      <div class="price">$5.25</div>
+      <div class="price est">~$5</div>
       <div class="circle"></div>
     </div>
 
@@ -178,7 +183,7 @@
       <div class="tile">🥛</div>
       <div class="body">
         <div class="name">Whole milk</div>
-        <div class="meta">2 L · <span class="who">usually every 6 days</span></div>
+        <div class="meta">2 L · <span class="who">you paid this last trip</span></div>
       </div>
       <div class="price">$3.40</div>
       <div class="circle"></div>
@@ -189,7 +194,7 @@
         <div class="name">Butter</div>
         <div class="meta">250 g</div>
       </div>
-      <div class="price">$4.10</div>
+      <div class="price est">~$4.50</div>
       <div class="circle"></div>
     </div>
 
@@ -218,8 +223,8 @@
   </div>
 
   <div class="total">
-    <span class="lbl">Trip total so far</span>
-    <span class="amt">$32.25 <small>· $13.20 in cart</small></span>
+    <span class="lbl">Trip total<small>3 estimated · 1 not priced yet</small></span>
+    <span class="amt">≈ $28</span>
   </div>
 
   <div class="addbar">
