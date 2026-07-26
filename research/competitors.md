@@ -61,8 +61,27 @@ launched 2012 · title `AnyList: Grocery Shopping List`, subtitle `Recipe Keeper
 - Paywalls the web app, meal planning, recipe scaling, photo attachments
 
 **Read:** the strongest product and the strongest ratings in the category, monetising properly.
-They own *recipes + meal planning*, not cost. Their weakness is that they've had 14 years to add
-prices and haven't.
+They own *recipes + meal planning*, not cost.
+
+> ⚠️ **The reading I gave this originally was one-sided, and the alternative matters more than
+> anything else in this dossier.** I wrote "their weakness is that they've had 14 years to add
+> prices and haven't." That assumes absence means *unclaimed*. It can equally mean **tried, or
+> considered, and judged not worth it** — a 4.9★ team with revenue and 14 years of feature
+> requests is not obviously asleep.
+>
+> Two readings fit the same evidence:
+>
+> - **Unclaimed territory.** Prices are the most-requested missing feature in both AnyList and
+>   OurGroceries reviews, and MinimaList (46K ratings, 4.8★) leads its screenshots with them.
+>   Nobody in *grocery* has claimed it.
+> - **Tried and abandoned.** Price entry is manual friction in a flow optimised for speed. Users
+>   may *ask* for prices, use them twice, and stop — a feature that is requested but not retained.
+>   AnyList would know this from data we don't have.
+>
+> **We cannot tell which from the outside, and the entire strategy rests on the first being
+> true.** That is what makes "households with a price by trip 3" the falsification test rather
+> than a nice-to-have metric — and it argues for testing the bet before building six months
+> around it (`PLAN.md` §8, risk 1).
 
 ---
 

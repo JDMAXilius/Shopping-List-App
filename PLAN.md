@@ -487,14 +487,26 @@ priced above the category anchor — that's the bet.
 
 ## 8. Risks, ranked
 
-1. **The name doesn't clear.** Most likely single point of failure. Mitigate by screening two in
-   parallel and refusing to spend before clearance.
-2. **AnyList ships prices.** They've had 14 years and haven't — but a 4.9★ team with revenue
-   could do it in a quarter. Mitigation is the accumulated price book, which they'd start from
-   zero on, and speed.
-3. **Cost tracking doesn't retain.** Users may not enter prices even with seeded estimates.
-   This is why "households with a price by trip 3" is a headline metric — it's the falsification
-   test for the whole strategy.
+1. **⚠️ The cost wedge is wanted but not retained — and it is entirely unvalidated.** *Promoted to
+   #1; it was #3 and under-weighted.* The whole strategy rests on reading AnyList's 14-year
+   absence of prices as **unclaimed territory**. The equally-consistent reading is **tried and
+   judged not worth it**: price entry is manual friction in a flow optimised for speed, and users
+   may request it, use it twice, and stop. A 4.9★ team with revenue and 14 years of feature
+   requests is not obviously asleep. **We cannot distinguish these from the outside**
+   (`research/competitors.md` §2).
+   **Mitigation — do this before building around it:** talk to 10 current AnyList/OurGroceries
+   users. Not "would you like prices" (everyone says yes) but "show me your last three trips and
+   tell me what you spent." Cheap, fast, and it either de-risks six months or redirects them.
+   Then instrument "households with a price by trip 3" as the live falsification test.
+2. **⚠️ The price seeds are synthetic and load-bearing.** 414 hand-authored estimates × 8 region
+   multipliers, validated against nothing. An estimate that's 30% off makes `≈ $84` **worse than
+   showing no number at all** — it actively misleads, and the honesty framing is the brand.
+   **Mitigation:** validate against 20 real receipts across 3 regions before shipping estimates.
+   If the median error exceeds ~15%, ship the cost feature with observed prices only and let the
+   seeds fill in as data accumulates.
+3. **The name doesn't clear.** Mitigate by refusing to spend before clearance.
+4. **AnyList ships prices.** A 4.9★ team with revenue could do it in a quarter. Mitigation is the
+   accumulated price book, which they'd start from zero on, and speed.
 4. **Pricing above the category anchor.** $29.99/yr is 2× AnyList and ~4× OurGroceries. If
    conversion halves to 1.5%, the higher price nets no more than $14.99 would, with fewer users
    and a thinner invite loop. Mitigate with $19.99 launch pricing and a real conversion read.
