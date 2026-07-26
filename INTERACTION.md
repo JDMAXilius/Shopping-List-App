@@ -61,6 +61,22 @@ So the stance, and it's a design constraint with teeth:
 > **Feedback is immediate, proportionate and completely predictable. Every time. No variable
 > rewards, no streaks, no engagement mechanics, no notification designed to pull someone back.**
 
+> ⚠️ **Sharpened after seeing Tiimo's current build.** The iPhone App of the Year now ships a
+> streak (`2 DAY STREAK · 2/3 days`) and a collectible system, having previously written that it
+> avoids guilt-based mechanics. So this stance can no longer lean on "the best app in the category
+> agrees with us" — it has to stand on its own reasons. It does, and they're better:
+>
+> 1. **Cadence.** Tiimo is used daily, so a daily streak is coherent there. **People shop once or
+>    twice a week.** A streak on a grocery list would punish someone for not shopping — which is
+>    not a behaviour we want to influence and not one we should judge.
+> 2. **Punishment, not counting, is the real line.** Tiimo's streak is soft — a progress bar, no
+>    red, no loss language. The thing to refuse is **the sting of breaking one**, not the fact of
+>    a number. A neutral "you've shopped 4 times this month" is fine; anything that can be *lost*
+>    is not.
+> 3. **We have a better reward already.** The trip total resolving from `≈` to a real figure is a
+>    genuine, earned, non-arbitrary payoff that happens every single trip. We don't need an
+>    invented one.
+
 An app that treats the user's attention as theirs is a differentiator that a competitor with an
 advertising business model **structurally cannot copy**. Listonic is ~90% ad-funded; attention is
 their inventory. It cannot be ours.

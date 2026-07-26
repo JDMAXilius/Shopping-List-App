@@ -202,6 +202,72 @@ earns a setup ritual. A list app has ninety seconds and must spend them all on t
 
 ---
 
+---
+
+## 8b. ⚠️ Update — the current build, and a correction
+
+Screenshots of the live app (July 2026) show a build **materially newer than Mobbin's library**,
+and it **overturns one of my confident claims above.**
+
+### The correction I have to make
+
+In §6 I wrote that Tiimo's *"no red failure marks, no guilt-based notifications"* stance
+independently validated our anti-streak position. **The current build ships a streak:**
+
+> **`2 DAY STREAK` · `2/3 days`** with a flame icon and a progress bar, sitting beside
+> **`0 COMPLETED` · `0/1 tasks`** on a new **Stats** tab.
+
+And beyond the streak, a full collectible system: **"Spark"** — a carousel of orbs, most locked
+as frosted white spheres, one earned and marbled, the active one a deep blue gradient, labelled
+`Spark · 1 tasks`. Plus **Mood and Daily Reflections**, a seven-dot week row.
+
+**So the App of the Year winner shipped the exact mechanic I said a principled app wouldn't.**
+That's the fact; here is what I think it does and doesn't mean:
+
+- **It's a gentle streak.** No red, no loss framing, no "you broke your streak" language visible.
+  A soft progress bar toward 3 days. That is a long way from Duolingo. **The distinction our
+  `INTERACTION.md` should be drawing is not streak-vs-no-streak but punishment-vs-none**
+- **It's still a retention mechanic**, and pretending otherwise would be dishonest. Two readings
+  fit: they found calm alone didn't retain, **or** they're drifting under growth pressure. From
+  outside we can't tell — the same epistemics as the AnyList price question
+- **The cadence argument survives intact, and it's the one that matters for us.** Tiimo is used
+  *daily*; a daily streak is coherent there. **People shop once or twice a week.** A daily streak
+  on a grocery list would punish people for not shopping, which is absurd. **Our refusal of
+  streaks should rest on cadence, not on borrowed virtue** — that's a load-bearing reason, and
+  the borrowed one just collapsed
+
+### The pricing finding — the most commercially useful thing here
+
+> **`Start 7 day free trial` · "Cancel anytime. $54.00 per year ($4.5 / month)"**
+
+**The iPhone App of the Year charges $54/year — 1.8× our planned $29.99 — with the same 7-day
+trial we chose.** In a neighbouring category, from an app whose whole positioning is care for a
+vulnerable audience. This is the strongest evidence yet that **$29.99 is conservative rather than
+aggressive**, and it directly softens `PLAN.md` §8's "pricing above the category anchor" risk.
+
+### What else is new
+
+| Change | Note |
+|---|---|
+| **Five tabs**: To-do · Calendar · Focus · **Stats** · **the mascot** | The mascot is now a *tab*, not a floating button — it's the AI, promoted to primary navigation |
+| **AI co-planner is the headline** | *"Brain dump it all. I'll sort and structure it."* over the open-handed mascot, with a text field and a black **`Speak`** button. **Voice-first input into the AI** |
+| **`Plan like a pro ⚡`** | A scrolling row of in-app **video tutorials** — co-planner, widgets, live activities, web planner, customisation. Education as retention |
+| **`Knowledge`** section, `Rate the app`, `Share feedback` | Standard, but note the rate prompt is a passive row, not an interrupt |
+| **`Posting to social? ✨ Tag us, we're @tiimoapp`** | A growth loop banner |
+| **`Allow live activities`** is a tutorial card | Confirms the Live Activity recommendation in §8 — they're actively pushing users to enable it |
+| **Their To-do has `Work · Groceries · Home · Wishlist` tabs** | ⚠️ **Tiimo ships a groceries list.** Not a competitor — no prices, no aisles, no sharing — but the App of the Year has a grocery surface, and it's worth watching |
+
+### The shape of the drift
+
+Post-award, Tiimo added **streaks, collectibles, stats, mood tracking, and in-app video**. That is
+the standard engagement-mechanics expansion, and it arrived *after* the design award, not before
+it. **The version Apple rewarded is the calmer one.**
+
+For us that's a caution in both directions: don't assume the awarded aesthetic is what retains,
+and don't assume the retention mechanics are what got rewarded.
+
+---
+
 ## 9. The strategic read
 
 **Apple gave iPhone App of the Year to a neurodivergent-first app.** Two things follow:

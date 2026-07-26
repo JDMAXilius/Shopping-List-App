@@ -510,6 +510,13 @@ priced above the category anchor — that's the bet.
 4. **Pricing above the category anchor.** $29.99/yr is 2× AnyList and ~4× OurGroceries. If
    conversion halves to 1.5%, the higher price nets no more than $14.99 would, with fewer users
    and a thinner invite loop. Mitigate with $19.99 launch pricing and a real conversion read.
+   > **Downgraded — new evidence, July 2026.** **Tiimo, the iPhone App of the Year, charges
+   > $54.00/yr ($4.50/mo) on the same 7-day trial** (`research/tiimo-teardown.md` §8b). That's
+   > **1.8× our price**, in a neighbouring category, from the app Apple just decorated. The
+   > category anchor is AnyList's $9.99–14.99, but the *adjacent* anchor for
+   > carefully-designed personal-productivity software is far higher. **$29.99 now looks
+   > conservative rather than aggressive**, and the $19.99 launch discount is worth reconsidering
+   > — it may be leaving money on the table rather than de-risking anything.
 5. **Monthly-dominant revenue.** At a 17% annual gap most buyers take $2.99/mo, which must last
    **10 months** to match one annual payment. Early churn is the exposure. Instrument month-3
    retention before launch; if it disappoints, raise monthly to $3.99 rather than cutting annual.
