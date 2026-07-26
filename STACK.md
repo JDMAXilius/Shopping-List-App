@@ -77,13 +77,14 @@ Bagged.xcodeproj
 │  ├─ Core/        models, op-log, logical clock, conflict resolution — no UI, no I/O
 │  ├─ Catalog/     the resolver + catalog.db access — pure, heavily tested
 │  ├─ Data/        GRDB stack, migrations, queries, App Group container
-│  └─ DesignKit/   colour, type, motion and haptic tokens — no feature code
+│  └─ DesignKit/   colour, type, motion, haptic and sound tokens — no feature code
 ├─ App/            SwiftUI features, screens, paywall
 ├─ Widget/         WidgetKit extension + AppIntents
 └─ Intents/        the reminders App Schema cluster
 ```
 
-Rules that keep this honest:
+**→ The complete file plan, the architectural pattern, the concurrency model and the integration
+points are in `ARCHITECTURE.md`.** Rules that keep this honest:
 
 - **`Core` and `Catalog` import nothing.** They're pure Swift, testable on the command line, and
   they hold the logic that's expensive to get wrong

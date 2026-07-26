@@ -139,23 +139,39 @@ they work with the phone on silent, they work in a pocket, and they don't demand
 
 ## 5. Sound
 
-**Default: off.** Not quiet — *off*.
+**Default: on.** Decided — sound is part of the feedback, not an opt-in extra.
 
-The reasoning is specific. A grocery app is used in public. Sound in a shop is a small social
-cost, and a sound that fires 30 times a trip is a large one. Haptics already carry the
-confirmation, in silent mode, where sound cannot.
+> The earlier recommendation here was off-by-default, on the grounds that a grocery app is used in
+> public. **That's overruled, and the reasoning behind it becomes the design brief instead:**
+> because the app is used in public, the sounds have to be quiet enough that nobody minds hearing
+> them. Get that right and on-by-default is the better experience — feedback lands on two senses
+> at once, and confirmation is stronger than either channel alone.
 
-If enabled by the user:
+### The design brief this creates
 
-- **Short.** Under 120 ms. A tick, not a chime
-- **Soft-attack, low-brightness.** No sharp transients, no synthetic sparkle
-- **Two sounds total.** A check tick and a completion tone. That's the whole library
-- **Respects the silent switch, always** — via the ambient audio category, never playback
-- **Never plays over other audio.** People shop with podcasts and music on; ducking someone's
-  audio to confirm they bought milk is unacceptable
+- **Two sounds. That's the whole library.** A check tick and a completion tone
+- **Short.** Under 120 ms for the tick. A tick, not a chime
+- **Soft-attack, low-brightness, low-velocity.** No sharp transients, no synthetic sparkle,
+  nothing that carries across an aisle
+- **Quiet by design, not by volume setting.** It should be inaudible to anyone more than a metre
+  away, at normal phone volume
+- **The tick must survive 40 repetitions.** Design it against that test, not against a single
+  play. Anything with a distinct pitch or a tail becomes maddening by item ten — this is the same
+  fatigue constraint as the check-off haptic, and it is the hard part
 
-**Sound is where "less is more" is most literal.** Two sounds, off by default, is the entire
-design.
+### Non-negotiable technical rules
+
+- **Respects the silent switch, always** — the `ambient` audio category, never `playback`. If the
+  phone is on silent, there is no sound. This is what makes on-by-default acceptable
+- **Never interrupts or ducks other audio.** People shop with podcasts and music on. A sound that
+  ducks someone's episode to confirm they bought milk is worse than no sound at all
+- **Never plays from the widget or an App Intent.** A check-off from the lock screen is silent —
+  the user may not be looking at the phone, and audio from a background process is startling
+- **One clearly-labelled toggle in Settings**, next to haptics, that turns all of it off
+
+**Haptics remain the primary channel** — they work on silent, in a pocket, and in a loud shop.
+Sound is now a second, reinforcing channel rather than an optional garnish. Where the two
+disagree, the haptic is the one that must be right.
 
 ---
 

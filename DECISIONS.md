@@ -76,7 +76,7 @@ One page. Everything decided, everything recommended, and what's still open.
 - ✅ **Defaults everywhere**, all overridable, none required
 - ❌ **No streaks, no badges, no surprise animations, no re-engagement notifications.** The same variable-reward loops that make apps engaging are what ADHD brains are most vulnerable to
 - ✅ **Haptics are the primary channel** — they work in a noisy shop and on silent. `impactLight` on check-off because it fires 40× a trip
-- ✅ **Sound off by default. Two sounds total.** Respect the silent switch; never duck someone's podcast
+- ✅ **Sound on by default. Two sounds total.** Because it's used in public, they must be quiet enough that nobody minds — inaudible past a metre, and designed to survive 40 repetitions. Silent switch always respected; never ducks other audio; never fires from the widget or an intent
 - ✅ **Motion 150–250 ms, spring, interruptible, one thing at a time.** Every animation has a defined `Reduce Motion` equivalent
 - ✅ **The completion moment is arrival, not celebration.** The `≈` resolves to a real total. No confetti — it's anti-calm and a variable reward in costume
 - ✅ **An app that treats attention as the user's is something an ad-funded competitor structurally cannot copy**
