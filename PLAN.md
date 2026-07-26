@@ -164,6 +164,15 @@ In Expo each one becomes a custom native module: you write the Swift regardless,
 bridge tax on top, and the one-codebase promise is gone before launch. Expo is the right answer
 for an app that is mostly screens and network calls. This one is mostly platform integration.
 
+**WWDC 2026 strengthened this materially.** SiriKit is deprecated and App Intents is now the only
+route into Siri — and the **`reminders` App Schema domain** hands us `createReminder`,
+`updateReminder`, `deleteReminders`, `createSection`/`updateSection` and a `locationTrigger`
+entity, with Siri doing the language understanding (`FEATURES.md` §10). That is item 1 (the list)
+and most of item 4 (aisle order) available for the cost of mapping parameters. **None of it is
+reachable from a cross-platform runtime**, and it is not a thing to bolt on later — schema
+adoption shapes the entity model, so it belongs in the first Xcode project, not the third
+release.
+
 **On giving up Android.** The honest counter-evidence first: OurGroceries earns roughly **$20k/mo
 on Android against $10k/mo on iOS** (`research/competitors.md` §3) — Android is not a rounding
 error in this category. But that is a $7.99/yr product where volume carries the revenue, and

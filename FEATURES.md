@@ -298,6 +298,72 @@ Receipt scanning satisfies both halves: it's paid, and it runs ~4× a month. Voi
 neither, which is why rung 1 matters so much — and why the resolver we already built is doing
 more strategic work than it looks.
 
+### Siri, feature by feature — checked against Apple's docs, July 2026
+
+Two things changed at **WWDC 2026** (June) that this plan predates:
+
+1. **SiriKit is formally deprecated.** App Intents is now the only route into Siri, with a
+   two-to-three-year migration window for existing apps. For us — building new — this is
+   simplification, not cost: there was never a reason to touch SiriKit.
+2. **App Schemas.** Siri no longer just *invokes* your intent; you adopt a **system-defined
+   schema** and Siri handles the natural-language understanding, parameter extraction and
+   follow-up questions. You map its parameters onto your existing code. Press reports say the
+   language model behind Siri is now Google Gemini; **that doesn't change anything for us** —
+   the schema is the contract regardless of what sits behind it.
+
+**The finding that matters: the `reminders` schema domain covers most of our list.** Verified
+from [Apple's App Intents domain reference](https://developer.apple.com/documentation/appintents/app-intent-domains):
+
+| Schema | Kind | Maps onto |
+|---|---|---|
+| `.reminders.createReminder` | intent | **Add an item** |
+| `.reminders.updateReminder` | intent | **Check off, edit quantity, add a note** |
+| `.reminders.deleteReminders` | intent | Remove an item |
+| `.reminders.createList` / `.updateList` | intent | Our lists |
+| `.reminders.createSection` / `.updateSection` | intent | **Aisle groups** |
+| `.reminders.reminder` / `.list` / `.section` / `.group` | entities | Our data model, nearly one-to-one |
+| `.reminders.locationTrigger` + `locationTriggerEvent` | entity + enum | **"Show my list when I get to the store" — geofencing, free, system-run** |
+
+> ⚠️ **Not "lists" or "shopping."** A WWDC session summary appeared to name *Lists* and *Shopping*
+> domains; the actual reference has neither. The domains are Audio, Calendar, Camera, Clock,
+> Files, Mail, Maps, Messages, Notes, Phone, Photos, **Reminders**, and system search.
+> **Reminders is the one we adopt.** Recorded because assuming a Shopping domain existed would
+> have been an expensive planning error.
+
+#### Against the five core features
+
+| # | Core feature | What Siri/iPhone does | What Claude adds |
+|---|---|---|---|
+| 1 | **The list** | **Nearly all of it.** `createReminder` / `updateReminder` / `deleteReminders`, plus on-device transcription and our resolver | **Nothing.** Adding milk is a solved, free problem |
+| 2 | **Household sharing** | **Nothing.** No schema, no Siri surface — sharing is our sync layer and ours alone | **Nothing.** Pure engineering, no AI in it |
+| 3 | **Works offline** | On-device speech and App Intents execution both work with no signal | **Nothing — and this is a constraint, not a gap.** Claude requires a network by definition, so no cloud feature may ever sit in the critical path |
+| 4 | **Aisle order** | **Most of it.** `createSection` / `updateSection` for the groups; `locationTrigger` gives store-arrival for free — a feature we'd otherwise have built | **Nothing** |
+| 5 | **Cost** | **Nothing.** The Reminders schema has no concept of a price. Voice-adding "milk, three forty" needs our own custom intent and resolver | **The one place it earns its keep** — receipt → line items + prices (§ above) |
+
+#### The strategic read
+
+**Apple's schemas cover exactly the commodity half of the product and none of the differentiator.**
+Adopting `reminders` gets us list mechanics and aisle sections at near-zero engineering cost,
+which is a genuine gift. It gets us nothing on sharing and nothing on cost — the two features the
+business actually rests on.
+
+That cuts both ways, and both are worth stating:
+
+- **Good:** the free work is free, so the build effort concentrates where the moat is.
+- **Sobering:** any competitor gets the same gift. Aisle sections via Siri are not defensible.
+  Cost and household sharing are the only parts nobody hands us.
+
+#### Two limits to design around, both untested
+
+- **We compete with the built-in Reminders app for the same phrasings.** "Add milk to my list"
+  is a sentence Apple's own app already answers. Users may have to say the app name until the
+  system learns the preference. **Test this early — it decides how much weight the Siri path can
+  carry in marketing**, and it is not something the documentation settles.
+- **Schema adoption is all-or-nothing per cluster.** Xcode enforces completeness at build time:
+  adopt one schema and you must implement its related schemas or the build fails. Budget for the
+  whole `reminders` cluster, not a single intent. Custom schemas for Siri are not possible —
+  you adopt Apple's shape or you get no Siri language understanding at all.
+
 ### What this means strategically
 
 The plan already says never to sell "AI" as a headline — Listonic put a "With AI" badge on their
