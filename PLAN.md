@@ -23,7 +23,7 @@ tier. MinimaList — a *to-do* app — proved demand for cost tracking and took 
 | **Primary wedge** | Cost visibility — per-item, per-category subtotal, trip total, price history |
 | **Secondary wedge** | Learned per-store aisle order |
 | **Values, not headlines** | Ad-free · offline-first · data not sold |
-| **Price** | **$24.99/yr household**, ~21-day trial, owner pays, joiners free forever, no lifetime tier |
+| **Price** | Subscription only — **$2.99/mo or $14.99/yr**, 21-day trial on annual, owner pays, joiners free forever, no lifetime tier |
 | **Platform** | iOS-first (that's where the money and the ratings are) |
 | **Target** | 35–54 parent coordinating a household |
 | **Success** | 4.7★ minimum; break-even on one person's time by year 2 |
@@ -164,21 +164,78 @@ dates, workspaces · a retailer price API integration (`RESEARCH.md` §5)
 
 ## 4. Pricing
 
-| | |
-|---|---|
-| Free forever | Unlimited lists, unlimited household members, offline sync, aisle grouping, **seeded price estimates** |
-| Paid — **$24.99/yr** | Observed price history, receipt scan, multiple store profiles, spend trends, recipe import |
-| Trial | **21 days** on the owner path (17–32 day trials benchmark 42.5% trial-to-paid vs 25.5% for short ones) — and 21 days spans 3–4 grocery trips, long enough for the habit |
-| Joiners | **Free forever, no account.** The invite loop is the growth engine; taxing it kills growth |
-| No lifetime tier | See §1 |
+**Decided: subscription only, monthly and annual, priced small.** No lifetime, no one-time
+purchase, no consumables.
 
-Value framing for the paywall copy: a household spends **$5,750–6,240/yr** on groceries and
-wastes **$1,500–2,900/yr** in food. $24.99 is **0.4% of grocery spend**.
+| Tier | Price | Notes |
+|---|---|---|
+| **Free forever** | $0 | Unlimited lists, unlimited household members, offline sync, aisle grouping, **seeded price estimates** |
+| **Monthly** | **$2.99/mo** | Low barrier; exists mainly to make annual look obviously better |
+| **Annual** | **$14.99/yr** | ≈$1.25/mo — **save 58%**. This is the tier that should carry revenue |
+| Trial | **21 days** on annual | 17–32 day trials benchmark 42.5% trial-to-paid vs 25.5% for short ones, and 21 days spans 3–4 grocery trips |
+| **Joiners** | Free forever, no account | The invite loop is the growth engine. Never tax it |
+| **No lifetime tier** | — | See §1. OurGroceries' $20 lifetime is beloved *and* caps them |
 
-Justification for pricing above the $8–15 category anchor: nobody else sells cost visibility.
-You are not a cheaper AnyList; you are a different product.
+Paid unlocks: observed price history, receipt scan, multiple store profiles, spend trends,
+recipe import. Everything needed to *use* the app stays free.
 
----
+### Why small is defensible
+
+`MARKET.md` argued for $24.99 on value framing. The market says otherwise, and the market wins:
+
+- **AnyList: $9.99 solo / $14.99 household → est. $840k–960k/yr.** The category's best product,
+  its highest rating (4.9★ over 79K), and it prices small. This is the proof.
+- The category has trained buyers to expect $8–15. Pricing at $24.99 means explaining yourself
+  before you've earned the right to.
+- Low price + high volume also suits organic-only distribution: the cheaper decision is the
+  easier one to make from a store listing with no brand behind it.
+
+### But sit at the *top* of small
+
+This is the one nuance that matters:
+
+| App | Price | Ratings | Est. revenue |
+|---|---|---|---|
+| **AnyList** | $9.99 / **$14.99** household | 79K | **~$900k/yr** |
+| **OurGroceries** | **$7.99** + $20 lifetime | **84K** (more!) | **~$360k/yr** |
+
+OurGroceries has *more* ratings and earns *less than half*. Roughly half the price, plus a
+lifetime tier bleeding future revenue. **Within "small," the top of the band is unambiguously
+better** — $14.99/yr, not $7.99, and match AnyList's household tier rather than undercutting it.
+
+Undercutting the cheapest player is the one pricing move with no upside here: it wouldn't win
+users who already have a free option, and it would cap you the way it caps them.
+
+### Monthly is a decoy, and that's fine
+
+$2.99/mo × 12 = $35.88, so annual at $14.99 is a 58% saving — a strong enough gap that most
+buyers pick annual, which is what you want: cash upfront, one billing event, and churn measured
+yearly instead of monthly.
+
+Monthly still earns its place. It converts people who won't commit to a year from a store
+listing, and some stay for years. Expect it to be a minority of revenue and don't optimise for it.
+
+Risk to watch: monthly churn at low prices is brutal — a $2.99 subscriber lasting 4 months is
+worth $12 against $14.99 upfront. If monthly churn runs high, remove it rather than discounting
+annual further.
+
+### Revised economics **[model]**
+
+Blended ARPU lands near **$15/payer/yr** (~70% annual at $14.99, ~30% monthly at $2.99 averaging
+~5 months). At 100k downloads/yr sustained, 3% conversion, 58% renewal, 15% store fee:
+
+| Year | Active payers | Gross | Net |
+|---|---|---|---|
+| 1 | 3,000 | $45k | **$38k** |
+| 3 | 5,750 | $86k | **$73k** |
+| 5 | ~6,600 | $99k | **$84k** |
+
+That's ~60% of the $24.99 model's $140k at year 5 — the honest cost of pricing small. It's still
+a real one-person business, and AnyList's actuals say the ceiling above this is 10×, reached by
+volume rather than by price.
+
+**Test later, not now.** Once you have 500+ paying households, run $14.99 against $19.99 on the
+annual tier. Don't test price before you know whether the product retains.
 
 ## 5. Go-to-market
 
@@ -261,9 +318,9 @@ no room here.
 
 ## 7. Numbers to steer by
 
-From `research/competitors.md` §7 **[model]**: 100k downloads/yr, 3% conversion, $24.99, 58%
-renewal → ~$64k net year 1, ~$122k year 3, ~$140k year 5, one person. AnyList's actuals say the
-ceiling is 5–6× that.
+From §4 **[model]**: 100k downloads/yr, 3% conversion, ~$15 blended ARPU, 58% renewal → ~$38k net
+year 1, ~$73k year 3, ~$84k year 5, one person. AnyList's actuals — ~$900k/yr at the same price
+band — say the ceiling above that is roughly 10×, reached by volume rather than by price.
 
 | Metric | Target | Why |
 |---|---|---|
@@ -286,7 +343,8 @@ ceiling is 5–6× that.
 3. **Cost tracking doesn't retain.** Users may not enter prices even with seeded estimates.
    This is why "households with a price by trip 3" is a headline metric — it's the falsification
    test for the whole strategy.
-4. **$24.99 rejected** by a category trained on $8–15. Test $19.99 against $24.99 early.
+4. **Monthly churn.** At $2.99/mo a subscriber lasting 4 months returns $12 against $14.99
+   upfront on annual. If monthly churn runs high, remove the tier rather than discounting annual.
 5. **Receipt-scan window closes** — Listonic's existing OCR pipeline makes this a quarter's work
    for them.
 6. **One-person bandwidth.** Six phases is 12–18 months solo. Scope is already cut to the wedge;
@@ -299,6 +357,6 @@ ceiling is 5–6× that.
 1. **Bagged or Dozen** — screen both, but state a preference now
 2. **iOS-only or Expo cross-platform** — the open architecture fork; iOS-only is faster to
    4.7★, Expo is cheaper to reach Android where Listonic is strong
-3. **$19.99 or $24.99**
+3. ~~Price~~ — **decided: $2.99/mo, $14.99/yr, no lifetime** (§4)
 4. **Store category at launch** — Shopping recommended
 5. **Is this a one-person business or a funded one** — the numbers only support the former

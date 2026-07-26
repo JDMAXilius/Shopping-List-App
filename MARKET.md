@@ -172,7 +172,11 @@ productivity D30 retention — and a weekly-habit app should — LTV compounds u
 
 Move from "$9.99/yr freemium" to:
 
-- **$19.99–24.99/yr household**, with a **~21-day free trial** on the owner path.
+- ~~$19.99–24.99/yr household~~ — **superseded, see `PLAN.md` §4. Decided: $2.99/mo or
+  $14.99/yr**, subscription only. The value-framing argument below is sound in theory, but
+  AnyList earns ~$900k/yr at $9.99–14.99 while OurGroceries earns ~$360k at $7.99 on *more*
+  ratings — so small pricing works, and the top of the small band is where to sit.
+  A **~21-day free trial** on the owner path still applies.
 - **Free forever for invited members**, no account required.
 - ~~Optional lifetime tier (~$59)~~ — **retracted, see `PLAN.md` §1.** OurGroceries' $20
   lifetime is beloved *and* visibly caps them at ~$360k/yr against AnyList's ~$900k on
