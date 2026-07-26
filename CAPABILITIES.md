@@ -78,6 +78,7 @@ The complete capability list in plain bullets, so it can be read in one pass. De
 
 - ✅ Lock-screen widget with tappable checkboxes
 - ✅ Home-screen widget
+- ⭐ **Live Activity for the trip** — items remaining and the running total on the lock screen while you shop. *New, from the Tiimo teardown: a shopping trip is a session, and session framing is stronger than a static widget*
 - ✅ Dark mode
 - ✅ Dynamic Type, VoiceOver, Reduce Motion
 - ✅ Haptic feedback on every state change

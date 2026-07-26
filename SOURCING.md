@@ -58,6 +58,14 @@ a bulk import.
 Photos are agreed as the direction. The question is where they come from, and the licensing answer
 turns out to be the *smaller* problem.
 
+> ⚠️ **Reconsider this before spending — new evidence, July 2026.** **Tiimo won iPhone App of the
+> Year 2025 using emoji on tinted pastel discs, not photography**, and it reads as premium rather
+> than cheap (`research/tiimo-teardown.md` §3). That materially weakens the assumption that photos
+> are needed at all. The real lesson may be that **a consistent visual system beats photorealism**
+> — in which case a designed emoji-on-tint treatment costs nothing, adds no megabytes, and is
+> already shipping in the App Store's most-decorated app of the year. **Test the emoji-on-tint
+> treatment properly before commissioning 414 images.**
+
 ### The legal options
 
 | Source | Licence | Usable? |

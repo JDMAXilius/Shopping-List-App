@@ -82,6 +82,11 @@ noise, and for this audience noise is expensive.
   or swallowed
 - **Nothing moves that the user didn't cause.** No idle animation, no attention-seeking motion, no
   autoplay
+  > **Context-dependent, not absolute** — refined after the Tiimo teardown. Tiimo runs an ambient
+  > particle field around its focus timer, and it works, because that's a screen you stare at for
+  > fifteen minutes while deliberately doing nothing else. **Ours is a ninety-second, one-handed,
+  > standing-in-an-aisle interaction.** Ambient motion there is noise. The rule holds for us
+  > because of the session length, not as a universal law
 - **One thing moves at a time.** Simultaneous animation is where "busy" comes from
 - **`Reduce Motion` is a first-class path, not a degradation.** Every animation has a defined
   no-motion equivalent — usually a 100 ms cross-fade or an instant state change. Test the app
