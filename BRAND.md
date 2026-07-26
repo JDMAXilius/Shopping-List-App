@@ -66,6 +66,10 @@ Explicit, because these are the gravitational pulls in this category:
   Trello and monday.com solve a different problem; borrowing their UI would be a category error.
 - **Not cute.** No mascot, no anthropomorphized groceries, no confetti-for-everything. One
   moment of delight on completing a list is the entire budget.
+  **This is a bet, not a best practice.** Listonic leads with a 3D caped broccoli and is #1 at
+  4.7 ★ over 10K ratings with a 2026 Apple editorial feature — character branding demonstrably
+  works here. We hold the line because the brand rests on credibility about money, and a mascot
+  undercuts the register that makes the spend claim believable. Make the choice knowingly.
 
 ---
 
@@ -87,6 +91,12 @@ as the reason the app exists. And "no ads" is currently a footnote, not a flag, 
 Listonic's banner-heavy free tier has created live search demand for alternatives.
 
 ### Visual territory
+
+> **Refined by evidence — see `research/store-teardown.md` §6.** Store listings show the
+> pattern is a *cool base with a warm coral accent* (Bring!: mint + coral; a teal competitor:
+> teal + coral; Listonic: green + blue). Our persimmon sits in the same family as those corals,
+> so the accent differentiates less than claimed below. The distinctive element is the **warm
+> paper base `#F6F4F1`** — every competitor sits on a saturated colour field instead.
 
 The category is overwhelmingly **green** — Instacart, Woolworths, Amazon Fresh, and most
 grocery apps default to it. Green is so saturated here that it reads as generic; it signals

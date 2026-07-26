@@ -89,8 +89,11 @@ signup to join a list — all three are things at least one incumbent refuses to
 - Recipe → list (paste a URL, get ingredients).
 - Barcode scan to add.
 - Price per item + running trip total + spend history.
-- Voice/natural-language batch add.
+- Voice/natural-language batch add. **Note:** "AI" is now table stakes marketing, not a differentiator — Listonic leads its primary screenshot with a "With AI" badge. Ship the outcome, never the technique.
 - Templates / recurring staples ("the usual").
+- **Lock-screen and Home Screen widget** — glanceable list without unlocking, for pushing a
+  cart with both hands. Same family as the offline requirement: both are about working in the
+  aisle rather than on the sofa. (See `research/store-teardown.md` §8.)
 
 ### Tier 2 — differentiators
 - Pantry inventory closed loop: check off → into pantry; consumed/expired → back onto list.
