@@ -23,7 +23,7 @@ tier. MinimaList — a *to-do* app — proved demand for cost tracking and took 
 | **Primary wedge** | Cost visibility — per-item, per-category subtotal, trip total, price history |
 | **Secondary wedge** | Learned per-store aisle order |
 | **Values, not headlines** | Ad-free · offline-first · data not sold |
-| **Price** | Subscription only — **$4.99/mo or $29.99/yr** ($19.99 launch), 21-day trial on annual, owner pays, joiners free forever, no lifetime tier |
+| **Price** | Subscription only — **$4.99/mo or $29.99/yr** ($19.99 launch), 7-day trial on annual, owner pays, joiners free forever, no lifetime tier |
 | **Platform** | iOS-first (that's where the money and the ratings are) |
 | **Target** | 35–54 parent coordinating a household |
 | **Success** | 4.7★ minimum; break-even on one person's time by year 2 |
@@ -171,7 +171,7 @@ dates, workspaces · a retailer price API integration (`RESEARCH.md` §5)
 | **Free forever** | $0 | Unlimited lists, unlimited household members, offline sync, aisle grouping, **seeded price estimates** |
 | **Monthly** | **$4.99/mo** | Priced so annual is obviously the better deal |
 | **Annual** | **$29.99/yr** | ≈$2.50/mo — **save 50%**. The tier that carries revenue |
-| Trial | **21 days** on annual | Spans 3–4 grocery trips; long trials benchmark 42.5% trial-to-paid vs 25.5% for short ones |
+| Trial | **7 days** on annual | One week. See the note below on what this does and doesn't buy |
 | **Joiners** | Free forever, no account | The invite loop is the growth engine. Never tax it |
 | **No lifetime tier** | — | OurGroceries' $20 lifetime is beloved *and* caps them at under half AnyList's revenue |
 
@@ -203,11 +203,40 @@ above the entire category anchor.
   AnyList, you're the only grocery app that tells you what the trip costs.
 - It raises the burden on the store listing: at $29.99 the screenshots have to do real work
   before anyone taps Get.
-- It makes the **free tier and the trial load-bearing**. Nobody pays 4× the cheapest competitor
-  on faith. The free tier must be genuinely good and the 21-day trial genuinely long.
+- It makes the **free tier load-bearing**. Nobody pays 4× the cheapest competitor on faith, and
+  with a 7-day trial the free tier is doing nearly all the convincing.
 - Consider a **launch price of $19.99** for the first year of the app's life, rising to $29.99
   once you have ratings and reviews to justify it. Early adopters keep the lower rate. This is a
   standard, honest way to buy your first thousand subscribers.
+
+### Trial: 7 days
+
+**Decided: 7 days.** Two things to know about that choice.
+
+**First, a correction to my earlier "21 days."** App Store introductory offers only allow fixed
+durations — 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months, 6 months, 1 year. **21 days was
+never available.** Worth confirming in App Store Connect, but the real choice was always
+1 week / 2 weeks / 1 month.
+
+**Second, the trade.** Trials of 17–32 days benchmark ~42.5% trial-to-paid against 25.5% for
+trials under 4 days, so a shorter trial converts a lower share of those who start it. And there's
+a product-specific cost: **groceries are a weekly habit, so 7 days is exactly one shopping trip.**
+In one trip a user sees seeded estimates but never accumulates enough observed prices to feel the
+"your prices, not a guess" payoff — the thing they'd actually be paying for.
+
+**Why 7 days is still coherent here:** the model is freemium with a genuinely usable free tier,
+not a hard paywall. The free tier — unlimited lists, unlimited members, offline sync, aisle
+grouping, seeded estimates — is what forms the habit, across as many trips as someone needs. The
+trial's only job is to preview the *paid* features: observed price history, receipt scan, multiple
+stores, spend trends. That's a demo, and a week is enough to demo something.
+
+So the free tier carries the habit and the trial carries the pitch. That works — provided the free
+tier stays generous. **Cutting the free tier and keeping a 7-day trial would be the failure
+combination**: too little time to form the habit, too little product to want it.
+
+**Test it.** Trial length is the cheapest thing to A/B on the App Store. Run 1 week against 2
+weeks once you have traffic; 2 weeks gives two grocery trips, which may convert materially better
+for exactly the reason above.
 
 ### Revised economics **[model]**
 
