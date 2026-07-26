@@ -23,7 +23,7 @@ tier. MinimaList — a *to-do* app — proved demand for cost tracking and took 
 | **Primary wedge** | Cost visibility — per-item, per-category subtotal, trip total, price history |
 | **Secondary wedge** | Learned per-store aisle order |
 | **Values, not headlines** | Ad-free · offline-first · data not sold |
-| **Price** | Subscription only — **$2.99/mo or $14.99/yr**, 21-day trial on annual, owner pays, joiners free forever, no lifetime tier |
+| **Price** | Subscription only — **$4.99/mo or $29.99/yr** ($19.99 launch), 21-day trial on annual, owner pays, joiners free forever, no lifetime tier |
 | **Platform** | iOS-first (that's where the money and the ratings are) |
 | **Target** | 35–54 parent coordinating a household |
 | **Success** | 4.7★ minimum; break-even on one person's time by year 2 |
@@ -164,78 +164,69 @@ dates, workspaces · a retailer price API integration (`RESEARCH.md` §5)
 
 ## 4. Pricing
 
-**Decided: subscription only, monthly and annual, priced small.** No lifetime, no one-time
-purchase, no consumables.
+**Decided: subscription only — monthly and annual, no lifetime, no one-time purchase.**
 
 | Tier | Price | Notes |
 |---|---|---|
 | **Free forever** | $0 | Unlimited lists, unlimited household members, offline sync, aisle grouping, **seeded price estimates** |
-| **Monthly** | **$2.99/mo** | Low barrier; exists mainly to make annual look obviously better |
-| **Annual** | **$14.99/yr** | ≈$1.25/mo — **save 58%**. This is the tier that should carry revenue |
-| Trial | **21 days** on annual | 17–32 day trials benchmark 42.5% trial-to-paid vs 25.5% for short ones, and 21 days spans 3–4 grocery trips |
+| **Monthly** | **$4.99/mo** | Priced so annual is obviously the better deal |
+| **Annual** | **$29.99/yr** | ≈$2.50/mo — **save 50%**. The tier that carries revenue |
+| Trial | **21 days** on annual | Spans 3–4 grocery trips; long trials benchmark 42.5% trial-to-paid vs 25.5% for short ones |
 | **Joiners** | Free forever, no account | The invite loop is the growth engine. Never tax it |
-| **No lifetime tier** | — | See §1. OurGroceries' $20 lifetime is beloved *and* caps them |
+| **No lifetime tier** | — | OurGroceries' $20 lifetime is beloved *and* caps them at under half AnyList's revenue |
 
-Paid unlocks: observed price history, receipt scan, multiple store profiles, spend trends,
-recipe import. Everything needed to *use* the app stays free.
+### Why $4.99/mo and not $2.99
 
-### Why small is defensible
+The requested pair was ~$3/mo and ~$30/yr. Those two numbers fight each other:
 
-`MARKET.md` argued for $24.99 on value framing. The market says otherwise, and the market wins:
-
-- **AnyList: $9.99 solo / $14.99 household → est. $840k–960k/yr.** The category's best product,
-  its highest rating (4.9★ over 79K), and it prices small. This is the proof.
-- The category has trained buyers to expect $8–15. Pricing at $24.99 means explaining yourself
-  before you've earned the right to.
-- Low price + high volume also suits organic-only distribution: the cheaper decision is the
-  easier one to make from a store listing with no brand behind it.
-
-### But sit at the *top* of small
-
-This is the one nuance that matters:
-
-| App | Price | Ratings | Est. revenue |
+| Monthly | Annual | 12× monthly | Annual saving |
 |---|---|---|---|
-| **AnyList** | $9.99 / **$14.99** household | 79K | **~$900k/yr** |
-| **OurGroceries** | **$7.99** + $20 lifetime | **84K** (more!) | **~$360k/yr** |
+| $2.99 | $29.99 | $35.88 | **only 17%** ❌ |
+| **$4.99** | **$29.99** | $59.88 | **50%** ✅ |
+| $5.99 | $29.99 | $71.88 | 58% |
 
-OurGroceries has *more* ratings and earns *less than half*. Roughly half the price, plus a
-lifetime tier bleeding future revenue. **Within "small," the top of the band is unambiguously
-better** — $14.99/yr, not $7.99, and match AnyList's household tier rather than undercutting it.
+At a 17% saving, annual stops being a decision and most buyers take monthly — which is the worse
+outcome for you: revenue arrives in dribbles, churn is measured monthly instead of yearly, and a
+subscriber who lasts five months returns $15 against $29.99 upfront. The annual discount has to
+be wide enough to make the yearly plan the obvious pick. **50% is the standard, and $4.99 gets
+you there while keeping the $30 annual price you wanted.**
 
-Undercutting the cheapest player is the one pricing move with no upside here: it wouldn't win
-users who already have a free option, and it would cap you the way it caps them.
+If you'd rather keep $2.99/mo, the coherent annual price is **$17.99** (50% off). Pick which
+number you care about — the annual price or the monthly one — because the ratio is not free.
 
-### Monthly is a decoy, and that's fine
+### The risk this creates, stated plainly
 
-$2.99/mo × 12 = $35.88, so annual at $14.99 is a 58% saving — a strong enough gap that most
-buyers pick annual, which is what you want: cash upfront, one billing event, and churn measured
-yearly instead of monthly.
+$29.99/yr is **2× AnyList's $14.99 household tier and ~4× OurGroceries' $7.99.** You are pricing
+above the entire category anchor.
 
-Monthly still earns its place. It converts people who won't commit to a year from a store
-listing, and some stay for years. Expect it to be a minority of revenue and don't optimise for it.
-
-Risk to watch: monthly churn at low prices is brutal — a $2.99 subscriber lasting 4 months is
-worth $12 against $14.99 upfront. If monthly churn runs high, remove it rather than discounting
-annual further.
+- That's defensible *only* because of the cost-tracking wedge — you're not a more expensive
+  AnyList, you're the only grocery app that tells you what the trip costs.
+- It raises the burden on the store listing: at $29.99 the screenshots have to do real work
+  before anyone taps Get.
+- It makes the **free tier and the trial load-bearing**. Nobody pays 4× the cheapest competitor
+  on faith. The free tier must be genuinely good and the 21-day trial genuinely long.
+- Consider a **launch price of $19.99** for the first year of the app's life, rising to $29.99
+  once you have ratings and reviews to justify it. Early adopters keep the lower rate. This is a
+  standard, honest way to buy your first thousand subscribers.
 
 ### Revised economics **[model]**
 
-Blended ARPU lands near **$15/payer/yr** (~70% annual at $14.99, ~30% monthly at $2.99 averaging
-~5 months). At 100k downloads/yr sustained, 3% conversion, 58% renewal, 15% store fee:
+Blended ARPU ≈ **$28/payer/yr** (~75% annual at $29.99, ~25% monthly at $4.99 averaging ~5
+months). 100k downloads/yr sustained, 3% conversion, 58% renewal, 15% store fee:
 
 | Year | Active payers | Gross | Net |
 |---|---|---|---|
-| 1 | 3,000 | $45k | **$38k** |
-| 3 | 5,750 | $86k | **$73k** |
-| 5 | ~6,600 | $99k | **$84k** |
+| 1 | 3,000 | $90k | **$76k** |
+| 3 | 5,750 | $172k | **$146k** |
+| 5 | ~6,600 | $198k | **$168k** |
 
-That's ~60% of the $24.99 model's $140k at year 5 — the honest cost of pricing small. It's still
-a real one-person business, and AnyList's actuals say the ceiling above this is 10×, reached by
-volume rather than by price.
+Roughly 2× the $14.99 model. The trade is conversion risk: if pricing at 2× the category leader
+halves your conversion rate to 1.5%, you end up level with $14.99 and with fewer users, less
+word of mouth, and a thinner invite loop. **That is the actual bet in this decision.**
 
-**Test later, not now.** Once you have 500+ paying households, run $14.99 against $19.99 on the
-annual tier. Don't test price before you know whether the product retains.
+**Test it, don't assume it.** Ship at $19.99 launch pricing, watch trial-to-paid for the first
+500 households, then move to $29.99 if conversion holds above 5%. If it drops below 3%, the
+category anchor won and $14.99–19.99 is your ceiling.
 
 ## 5. Go-to-market
 
@@ -318,9 +309,9 @@ no room here.
 
 ## 7. Numbers to steer by
 
-From §4 **[model]**: 100k downloads/yr, 3% conversion, ~$15 blended ARPU, 58% renewal → ~$38k net
-year 1, ~$73k year 3, ~$84k year 5, one person. AnyList's actuals — ~$900k/yr at the same price
-band — say the ceiling above that is roughly 10×, reached by volume rather than by price.
+From §4 **[model]**: 100k downloads/yr, 3% conversion, ~$28 blended ARPU, 58% renewal → ~$76k net
+year 1, ~$146k year 3, ~$168k year 5, one person. Conditional on conversion holding at 3% while
+priced above the category anchor — that's the bet.
 
 | Metric | Target | Why |
 |---|---|---|
@@ -343,8 +334,10 @@ band — say the ceiling above that is roughly 10×, reached by volume rather th
 3. **Cost tracking doesn't retain.** Users may not enter prices even with seeded estimates.
    This is why "households with a price by trip 3" is a headline metric — it's the falsification
    test for the whole strategy.
-4. **Monthly churn.** At $2.99/mo a subscriber lasting 4 months returns $12 against $14.99
-   upfront on annual. If monthly churn runs high, remove the tier rather than discounting annual.
+4. **Pricing above the category anchor.** $29.99/yr is 2× AnyList and ~4× OurGroceries. If
+   conversion halves to 1.5%, the higher price nets the same as $14.99 with fewer users and a
+   thinner invite loop. Mitigate with $19.99 launch pricing and a real conversion read before
+   raising it.
 5. **Receipt-scan window closes** — Listonic's existing OCR pipeline makes this a quarter's work
    for them.
 6. **One-person bandwidth.** Six phases is 12–18 months solo. Scope is already cut to the wedge;
@@ -357,6 +350,6 @@ band — say the ceiling above that is roughly 10×, reached by volume rather th
 1. **Bagged or Dozen** — screen both, but state a preference now
 2. **iOS-only or Expo cross-platform** — the open architecture fork; iOS-only is faster to
    4.7★, Expo is cheaper to reach Android where Listonic is strong
-3. ~~Price~~ — **decided: $2.99/mo, $14.99/yr, no lifetime** (§4)
+3. ~~Price~~ — **decided: $4.99/mo, $29.99/yr, $19.99 launch, no lifetime** (§4). Open sub-question: keep $29.99 annual (monthly must be $4.99) or keep $2.99 monthly (annual must be $17.99)
 4. **Store category at launch** — Shopping recommended
 5. **Is this a one-person business or a funded one** — the numbers only support the former
