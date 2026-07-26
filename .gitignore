@@ -1,0 +1,4 @@
+data/catalog/catalog.db
+data/catalog/catalog.db-*
+node_modules/
+.DS_Store
