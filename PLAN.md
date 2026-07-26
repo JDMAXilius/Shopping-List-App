@@ -181,6 +181,14 @@ project has explicitly ruled out. The subscription proof point, **AnyList at ~$8
 US iOS business** (79K US iOS ratings versus Listonic's 10K). We are pricing like AnyList, so we
 should ship where that model demonstrably works.
 
+**The on-device AI gap makes this sharper still.** Android's equivalent of the ladder does not
+reach the same floor: Gemini Nano 4 needs 12 GB RAM and a flagship SoC, on-device speech isn't
+guaranteed across OEMs, and **AppFunctions — Android's App Intents equivalent — is still a
+private preview** (`FEATURES.md` §10). So an Android port would push work that is free on iOS
+onto Claude, raising marginal cost per user in the market with the *lower* willingness to pay.
+When Android happens it should launch **paid-tier-first or with a tighter free tier**, and
+**AppFunctions reaching GA is the signal to re-run this analysis.**
+
 **When Android comes**, it comes after retention holds (§7), and as a **second native app sharing
 the sync protocol and the catalog build** — not as a retrofit of an iOS codebase into a
 cross-platform one. The op-log sync design (`RESEARCH.md` §5) is deliberately transport-agnostic

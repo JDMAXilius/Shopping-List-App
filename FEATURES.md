@@ -364,6 +364,65 @@ That cuts both ways, and both are worth stating:
   whole `reminders` cluster, not a single intent. Custom schemas for Siri are not possible —
   you adopt Apple's shape or you get no Siri language understanding at all.
 
+### Three engines: iPhone, Android, Claude API
+
+Checked July 2026, because the Android answer decides what the eventual Android port costs to run
+— and it is not the same architecture with different class names.
+
+#### The equivalents, side by side
+
+| Job | iPhone | Android | Claude API |
+|---|---|---|---|
+| Speech → text, on-device | `SFSpeechRecognizer`, `requiresOnDeviceRecognition` | `createOnDeviceSpeechRecognizer()` (API 33+) — **fails if the OEM ships no local engine** | n/a |
+| Assistant runs an in-app action | **App Intents + App Schemas — shipping** | **AppFunctions — private preview, trusted testers, Android 16+** | n/a |
+| Assistant does the language parsing | `reminders` schema domain, Siri parses | AppFunctions (same idea, MCP-shaped) — **not GA** | n/a |
+| OCR, printed text | Vision | ML Kit Text Recognition — broad device support | n/a |
+| Barcode | Vision / AVFoundation | ML Kit Barcode | n/a |
+| General on-device LLM | **Foundation Models** (~3B, iOS 26, Apple Intelligence devices) | **Gemini Nano 4** via ML Kit **Prompt API** + Structured Output | n/a |
+| Messy handwriting, receipts | — | — | **Claude** |
+
+#### The difference that actually matters is the floor, not the ceiling
+
+On raw capability the two on-device models are comparable — both are small general-purpose LLMs,
+both now take structured output. The gap is **who can run them.**
+
+- **Gemini Nano 4 requires 12 GB RAM and a flagship SoC with an AI accelerator.** The mid-2026
+  supported list is the Pixel 10 line, the Galaxy S26 series, and a handful of Oppo, OnePlus and
+  Xiaomi flagships. That is **low single digits of the global Android install base [estimate]** —
+  and it is the *wrong* single digits for a budget-conscious grocery app, whose users skew toward
+  cheaper hardware.
+- **Android on-device speech is not guaranteed either.** `createOnDeviceSpeechRecognizer()`
+  fails outright when the OEM's engine isn't present, and OEMs do replace it.
+- **Apple's floor is higher and flatter.** On-device speech, Vision and App Intents work across
+  the whole iOS 18 base. Only Foundation Models is gated, and rung 4 was already an enhancement
+  rather than a dependency — so on iPhone, one feature degrades. On Android, **the bottom of the
+  ladder degrades**, which is a different kind of problem.
+- **ML Kit's prebuilt GenAI APIs don't do our job anyway.** They are summarization, proofreading,
+  rewriting and image description. "Turn this sentence into grocery items" needs the Prompt API —
+  the newest and most device-restricted piece of the stack.
+
+#### What that costs us
+
+**Android cannot replicate the $0 architecture today.** Ported as-is, the same features either
+fall back to typing or fall through to Claude — on a platform where, per
+`research/competitors.md`, the winner monetises at ~90% advertising. So the Android port carries
+a **higher marginal cost per user against a market with lower willingness to pay.** Two
+consequences worth deciding before writing any Android code:
+
+1. Android should launch **paid-tier-first, or with a visibly tighter free tier** than iOS. The
+   rule — *free tier → on-device only* — is not satisfiable on the median Android device.
+2. **AppFunctions going GA is the signal to reassess.** When it ships, Android gets the same
+   "the assistant does the parsing" leverage that the `reminders` schema domain gives us on iOS,
+   and the port gets materially cheaper. Until then there is no equivalent, and building around
+   a private preview would be building on sand.
+
+#### One symmetry worth noticing
+
+Siri is reportedly Gemini-backed now, and Android's assistant is Gemini. **The assistant layer is
+converging; the integration contract is not.** App Intents/App Schemas and AppFunctions are
+different shapes, so "we support Siri" buys nothing on Android and vice versa. Budget for two
+integrations whenever Android happens — not one written twice.
+
 ### What this means strategically
 
 The plan already says never to sell "AI" as a headline — Listonic put a "With AI" badge on their
