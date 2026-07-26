@@ -265,3 +265,76 @@ BudList and BigBag, and harder to own. That's the price of maximum plainness.
 **Do not** stretch for a plainer name than BagList. Below that line everything is either taken
 or unregistrable, and a name you can't defend costs more than a name that needs four extra
 words in a store title.
+
+---
+
+## 9. Screening results — July 2026
+
+Screened **Bagged**, **Dozen** and **BagList**. Below is what was actually verified, what was
+found, and what could not be checked from here. **This is a pre-screen, not a clearance
+opinion** — see the limits at the end before spending money on the name.
+
+### 9.1 App store collisions
+
+| Name | US App Store | Google Play | Verdict |
+|---|---|---|---|
+| **Bagged** | **No app of this name.** Nearest: [Bagged n' Brought](https://apps.apple.com/us/app/bagged-n-brought/id1555523595) (California food *delivery*), [Bag It!](https://apps.apple.com/us/app/bag-it/id503626552) (puzzle game), [GroceryBags](https://apps.apple.com/us/app/grocerybags/id903789757) | Nothing found | **Clear** |
+| **Dozen** | Occupied five ways: [Dozen: Memory Game](https://apps.apple.com/us/app/dozen-memory-game/id1520158240), [DoZen Client](https://apps.apple.com/us/app/dozen-client/id1625591507), [Dozen Clock](https://apps.apple.com/us/app/dozen-clock/id6733246889), [Dr. Greger's Daily Dozen](https://apps.apple.com/us/app/dr-gregers-daily-dozen/id1060700802), [The Dirty Dozen](https://apps.apple.com/us/app/the-dirty-dozen/id6761738493) | — | **Weakened** — see below |
+| **BagList** | Nothing found | Nothing found | Clear, but see §8 on mark strength |
+
+**The Dozen finding is the material one, and it is not a trademark problem — it's an ASO
+problem.** No conflicting *grocery* app exists, so Dozen would likely register. But 65–70% of
+downloads in this category start with a store search, and a user searching "dozen" lands among a
+memory game, a workplace news app, a clock, and *two* nutrition apps — one of which, The Dirty
+Dozen, is **explicitly a grocery-store app**. The name is available and simultaneously
+unfindable. That is the worst combination for a product whose entire marketing budget is ASO.
+
+This reverses the §7 tradeoff. Dozen was preferred as "more ownable because less obvious";
+owning a search term nobody can reach you through is not ownership.
+
+### 9.2 Trademark pre-search (USPTO, via public indexes)
+
+| Finding | Bearing on us |
+|---|---|
+| **BAGGED** — word mark, **BAGGED LLC**, serial [90103497](https://uspto.report/TM/90103497), goods: apparel, accessories and bags | Classes **18/25**, not 9 or 42. Different goods, different channels, no consumer confusion with a grocery app. **Not a bar to Class 9/42** — but it does mean the bare word is registered to someone, so expect a real attorney search to spend time here |
+| **DESKTOP DOZEN** — Spud City Software, 1999, office clerical software — **abandoned** | Dead, and not a bar |
+| No Class 9 or 42 mark found for **BAGGED**, **DOZEN** or **BAGLIST** as standalone marks for software | Encouraging, not conclusive — see limits |
+
+### 9.3 What could not be checked from this environment
+
+The sandbox network policy blocks direct requests to `itunes.apple.com`, `uspto.report`,
+`trademarks.justia.com` and arbitrary domains (403 at the proxy). Everything above came from
+search indexes, which return summaries rather than records. **Still outstanding:**
+
+- **Live/dead status and exact class list on serial 90103497.** Assumed 18/25 from the goods
+  description; not read off the register.
+- **Phonetic and near variants** — BAGD, BAGGD, BAG'D, BAGIT, DOZN — which is where most
+  refusals actually come from.
+- **Common-law use** — an unregistered business trading as Bagged in food or retail can block
+  you regardless of the register.
+- **Domain availability**: `bagged.com`, `bagged.app`, `getbagged.com`, `baglist.app`. Every
+  probe returned a proxy denial, not a DNS answer — **treat all six as unknown, not free.**
+  `bagged.com` is a single dictionary word and should be assumed taken and expensive.
+- **Social handles** on Instagram, TikTok, X.
+
+None of these are hard; they are twenty minutes at a registrar plus a paid search. They are just
+not doable from here, and guessing at them is how the Errand mistake happened.
+
+### 9.4 Verdict
+
+**Bagged is the recommendation, and the screening strengthened it rather than merely failing to
+kill it.**
+
+1. No app of that name in either store — the risk that actually sinks a launch.
+2. The one live registration is in apparel, a different class and a different aisle of life.
+3. No grocery app, startup, or company trading under the name.
+4. It survives the ASO test that Dozen fails: a store search for "bagged" returns a delivery
+   service and a puzzle game, not five incumbents.
+
+**Dozen drops to third**, behind BagList, on §9.1 alone. Keep it only as a fallback if Bagged
+fails an attorney search, and if it is ever revived, revive it knowing the store-search problem
+is permanent and unfixable by copy.
+
+**Before any spend:** buy the domain and handles *first* — they are cheap, fast, and the only
+part that can be taken by someone else while you deliberate — then run the paid Class 9/42
+search with phonetic variants. Commission nothing visual until it clears.

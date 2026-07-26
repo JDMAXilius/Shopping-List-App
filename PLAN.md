@@ -56,10 +56,18 @@ Nothing else can be finalised until a name clears. From `NAMING.md`:
 | **2** | **Dozen** | Warmest and most sayable; grocery-native via "a dozen eggs." More ownable because less obvious. | `Dozen: Shared Grocery List` |
 | 3 | **Sundry** | Most precisely apt ("sundries" = small goods). Some will hear "Sunday." | `Sundry: Shared Grocery List` |
 
-**Recommendation: screen Bagged and Dozen simultaneously; ship whichever clears.** They cost the
-same to check and either supports this positioning. Add **BagList** as a third if maximum
-plainness is wanted — it is the most literal option still available, and correspondingly the
-weakest mark.
+**Pre-screened July 2026 — `NAMING.md` §9. Bagged is the name; Dozen is out.**
+
+- **Bagged** — no app of that name in either store; the one live USPTO registration
+  (BAGGED LLC, serial 90103497) is **apparel and bags, Class 18/25**, not software. No grocery
+  app, company or startup trading under it. **Clear so far.**
+- **Dozen** — no trademark bar, but the App Store already carries *Dozen: Memory Game*,
+  *DoZen Client*, *Dozen Clock*, *Dr. Greger's Daily Dozen* and *The Dirty Dozen* (itself a
+  grocery-store app). Registrable and unfindable at once. **With 65–70% of downloads starting
+  in store search, that is disqualifying — demote to fallback.**
+- **BagList** — nothing found, still the plainest available, still the weakest mark.
+
+Order is now **Bagged → BagList → Dozen**. Screen Bagged; keep the other two only if it fails.
 
 **Do not spend effort hunting a plainer, more self-explanatory name.** `NAMING.md` §8 checked
 that band: Grocer, Grocery, OneList, HomeList, Basket, Trolley, Cart, Shelf, Aisle, Stockup and
@@ -68,9 +76,19 @@ The category keyword belongs in the **store title**, not the name — every comp
 including Bring!, a meaningless verb that leads Europe with 3.6M MAU behind the title
 `Bring! Grocery Shopping List`.
 
-**Action, week 1, before any other spend:** USPTO **Class 9 and 42**, phonetic variants
-included; common-law search; both app stores; `.com` and `.app`; social handles. Expect one to
-fail. Do not commission a wordmark, buy a domain, or write store copy until one clears.
+**Action, week 1, in this order.** The store and register checks are done (`NAMING.md` §9);
+what remains cannot be run from the build environment and needs a browser and a card:
+
+1. **Buy `bagged.app` and the handles first.** Domains and handles are the only part of this
+   that someone else can take while you deliberate, and they cost tens of dollars.
+   `bagged.com` is a single dictionary word — assume it is held and priced accordingly; the
+   `.app` is the one that matters for an iOS product.
+2. **Paid Class 9 + 42 search on BAGGED**, phonetic and near variants included (BAGD, BAGGD,
+   BAG'D), plus a common-law sweep. Confirm the live/dead status and full class list on serial
+   90103497 while you are in there.
+3. **Only then** commission the wordmark and write store copy.
+
+If step 2 comes back contested, fall to **BagList** — not Dozen.
 
 ### 2.2 Positioning statement
 
@@ -125,6 +143,48 @@ Nothing is shipped yet, so this is a *first* brand, not a repair. The work:
 ## 3. Product plan
 
 Sequenced so the differentiator is real at launch rather than promised.
+
+### 3.0 Platform — iOS-native, decided
+
+**Swift + SwiftUI, iOS-only at launch. Minimum iOS 18. Not Expo, not React Native, not Flutter.**
+
+This was the open architecture fork. It resolves cleanly once you look at what `FEATURES.md` §10
+actually committed to building:
+
+| Tier-1 feature | The API it needs | Cross-platform equivalent |
+|---|---|---|
+| Voice add at $0 | `SFSpeechRecognizer` with `requiresOnDeviceRecognition` | None — cloud STT, which is the cost trap §10 rules out |
+| "Hey Siri, add milk" | App Intents | None |
+| Interactive lock-screen widget | WidgetKit + `AppIntent` | None |
+| Photo of a printed list → items | Vision text recognition | None on-device |
+| Loose phrasing → items | Foundation Models (on-device, free) | None |
+
+**Every differentiator in the plan is an Apple-platform API with no cross-platform counterpart.**
+In Expo each one becomes a custom native module: you write the Swift regardless, then pay a
+bridge tax on top, and the one-codebase promise is gone before launch. Expo is the right answer
+for an app that is mostly screens and network calls. This one is mostly platform integration.
+
+**On giving up Android.** The honest counter-evidence first: OurGroceries earns roughly **$20k/mo
+on Android against $10k/mo on iOS** (`research/competitors.md` §3) — Android is not a rounding
+error in this category. But that is a $7.99/yr product where volume carries the revenue, and
+Listonic — the Android leader, #1 in 46 countries — monetises at ~90% advertising, the model this
+project has explicitly ruled out. The subscription proof point, **AnyList at ~$840k–960k/yr, is a
+US iOS business** (79K US iOS ratings versus Listonic's 10K). We are pricing like AnyList, so we
+should ship where that model demonstrably works.
+
+**When Android comes**, it comes after retention holds (§7), and as a **second native app sharing
+the sync protocol and the catalog build** — not as a retrofit of an iOS codebase into a
+cross-platform one. The op-log sync design (`RESEARCH.md` §5) is deliberately transport-agnostic
+so that stays cheap; the catalog compiles to a SQLite file that either platform reads unchanged.
+
+**On the iOS floor.** iOS 18 covers interactive widgets, App Intents, on-device speech and
+Vision. **Foundation Models needs iOS 26 and is feature-gated, not assumed** — on iOS 18–25 the
+loose-phrasing path falls back to the existing resolver, which already handles qualifier
+stripping and typos without a model at all. Nothing in v1.0 requires iOS 26.
+
+**What this decides downstream:** GRDB for the local SQLite store, StoreKit 2 for the
+subscription, CloudKit or a small custom sync service for the op-log, and a single Xcode project
+from day one.
 
 ### v1.0 — the wedge, complete
 
@@ -416,9 +476,15 @@ priced above the category anchor — that's the bet.
 
 ## 9. Decide these to unblock
 
-1. **Bagged or Dozen** — screen both, but state a preference now
-2. **iOS-only or Expo cross-platform** — the open architecture fork; iOS-only is faster to
-   4.7★, Expo is cheaper to reach Android where Listonic is strong
+1. ~~Bagged or Dozen~~ — **pre-screened: Bagged, with BagList as fallback and Dozen dropped**
+   (§2.1, `NAMING.md` §9). What remains is a paid Class 9/42 search and buying the domain — both
+   need a browser and a card, neither can be done from the build environment
+2. ~~iOS-only or Expo~~ — **decided: iOS-native, Swift + SwiftUI, minimum iOS 18** (§3.0)
 3. ~~Price~~ — **decided: $2.99/mo, $29.99/yr, $19.99 launch annual, 7-day trial, no lifetime** (§4)
 4. **Store category at launch** — Shopping recommended
 5. **Is this a one-person business or a funded one** — the numbers only support the former
+6. **Quantity placement in the list row** — chip on the name line truncates long names
+   (`design/mockups/list-screen.png`); the alternative is a promoted subtitle. Needs a
+   side-by-side render before the first UI is built
+7. **Item imagery** — emoji versus real product photography. AnyList and OurGroceries both ship
+   photos; emoji is currently an open deficit, not a decision
