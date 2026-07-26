@@ -61,7 +61,12 @@ The complete capability list in plain bullets, so it can be read in one pass. De
 ## Voice and capture
 
 - ✅ Voice add, on-device, works offline, costs nothing
-- ✅ "Hey Siri, add milk to my list" without opening the app
+- ✅ **In-app mic button** — the default path, zero setup
+- ✅ **Action Button** — one press, speak, added. No wake word, no unlocking *(iPhone 15 Pro+)*
+- ✅ **Control Center control** — swipe and tap *(iOS 18)*
+- ✅ **Back Tap** — double-tap the back of the phone, if the user sets it up
+- ✅ Siri without the wake word — hold the side button
+- ✅ "Hey Siri, add milk to my list" — fully hands-free, app never opens
 - 🔹 Photo of a printed list → items
 - 🔹 Loose phrasing → items ("stuff for tacos")
 - 🔹 Handwritten list → items

@@ -364,6 +364,38 @@ That cuts both ways, and both are worth stating:
   whole `reminders` cluster, not a single intent. Custom schemas for Siri are not possible —
   you adopt Apple's shape or you get no Siri language understanding at all.
 
+### Adding by voice without saying "Hey Siri"
+
+**"Hey Siri" is a trigger, not the feature.** The feature is an App Intent, and the same intent
+surfaces across Siri, Shortcuts, Spotlight, widgets, the Action Button and Control Center. Write
+it once, reach all of them.
+
+Ranked by how little the user has to do:
+
+| Trigger | One-time setup | In the moment | Needs |
+|---|---|---|---|
+| **In-app mic button** | none | Open app, tap, speak | any iPhone |
+| **Lock-screen / home-screen widget** | add the widget | Tap from the lock screen | iOS 18 |
+| **Control Center control** | add the control | Swipe down, tap | iOS 18 |
+| **Action Button** | assign it once | **One press, phone still in hand, no wake word** | iPhone 15 Pro+ |
+| **Back Tap** | user sets it in Accessibility | Double-tap the back of the phone | any iPhone |
+| **Siri, no wake word** | none | Hold the side button, speak | any iPhone |
+| **"Hey Siri"** | none | Fully hands-free | any iPhone |
+
+**The best no-wake-word answer is the Action Button.** Assign it to a Shortcut that dictates text
+and passes it to our add intent: one press, say "oat milk", done — without unlocking, without
+opening the app, without talking to an assistant. For someone pushing a trolley, that is the
+lowest-friction add path that exists on the platform.
+
+**The default path is still the in-app mic button**, because it needs zero setup. That matters
+more here than usual: an app designed around task initiation (`INTERACTION.md` §2) cannot depend
+on a feature the user has to configure first. So the button and the widget must be excellent, and
+everything else is a documented power-user path we support but never rely on.
+
+**One real constraint:** interactive widgets support buttons and toggles only — **no text input.**
+A widget can check items off, but "add by typing" from a widget isn't possible; it can only open
+the app into add mode. Voice via the Action Button routes around this entirely.
+
 ### Three engines: iPhone, Android, Claude API
 
 Checked July 2026, because the Android answer decides what the eventual Android port costs to run
