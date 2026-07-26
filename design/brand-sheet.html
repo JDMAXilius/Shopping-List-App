@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Brand sheet</title>
+<style>
+  :root{
+    --bg:#F6F4F1; --card:#fff; --ink:#1B1A18; --muted:#8D8880; --line:#EBE7E2;
+    --accent:#C9502C; --confirmed:#1F7A4D;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1200px;background:var(--bg);color:var(--ink);padding:44px 48px 48px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:30px}
+  .wordmark{font-size:52px;font-weight:700;letter-spacing:-1.8px}
+  .wordmark .dot{color:var(--accent)}
+  .tagline{font-size:17px;color:var(--muted);margin-top:3px}
+  .meta{text-align:right;font-size:12px;color:var(--muted);line-height:1.7}
+  h2{font-size:11px;font-weight:750;letter-spacing:1.4px;color:var(--muted);
+    text-transform:uppercase;margin-bottom:13px}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:26px;margin-bottom:30px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+
+  .sw{display:flex;align-items:center;gap:11px;margin-bottom:9px}
+  .chip{width:38px;height:38px;border-radius:10px;flex:none;border:1px solid rgba(0,0,0,.07)}
+  .sw .n{font-size:13.5px;font-weight:600}
+  .sw .h{font-size:11.5px;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
+  .note{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:11px;
+    padding-top:11px;border-top:1px solid var(--line)}
+
+  .type div{margin-bottom:7px;line-height:1.15}
+  .t30{font-size:30px;font-weight:650;letter-spacing:-.6px}
+  .t22{font-size:22px;font-weight:650;letter-spacing:-.3px}
+  .t16{font-size:15.5px;font-weight:550}
+  .t13{font-size:13.5px}
+  .t12{font-size:12.5px;color:var(--muted)}
+  .lbl{font-size:10.5px;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
+
+  .icons{display:flex;gap:16px;align-items:flex-end}
+  .icon{width:84px;height:84px;border-radius:19px;background:var(--accent);
+    display:grid;place-items:center;box-shadow:0 3px 10px rgba(27,26,24,.16)}
+  .icon svg{width:44px;height:44px}
+  .icon.sm{width:52px;height:52px;border-radius:12px}
+  .icon.sm svg{width:27px;height:27px}
+  .icon.xs{width:34px;height:34px;border-radius:8px}
+  .icon.xs svg{width:18px;height:18px}
+  .icon.grey{background:#8a8a8a}
+
+  .voice{display:grid;grid-template-columns:1fr 1fr;gap:9px 20px;font-size:13px}
+  .bad{color:#a8453f}.bad::before{content:"✗  ";font-weight:700}
+  .good{color:var(--confirmed)}.good::before{content:"✓  ";font-weight:700}
+
+  .axes{font-size:12px;font-family:ui-monospace,Menlo,monospace;line-height:2.05;color:var(--muted)}
+  .axes b{color:var(--ink);font-weight:700}
+
+  .row{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--line);
+    border-radius:14px;padding:9px 12px;margin-bottom:7px}
+  .tile{width:33px;height:33px;border-radius:10px;background:#f4f2ee;display:grid;
+    place-items:center;font-size:17px;flex:none}
+  .nm{font-size:14.5px;font-weight:550;flex:1;display:flex;align-items:baseline;gap:6px}
+  .qty{font-size:11.5px;font-weight:650;color:#6f6a63;background:#f1efeb;
+    border-radius:5px;padding:1px 5px}
+  .pr{font-size:12.5px;font-weight:550;font-variant-numeric:tabular-nums}
+  .pr.est{color:#b3ada4;font-weight:400}
+  .circ{width:21px;height:21px;border-radius:50%;border:2px solid #d8d3cc;flex:none}
+  .circ.on{background:var(--confirmed);border-color:var(--confirmed);display:grid;
+    place-items:center;color:#fff;font-size:12px;font-weight:700}
+
+  .dark{background:#14130F;border-color:#2a2823}
+  .dark .row{background:#1F1E1B;border-color:#2f2d28}
+  .dark .nm{color:#F0EDE7}
+  .dark .tile{background:#2a2822}
+  .dark .qty{background:#2f2d27;color:#b8b2a8}
+  .dark .pr{color:#F0EDE7}
+  .dark .pr.est{color:#7d776e}
+  .dark h2{color:#7d776e}
+</style>
+</head>
+<body>
+
+  <div class="head">
+    <div>
+      <div class="wordmark">Errand<span class="dot">.</span></div>
+      <div class="tagline">Know what the trip costs.</div>
+    </div>
+    <div class="meta">
+      Brand system v0.1 · July 2026<br>
+      Shared grocery list · consumer, ad-free<br>
+      <span style="color:#C9502C">Name not yet trademark-screened</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Core palette</h2>
+      <div class="sw"><span class="chip" style="background:#F6F4F1"></span><span><span class="n">Paper</span><br><span class="h">#F6F4F1</span></span></div>
+      <div class="sw"><span class="chip" style="background:#fff"></span><span><span class="n">Card</span><br><span class="h">#FFFFFF</span></span></div>
+      <div class="sw"><span class="chip" style="background:#1B1A18"></span><span><span class="n">Ink</span><br><span class="h">#1B1A18</span></span></div>
+      <div class="sw"><span class="chip" style="background:#8D8880"></span><span><span class="n">Muted</span><br><span class="h">#8D8880</span></span></div>
+      <div class="sw"><span class="chip" style="background:#EBE7E2"></span><span><span class="n">Line</span><br><span class="h">#EBE7E2</span></span></div>
+      <div class="note">Warm off-white, never clinical grey. Ink is a warm near-black — never #000.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Accent &amp; semantic</h2>
+      <div class="sw"><span class="chip" style="background:#C9502C"></span><span><span class="n">Persimmon — action</span><br><span class="h">#C9502C</span></span></div>
+      <div class="sw"><span class="chip" style="background:#1F7A4D"></span><span><span class="n">Confirmed — verified</span><br><span class="h">#1F7A4D</span></span></div>
+      <div class="sw"><span class="chip" style="background:#E4703F"></span><span><span class="n">Persimmon / dark mode</span><br><span class="h">#E4703F</span></span></div>
+      <div class="note"><b>Not green.</b> The category is saturated with green to the point of invisibility. Green here is <b>semantic only</b>: it means done, or this number is real. Grey is a guess, green is a fact — the color system carries the credibility rule.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Category tints</h2>
+      <div class="sw"><span class="chip" style="background:#E8F2E4"></span><span><span class="n">Produce</span><br><span class="h">#E8F2E4</span></span></div>
+      <div class="sw"><span class="chip" style="background:#FDF0DC"></span><span><span class="n">Dairy</span><br><span class="h">#FDF0DC</span></span></div>
+      <div class="sw"><span class="chip" style="background:#ECEAF6"></span><span><span class="n">Pantry</span><br><span class="h">#ECEAF6</span></span></div>
+      <div class="sw"><span class="chip" style="background:#F0EEEA"></span><span><span class="n">Done</span><br><span class="h">#F0EEEA</span></span></div>
+      <div class="note">Group-pill backgrounds only. Never text, never actions. All text pairs clear WCAG AA 4.5:1.</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel type">
+      <h2>Type scale — system stack</h2>
+      <div class="t30">Weekly shop</div><div class="lbl">30 / 650 · screen title</div>
+      <div class="t22" style="margin-top:9px">Produce</div><div class="lbl">22 / 650 · section</div>
+      <div class="t16" style="margin-top:9px">Free-range eggs</div><div class="lbl">15.5 / 550 · item</div>
+      <div class="t13" style="margin-top:9px">$3.40 · tabular numerals</div><div class="lbl">13.5 / 550 · price</div>
+      <div class="t12" style="margin-top:9px">Maria added</div><div class="lbl">12.5 / 400 · metadata</div>
+      <div class="note">SF Pro / Roboto in-app: faster, Dynamic Type, accessibility for free. A display face is for marketing and the wordmark only.</div>
+    </div>
+
+    <div class="panel">
+      <h2>App icon</h2>
+      <div class="icons">
+        <div class="icon"><svg viewBox="0 0 44 44" fill="none"><path d="M8 23.5l9 9L36 12" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="icon sm"><svg viewBox="0 0 44 44" fill="none"><path d="M8 23.5l9 9L36 12" stroke="#fff" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="icon xs"><svg viewBox="0 0 44 44" fill="none"><path d="M8 23.5l9 9L36 12" stroke="#fff" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="icon xs grey"><svg viewBox="0 0 44 44" fill="none"><path d="M8 23.5l9 9L36 12" stroke="#fff" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+      <div class="note">No text, no gradient, no photo. Persimmon field does the differentiation — every neighbor on the home screen is green. Test at 40px, in greyscale, and in a row beside Instacart and AnyList.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Personality axes</h2>
+      <div class="axes">
+        casual&nbsp;&nbsp;&nbsp;·······<b>●</b>··&nbsp;&nbsp;formal<br>
+        playful&nbsp;&nbsp;·····<b>●</b>····&nbsp;&nbsp;serious<br>
+        warm&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;··<b>●</b>·······&nbsp;&nbsp;clinical<br>
+        direct&nbsp;&nbsp;&nbsp;·<b>●</b>········&nbsp;&nbsp;suggestive<br>
+        expert&nbsp;&nbsp;&nbsp;······<b>●</b>···&nbsp;&nbsp;peer
+      </div>
+      <div class="note">A capable friend who shops a lot. Not a nutritionist, not a butler, not a cartoon vegetable. No mascot.</div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1.35fr 1fr;margin-bottom:0">
+    <div class="panel">
+      <h2>Voice — before / after</h2>
+      <div class="voice">
+        <span class="bad">Total: $28.00</span><span class="good">≈ $28 · 3 estimated</span>
+        <span class="bad">No items yet! Tap + to start 🎉</span><span class="good">Nothing on the list.</span>
+        <span class="bad">Invite team members to collaborate</span><span class="good">Shopping with someone? Send them the list.</span>
+        <span class="bad">Connection lost. Retrying…</span><span class="good">Offline — everything's saved, it'll sync.</span>
+        <span class="bad">Unlock premium features!</span><span class="good">The list is free forever. Price history is $19.99/yr.</span>
+        <span class="bad">Conflict detected in list state</span><span class="good">Ariel added milk too — kept one.</span>
+      </div>
+      <div class="note"><b>Banned:</b> users · SKU · optimize · seamless · journey · assign · deals · unlock · smart&nbsp;(anything) &nbsp;&nbsp;<b>Used:</b> trip · household · aisle · your store · got it · usually · roughly · last time</div>
+    </div>
+
+    <div class="panel dark">
+      <h2>Dark mode — required, not optional</h2>
+      <div class="row"><div class="tile">🥛</div><div class="nm">Whole milk <span class="qty">2 L</span></div><div class="pr">$3.40</div><div class="circ"></div></div>
+      <div class="row"><div class="tile">🥑</div><div class="nm">Avocados <span class="qty">×3</span></div><div class="pr est">~$5</div><div class="circ"></div></div>
+      <div class="row"><div class="tile">🍞</div><div class="nm" style="color:#7d776e"><s>Sourdough</s> <span class="qty">×1</span></div><div class="pr">$6.00</div><div class="circ on">✓</div></div>
+      <div class="note" style="border-color:#2f2d28;color:#7d776e">Used in dim stores and at night. Base #14130F, card #1F1E1B, text #F0EDE7.</div>
+    </div>
+  </div>
+
+</body>
+</html>
