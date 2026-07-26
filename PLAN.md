@@ -144,12 +144,33 @@ Nothing is shipped yet, so this is a *first* brand, not a repair. The work:
 
 Sequenced so the differentiator is real at launch rather than promised.
 
-### 3.0 Platform — iOS-native, decided
+### 3.0 Platform — React Native, decided
 
-**Swift + SwiftUI, iOS-only at launch. Minimum iOS 18. Not Expo, not React Native, not Flutter.**
+**React Native via Expo SDK 57 (RN 0.86), New Architecture, iOS-first. Minimum iOS 18.**
+Full stack in `STACK.md`.
 
-This was the open architecture fork. It resolves cleanly once you look at what `FEATURES.md` §10
-actually committed to building:
+> **Decision history.** This section previously recommended Swift + SwiftUI. **The owner decided
+> React Native**; that is the decision of record and the plan is built on it. The analysis that
+> produced the earlier recommendation is kept below because it is still true, and it is what
+> defines the native work React Native does not remove.
+
+**What the decision costs, stated once and then designed around:** every Tier-1 differentiator is
+an Apple API with no JavaScript equivalent, so five things get written in Swift regardless —
+the widget extension, App Intents and the `reminders` schema domain, on-device speech, Vision
+text recognition, and the Foundation Models bridge. React Native does not avoid that work; it
+adds a seam across it.
+
+**The seam is the thing to manage.** A widget cannot boot the JS runtime, so the SQLite file lives
+in a shared App Group container and Swift reads and writes it directly. **The database schema and
+the op-log format become contracts between JavaScript and Swift**, not implementation details.
+Managed deliberately from day one this is fine. Discovered late, it eats a month — see
+`STACK.md` §3.
+
+**What it buys:** a faster path to Android when Android comes, and a UI layer one person can move
+quickly in. Against the earlier analysis of Android's on-device AI floor, that second platform is
+still a post-PMF question, not a launch one.
+
+The original analysis, unchanged:
 
 | Tier-1 feature | The API it needs | Cross-platform equivalent |
 |---|---|---|
@@ -199,9 +220,9 @@ Vision. **Foundation Models needs iOS 26 and is feature-gated, not assumed** —
 loose-phrasing path falls back to the existing resolver, which already handles qualifier
 stripping and typos without a model at all. Nothing in v1.0 requires iOS 26.
 
-**What this decides downstream:** GRDB for the local SQLite store, StoreKit 2 for the
-subscription, CloudKit or a small custom sync service for the op-log, and a single Xcode project
-from day one.
+**What this decides downstream:** `expo-sqlite` + Drizzle for the local store, RevenueCat for the
+subscription, Supabase for the op-log sync peer, and an App Group shared with the native targets
+from day one. Full reasoning and the rejected alternatives are in `STACK.md` §2.
 
 ### v1.0 — the wedge, complete
 
