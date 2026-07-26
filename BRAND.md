@@ -100,6 +100,12 @@ clinical apps miss; restraint is what Bring!'s illustration style gives up.
 
 ## 3. Naming
 
+> **Superseded by `NAMING.md`.** App Store collision checks since writing this section
+> disqualified **Errand** — [Errand — On Demand Errands App](https://apps.apple.com/us/app/errand-on-demand-errands/id6443684727)
+> already exists, and the whole "errand" territory now reads as gig-economy task-running rather
+> than a list you keep. Current recommendation is **Dozen**, then **Sundry**, then **Docket**.
+> The section below is kept for the criteria and the screening protocol in §3.4, which still apply.
+
 ### 3.1 Criteria
 
 From 2026 naming and ASO research:
