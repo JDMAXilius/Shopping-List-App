@@ -55,11 +55,17 @@ The consensus in the review coverage: the biggest real dollar savings come from
 
 These are the repeated, unaddressed complaints across incumbents:
 
-1. **Price/spend tracking is missing from the leaders.** OurGroceries users have requested
-   it for years. AnyList doesn't do it. Nobody in the "simple list" tier answers
-   *"what did this trip cost, and is that more than last month?"*
-2. **Store-aware lists are half-built.** AnyList can't filter a list by store. Aisle order
-   is usually a manual, per-user chore rather than learned from behavior.
+1. **Price/spend tracking is missing from the grocery leaders.** OurGroceries users have
+   requested it for years; AnyList doesn't do it; Listonic and Bring! don't market it.
+   **Caveat:** MinimaList — a general-purpose to-do app with 46K ratings — *does* ship per-item
+   prices, per-category subtotals and a trip total. So the feature exists in the market; what's
+   unclaimed is a *grocery* app owning cost as its reason to exist. Never write "nobody does
+   this." See `research/store-teardown.md` §10.
+2. **Store-aware lists are half-built.** Aisle order is usually a manual, per-user chore
+   rather than learned from behavior.
+   **Unverified:** an earlier draft claimed "AnyList can't filter a list by store," sourced from
+   a review roundup. Their own store screenshot shows per-item store tagging (`Salmon —
+   Trader Joe's`), so the claim is unsafe. Test it in the app before using it anywhere.
 3. **Sharing friction.** Most apps require every household member to create an account
    before they can see a list. The zero-account, link-based join is a real wedge —
    it's exactly why Google Keep still holds ground.
@@ -88,7 +94,9 @@ signup to join a list — all three are things at least one incumbent refuses to
 - Store profiles with custom aisle order, and **learned** aisle order from check-off sequence.
 - Recipe → list (paste a URL, get ingredients).
 - Barcode scan to add.
-- Price per item + running trip total + spend history.
+- Price per item + running trip total + spend history, **with per-category subtotals**
+  ("Produce $18, Meat $17.99") — this tells you *where* the money went, not just the total.
+  Borrowed from MinimaList, which does it better than our first mockup did.
 - Voice/natural-language batch add. **Note:** "AI" is now table stakes marketing, not a differentiator — Listonic leads its primary screenshot with a "With AI" badge. Ship the outcome, never the technique.
 - Templates / recurring staples ("the usual").
 - **Lock-screen and Home Screen widget** — glanceable list without unlocking, for pushing a

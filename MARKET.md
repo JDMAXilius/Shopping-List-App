@@ -32,6 +32,14 @@ not market size.
 **~100M households** **[model]**, anchored on the 81M US online-grocery households plus
 comparable penetration in the other three.
 
+> **Corrected by store evidence — `research/store-teardown.md` §11.** Listonic is *not* the
+> volume leader on iOS in the US. App Store ratings: **OurGroceries 84K**, **AnyList 79K**,
+> MinimaList 46K, Komorebi 29K, **Listonic 10K**. Listonic's 13M/20M figures are global and
+> Android-weighted. For an iOS launch the competitors that matter are AnyList and OurGroceries,
+> both of which lead on sharing and reliability rather than ads — which **demotes "ad-free" as
+> the primary wedge on iOS** and promotes cost + aisle intelligence. Every app in the set rates
+> **4.6–4.9**, so 4.7+ is a shipping gate, not an aspiration.
+
 **SOM** — the honest one. Observed scale of actual competitors:
 
 | App | Scale | Note |

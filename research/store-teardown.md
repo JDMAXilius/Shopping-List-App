@@ -78,11 +78,15 @@ history, not the feature.
 
 ## 4. Still nobody shows a price or a total
 
+> ### ⚠️ WRONG — overturned by batch 2. See §10.
+> **MinimaList** (46K ratings, 4.8 ★) leads its shopping-list screenshot with per-item prices,
+> **per-category subtotals**, and a **`Total $65.97`** trip total. I called this the
+> strongest-supported finding in the research set; it was the weakest-checked. The refined
+> version of the claim is in §10 — it survives, but much narrower.
+
 Across all five listings — Listonic, Bring!, the teal app, the minimalist app — **not one
 screenshot shows a price, a running total, or a spend figure.** The territory identified in
 `BRAND.md` §2 as unclaimed is, on this evidence, genuinely unclaimed in store marketing.
-
-This is now the strongest-supported finding in the whole research set.
 
 ## 5. Bring! — the sharing screenshot
 
@@ -161,3 +165,168 @@ complication as the same family of work.
 - Any listing that *does* show prices or totals, to test the §4 finding
 - Paywall / upgrade screens, to verify the pricing in `MARKET.md`
 - Onboarding flows — especially how any of them handle joining a shared list
+
+
+---
+
+# Batch 2
+
+| # | App | Developer | Ratings | Score | Category |
+|---|---|---|---|---|---|
+| 6 | **Shopping List — Simple & Easy** | Opulogic Inc. | 1.4K | 4.6 | Shopping |
+| 7 | **AnyList: Grocery Shopping List** | Purple Cover, Inc. | **79K** | **4.9** | Productivity, **#197** |
+| 8 | **Shopping List — Grocery & ToDo** | Komorebi Inc. | 29K | 4.8 | Shopping |
+| 9 | **Our Groceries Shopping List** | OurGroceries, Inc. | **84K** | 4.8 | Shopping |
+| 10 | **To Do List MinimaList & Widget** | InnerGrow | 46K | 4.8 | Productivity, **#198** |
+
+---
+
+## 10. Correction: cost is *not* unclaimed
+
+MinimaList's **first screenshot is a shopping list**, captioned "Shopping List — Your grocery
+list, simplified," and it shows exactly the feature set I said nobody markets:
+
+```
+Grocery List ˅                    6/12        Total $65.97
+🥬 Fresh Produce                            total $18
+   ☐ Tomatoes                                     $7
+   ☐ Bananas                                      $5
+   ☐ Apples                                       $6
+🥩 Meat & Seafood                          total $17.99
+   ☐ Ground beef                                $9.99
+   ☐ Chicken wings                             $8.00
+🧈 Dairy & Eggs                            total $12.99
+   ☐ Cheese                                    $3.00
+   ☑ Yogurt                                    $4.00
+   ☑ Milk                                      $5.99
+```
+
+Per-item prices, **per-category subtotals**, and a running trip total — from a general-purpose
+list app with 46K ratings at 4.8 ★, charting at #198 in Productivity.
+
+### What survives
+
+The claim has to narrow to something defensible:
+
+- **No dedicated grocery-list incumbent leads with cost.** AnyList (79K/4.9), OurGroceries
+  (84K/4.8), Listonic (10K/4.7) and Bring! all lead with *sharing*. That's still true and still
+  the positioning gap.
+- **MinimaList is a to-do app with a grocery mode**, not a grocery app. It owns the *feature*,
+  not the *category position*.
+- Its prices look **manually entered** — the mix of round ($7, $5, $6) and precise ($9.99,
+  $5.99) values reads as hand-typed, not seeded or scanned. No estimated-versus-observed
+  distinction is visible, which is the part our design actually turns on.
+- No per-store aisle ordering; category grouping only.
+
+### What it costs us
+
+The per-category subtotal is a genuinely good idea I hadn't considered, and it's better than
+what I mocked up — "Produce $18, Meat $17.99" tells you *where* the money went, not just the
+total. Worth adopting.
+
+And a competitor shipping this proves demand rather than only threatening us — but "nobody does
+this" can no longer appear in positioning copy. The honest line is *no grocery app does this*,
+and the differentiator has to rest on the parts MinimaList doesn't have: seeded estimates so the
+total works on trip one, observed-vs-estimated honesty, and per-store aisle order.
+
+## 11. Scale — Listonic is not the volume leader in the US
+
+`MARKET.md` treats Listonic as the category volume leader on its own claims (13M downloads,
+20M+ users). US App Store ratings tell a different story:
+
+| App | US ratings |
+|---|---|
+| OurGroceries | **84K** |
+| AnyList | **79K** |
+| MinimaList | 46K |
+| Komorebi Shopping List | 29K |
+| **Listonic** | **10K** |
+
+Listonic's numbers are global and evidently Android-weighted. **On iOS in the US, AnyList and
+OurGroceries are roughly 8× larger.** If iOS-first is the plan, they are the competitors that
+matter, and both lead on *sharing* and *reliability* rather than ads — so the "ad-free" wedge is
+aimed at a player who isn't dominant on the platform you'd launch on.
+
+That weakens "ad-free" as the primary wedge on iOS and strengthens cost + aisle intelligence.
+
+## 12. The quality bar is 4.6–4.9
+
+Every app in both batches sits between **4.6 and 4.9**, with AnyList at 4.9 over 79K ratings.
+There is no mediocre-but-successful app here. Shipping at 4.3 would place you visibly last.
+
+## 13. Store category is genuinely split
+
+- **Productivity:** AnyList (#197), MinimaList (#198), Listonic
+- **Shopping:** OurGroceries, Komorebi, Opulogic
+
+No convention to inherit — it's a real test. Note that #197 and #198 in Productivity are both
+list apps, so that neighbourhood of the chart is winnable and visible.
+
+## 14. AnyList — correction to `RESEARCH.md` §3
+
+`RESEARCH.md` gap #2 claims "AnyList can't filter a list by store," sourced from a review
+roundup. The screenshot contradicts it: an item reads **`Salmon — Trader Joe's`**, so per-item
+store tagging exists. Whether the *list* can be filtered by store is still unverified, but the
+gap as written is unsafe and needs testing in the app before it appears in any positioning.
+
+Also visible in AnyList, and worth noting:
+
+- **Real product photos** per item, not emoji — eggs, light bulb, broccoli, sweet potatoes.
+  A commissioned or licensed image set is table stakes at the top of this category, which raises
+  the bar on our emoji-tile decision.
+- **Recipe provenance on the item:** `Sweet Potatoes (1 lb) — for Roasted Sweet Potatoes`.
+- **`Order Pickup or Delivery`** button — the retailer/affiliate handoff `RESEARCH.md` §6 lists
+  as a secondary revenue idea is already shipped by the category leader.
+- Header shows `5 of 6 items remaining` — progress as text, not a chip.
+- Icon row: star (favourites), clock (recents), eye, filter.
+
+## 15. Interactive widgets are shipped, not novel
+
+Komorebi's Shopping List (29K, 4.8) leads with **"Widgets"** and shows a lock-screen widget
+whose checkboxes are **tappable without opening the app** — the caption inside the screenshot
+literally reads "←You can tap this checkbox."
+
+The Tier 1 widget item added after batch 1 is therefore *catching up*, not differentiating.
+It's still required — a glanceable, tappable list is right for a supermarket — but price it as
+table stakes.
+
+Their second screenshot also shows inline autocomplete: typing `chocola` surfaces `chocolate`.
+Confirms the catalog/resolver work is the correct baseline investment.
+
+## 16. OurGroceries — marketing palette is magenta
+
+Their screenshots run on **magenta/purple** while the app UI is green, and they show light and
+dark mode side by side, same as Bring!.
+
+Second correction to the colour thesis: the *marketing* palettes in this category are more
+varied than the app palettes (magenta, blue, mint, teal, lavender, crimson-yellow). Our
+differentiation genuinely rests on the **warm paper base in the product**, not on owning a hue
+in store assets.
+
+Their subtitle — `Share lists easily with family` — is the third of five to build the subtitle
+around *share* + *family*. Those two words are thoroughly contested; our subtitle should not
+compete for them.
+
+## 17. Low end of the market
+
+Opulogic's Shopping List — Simple & Easy (1.4K, 4.6) still ships screenshots with a
+**"Carrier" status bar**, meaning assets predating iOS 11 or so. Crimson-and-yellow, emoji
+appended to item text, "Type here then press the + button."
+
+Useful as a floor: apps this dated still hold 4.6 and paying users, so the category tolerates
+weak craft in the tail. It's not a strategy, but it means the bar to be *credible* is lower than
+the bar to be *featured*.
+
+---
+
+## Revised actions
+
+1. **Remove "nobody shows cost" from all positioning copy.** Replace with "no grocery app does."
+2. **Adopt per-category subtotals** — MinimaList's best idea, better than my mockup.
+3. **Re-target the competitive set to AnyList and OurGroceries** for an iOS launch, not Listonic.
+4. **Demote "ad-free" from primary wedge on iOS** — the ad-heavy competitor is small there.
+5. **Verify the AnyList store-filtering gap in the app** before relying on it.
+6. **Reprice widgets as table stakes**, not a differentiator.
+7. **Revisit emoji tiles** — the two largest competitors both use real product imagery.
+8. **Avoid *share* and *family* in the subtitle** — three of five competitors own them.
+9. Quality gate: ship at **4.7+ or don't ship**.

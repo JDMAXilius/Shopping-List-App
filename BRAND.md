@@ -84,6 +84,14 @@ Explicit, because these are the gravitational pulls in this category:
 | Bring! | Lovingly drawn item tiles; "create a list in seconds" | **Visual delight + speed** |
 | OurGroceries | "Simple, effective, no frills" | **Reliability.** Almost anti-brand |
 
+> **Corrected — `research/store-teardown.md` §10.** MinimaList (46K ratings, 4.8) ships
+> per-item prices, per-category subtotals and a `Total $65.97` header. The claim below must
+> narrow to: **no dedicated grocery app owns cost.** "Nobody does this" cannot appear in
+> positioning copy. Our differentiation rests on what MinimaList lacks — seeded estimates so the
+> total works on trip one, honest estimated-vs-observed rendering, and per-store aisle order.
+> Also: three of five competitors build their subtitle around *share* + *family*, so those two
+> words are contested and ours should avoid them.
+
 **Unclaimed:** nobody owns *cost*. Not one of the four leads with what the trip will cost you,
 despite households spending $5,750–6,240/yr on groceries and wasting $1,500–2,900/yr in food.
 Nobody owns *store intelligence* either — aisle sorting exists but is sold as a feature, never
