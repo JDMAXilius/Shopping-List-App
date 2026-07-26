@@ -127,6 +127,14 @@ rate of 15%:
 | Gross at $9.99 | ~$21,000/yr |
 | Net after 15% store fee | **~$17,800/yr** |
 
+> **Corrected — see `research/competitors.md` §7.** This model is **single-cohort, and that is
+> the error.** Subscriptions stack: year 3 revenue comes from the year 1, 2 and 3 cohorts minus
+> churn. Re-modelled at 100k downloads/yr sustained, 3% conversion, $24.99 and 58% renewal, it
+> reaches ~$64k net in year 1 and ~$140k by year 5 for one person. And the real-world check:
+> **AnyList earns an estimated $840k–960k/yr from a small team on a $9.99–14.99 subscription
+> while not advertising actively.** The conclusion below is too pessimistic — this is a credible
+> one-to-two-person business with a 3–5 year ramp, not a side project.
+
 That is not a business. It's a side project. **This is precisely why Listonic sells banners
 and Bring! sells retail media** — at category-normal conversion rates, a cheap subscription
 does not clear meaningful revenue until you have millions of users, and those two took a
@@ -166,8 +174,10 @@ Move from "$9.99/yr freemium" to:
 
 - **$19.99–24.99/yr household**, with a **~21-day free trial** on the owner path.
 - **Free forever for invited members**, no account required.
-- Optional lifetime tier (~$59) — OurGroceries' $20 lifetime is one of its most-cited draws,
-  and lifetime buyers front-load cash while you have no marketing budget.
+- ~~Optional lifetime tier (~$59)~~ — **retracted, see `PLAN.md` §1.** OurGroceries' $20
+  lifetime is beloved *and* visibly caps them at ~$360k/yr against AnyList's ~$900k on
+  comparable ratings. In a business whose whole model is stacked cohorts, selling a permanent
+  seat for one year's price is self-harm.
 
 This keeps the consumer positioning from `RESEARCH.md` intact — no ads, no brand data sales —
 while acknowledging that a $9.99 freemium plan mathematically cannot fund the product.
