@@ -104,10 +104,10 @@ side by side at 50%**, labelled. That's the frame the decision actually gets mad
 - [x] Auto Layout on every list row, card and group
 - [x] F has local styles/variables and components with the four row variants
 - [x] F has a dark-mode duplicate of List and Spend
-- [ ] G–K designed — five new directions, ≥4 frames each, five distinct navigation models
-- [ ] Each of G–K has its one-sentence structural idea written in a text layer above its section
-- [x] All of it on **one page**, ordered A → F left to right (G–K space reserved to the right)
-- [ ] `00 · Compare` frame built
+- [x] G–K designed — five new directions, ≥4 frames each, five distinct navigation models
+- [x] Each of G–K has its one-sentence structural idea written in a text layer above its section
+- [x] All of it on **one page**, ordered A → K left to right
+- [x] `00 · Compare` frame built
 - [x] A `## Log` entry below with: anything from A–F that didn't survive contact with Figma
 - [x] Figma file link added to the Log
 - [x] Pushed to `main`
@@ -155,9 +155,9 @@ longer item name reflows rather than pushing the price off-screen.
 2. **Two fonts aren't in Figma.** B specifies Avenir Next, D specifies SF Pro Rounded. Both fall back
    to **Inter**. B loses a little of its hand-lettered warmth; D loses the roundness that carries a
    lot of its friendliness. If D or B advance, the type has to be re-picked from what actually ships.
-3. **A's perforated edges are only half there.** The scallops are drawn, but `layoutPositioning`
-   must be set *before* `x`/`y` or auto-layout overwrites the position — currently only the bottom-left
-   scallop lands. Cosmetic, one small fix, flagged rather than hidden.
+3. ~~**A's perforated edges are only half there.**~~ **Fixed.** `layoutPositioning` has to be set
+   *before* `x`/`y` or auto-layout overwrites the position. A now has proper thermal-paper scallops
+   top and bottom on all five frames.
 4. **E's glass is an approximation.** `backdrop-filter: blur(30px)` maps to Figma `BACKGROUND_BLUR`
    plus a 7.5% white fill and a 0.5px 15% white stroke; the aurora is three `LAYER_BLUR` ellipses.
    It reads correctly, but E's real accessibility question — contrast of muted text on live
@@ -169,22 +169,54 @@ longer item name reflows rather than pushing the price off-screen.
    layout wrapper paints white. Caught it on the dark directions where it was visible; worth knowing
    for anyone extending this file.
 
-### Not done — and why
+### Part 2 — the five new directions, and why these five
 
-**Part 2 (G–K) and Part 3 (`00 · Compare`) are not built.** Part 1 alone is 30 hand-built frames
-plus a token system; the session budget ran out before the five new directions could be designed to
-the standard the ticket asks for. Canvas space to the right of F is left clear for them.
+Each is 4 frames (List · Add · Aisles · Spend), same fixed sample data, one unpriced item handled
+explicitly, and its one-line structural idea set above the section.
 
-Half-designing G–K would have been worse than not starting: the whole point of the fixed sample data
-is honest comparison, and a rushed G–K would poison exactly that. Blocked ≠ done, so the boxes stay
-unchecked.
+| | Name | Navigation (all new) | Where the price lives | Territory |
+|---|---|---|---|---|
+| **G** | **Index** | Card-box **divider tabs** — the active tab is pulled forward | A **stamped paper tag**, rotated, at the card edge | Physical / tactile |
+| **H** | **Larder** | **Draggable bottom sheet** with a handle; nav in the sheet header | A **chip laid over the photograph** | Photographic |
+| **I** | **Meter** | **Time scrubber** across the top — the scale you pick is the view | **The row *is* the price** — bar length is cost | Data-first |
+| **J** | **Aisle** | **Edge-pull tab** on the right rim; nothing in the thumb zone | A **full-bleed band** across the foot of the card | Card deck / gesture |
+| **K** | **Slab** | **The title is the dropdown**, plus a right-edge aisle index | A **real table column** with unit price beneath | High-density / pro |
 
-**To pick up:** sections G–K go at x ≈ 14825 and every 1892px after; the `00 · Compare` frame after
-them. The brief's live constraints are unchanged — six *more* distinct navigation models beyond the
-six already used, a different answer to "where do prices live" from inline-right (A, F), in-tile (D)
-and display-figure (C), one unpriced item handled gracefully in each, and no serif-display
-warm-paper direction (that's Tiimo's).
+Chosen to attack the parts A–F left alone. **H exists to settle an open product decision** —
+`SOURCING.md` and the AnyList teardown both leave "emoji or real photography" unresolved, and it is
+much easier to judge from a mockup than an argument. **I is the only direction where the cost wedge
+is the interface** rather than a column in it. **K is the only one that admits a 40-item shop is a
+spreadsheet** — every other direction here, including F, gets thin above ~15 items. **J is the only
+one designed for the hand that is actually pushing a trolley.** **G is the tactile hedge**: it is the
+furthest from software convention and the most likely to be remembered.
 
-**No recommendation between G–K is possible yet** — none exist. F remains the standing favourite,
-and nothing in Part 1 moved that: the port confirmed its structure survives Auto Layout and dark mode
-cleanly, which is more than can be said for A's mono at large Dynamic Type.
+Deliberately avoided: a serif-display warm-paper direction (Tiimo owns it), and anything that reads
+as a to-do app.
+
+### Part 3 — `00 · Compare`
+
+One frame at the end of the page holding **all eleven List screens at 50%**, each labelled with its
+navigation model and its price treatment. Eleven navigation models, eleven answers to "where does the
+price live", none a recolour of another.
+
+### Recommendation
+
+**F still wins, but it now has a real challenger in K, and H should be built as a test rather than a
+direction.**
+
+- **F remains the pick.** It is the only one that survived Auto Layout, dark mode, a token system and
+  a component set without a structural change. That is not a small thing — it means it is buildable.
+- **K · Slab is the one to take seriously against it.** Put F and K side by side in `00 · Compare` and
+  F visibly runs out of room: seven items fill the screen. K shows eleven with unit prices and still
+  has a total bar. The weekly shop the app is *for* is 30–40 items, and F has not been tested at that
+  size. The cheapest resolution is a **density variant of F**, not a new direction.
+- **H should be run as an experiment, not a candidate.** Its value is answering the photography
+  question. The mockup already shows the cost: two items per row instead of seven, so photography buys
+  recognition and spends the density that K proves matters. That is a real trade, and it is now
+  visible rather than argued.
+- **I is the most interesting and the least safe.** Encoding price as bar length is genuinely the
+  strongest expression of the wedge, but it makes the list harder to skim as a *list*, and `PLAN.md` §7
+  puts add-item speed at ≤2s. Worth stealing the bar treatment for the Spend screen; not worth
+  adopting wholesale.
+- **G and J are honourable no's.** G is memorable and completely impractical to maintain as it grows;
+  J is right for the aisle and wrong for the sofa, and the same app has to do both.
