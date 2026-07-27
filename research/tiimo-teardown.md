@@ -309,6 +309,59 @@ and don't assume the retention mechanics are what got rewarded.
 
 ---
 
+## 8c. The two builds side by side — and the one swap that explains everything
+
+| | Mobbin build *(pre-award era)* | Live build *(July 2026)* |
+|---|---|---|
+| **Tabs** | To-do · Today · Focus · Me *(earlier still: Plan · Explore · Focus · Learn)* | To-do · Calendar · Focus · **Stats** · **Mascot** |
+| **Header, left** | **`🎉 0/8`** — today's task progress | **`🔥 2`** streak · **`✦ 0`** Spark |
+| **Header, centre** | — | **`Get Pro ✦`** |
+| **The mascot** | Floating button, bottom-right, over content | **Promoted to a tab** — the AI is now primary navigation |
+| **AI** | Present, secondary | **The headline.** *"Brain dump it all. I'll sort and structure it."* + a **`Speak`** button |
+| **Rewards** | None | **Streak, Spark collectibles, Stats tab, Mood tracking** |
+| **Learning** | A whole **Learn tab** — courses, podcast, body doubling | Demoted to a `Knowledge` row + `Plan like a pro ⚡` video cards |
+| **Reach** | iPhone | **+ desktop / web planner** |
+| **Price** | not shown | **$54.00/yr ($4.50/mo)**, 7-day trial |
+| **Unchanged** | serif display, time-of-day tints, dashed empty slots, emoji-on-pastel, focus ring, focus music, warm paper + lavender | *identical* |
+
+### The swap that tells the whole story
+
+The header used to read **`🎉 0/8`** — *how is today going.* It now reads **`🔥 2  ✦ 0`** —
+*what have you accumulated.*
+
+That is a change of kind, not of degree:
+
+| `🎉 0/8` | `🔥 2 · ✦ 0` |
+|---|---|
+| **Present tense** — about right now | **Cumulative** — about your record |
+| **Resets daily**, harmlessly | **Persists**, and can be broken |
+| **Nothing to lose** | **Something to lose** |
+| Intrinsic — the work is the point | Extrinsic — the counter is the point |
+| Party popper 🎉 — celebratory | Flame 🔥 — pressure |
+
+**The visual language, typography and warmth are untouched. The motivational model was replaced.**
+Tiimo still *looks* exactly like the app Apple gave the award to; underneath, it now runs on the
+mechanics Tiimo's own writing said it avoids.
+
+### What this actually teaches us
+
+1. **Calm aesthetics and calm mechanics are separable, and only one of them wins awards.** You can
+   keep the serif, the paper, the soft tints and the warm copy while swapping the motivational
+   engine underneath. Apple's editors rewarded the surface. **So the surface is worth copying and
+   proves nothing about retention.**
+2. **They almost certainly hit a retention wall.** Nobody adds streaks, collectibles and mood
+   tracking in one release because the numbers were fine. That's the honest inference, and it's a
+   warning: **"be calm" may not be sufficient as a retention strategy.**
+3. **Our equivalent already exists and is better.** We don't need an invented counter, because the
+   trip total resolving from `≈ $84` to a real figure is **earned, non-arbitrary, and happens
+   every single trip.** It is the intrinsic version of what Tiimo replaced with a flame. Protect
+   that, and the pressure to bolt on a streak never arrives.
+4. **Watch the AI promotion.** The mascot went from floating button to tab, and voice-into-AI is
+   now the headline. Apple's award citation called Tiimo an *AI planner*. **The award may have
+   been for the AI, not the calm** — which would reframe point 1 again.
+
+---
+
 ## 9. The strategic read
 
 **Apple gave iPhone App of the Year to a neurodivergent-first app.** Two things follow:
