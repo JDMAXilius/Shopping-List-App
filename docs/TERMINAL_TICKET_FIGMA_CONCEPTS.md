@@ -1,5 +1,7 @@
 # TERMINAL_TICKET_FIGMA_CONCEPTS
 
+> STATUS: in-progress — cloud 2026-07-27 — **built, two boxes unmet.** See Log.
+
 **Port six existing visual directions into Figma, then design five new ones — all on one page.**
 
 Read first: **`docs/DESIGN_HANDOFF.md`** (~10 min). It has the tokens, the fixed sample data, the
@@ -258,3 +260,65 @@ P's Δ-vs-your-average, and test F at 40 items against K's density.
 
 Same file, now **sixteen sections A → P, 74 frames**, `00 · Compare` rebuilt to hold all sixteen List
 screens at 50%. Page normalised — 40px gutters, 120px section gaps, every frame at the same y.
+
+---
+
+### 2026-07-27 · cloud — review, and a two-file problem
+
+Reviewed against the file the owner pointed at: **`Lpx5Pdgvy3Gx8l5ZSDS0JH`, page `5 Directions`**.
+Map: `docs/FIGMA_FILE_MAP.md`.
+
+> ⚠️ **There are two Figma files with overlapping A→P work, and the entry above names the other
+> one.** This needs resolving before anyone builds on either.
+>
+> | | `joF6lVqRiHaWqc9v5q4kLg` · `Concepts A–K` | `Lpx5Pdgvy3Gx8l5ZSDS0JH` · `5 Directions` |
+> |---|---|---|
+> | Named in | the log entry above | **what the owner shared** |
+> | Organisation | **18 proper Sections**, A → P + Compare + Components | 174 loose top-level frames, **no sections** |
+> | Rounds | Round 3 only (A→P) | **Three rounds** — R1 5×7 screens, R2 five products, R3 A→P |
+> | Nodes | 4,128 frames · 3,287 text | 7,236 frames · 5,368 text |
+> | Components | 8 | 8 |
+> | Instances | **0** | **0** |
+>
+> The sectioned file is the better-organised one; the shared file is the more complete one.
+> **Neither is a superset.** Pick one as canonical and port what's missing.
+
+**The delivery itself is strong and beyond brief** — sixteen directions instead of eleven, each
+with a distinct navigation model *and* a distinct answer to where the price lives. That second
+axis wasn't asked for and is the more useful one. `00 · Compare` works and is genuinely the frame
+a decision gets made from.
+
+**Correcting my own first pass:** I initially recorded "no variables exist" as a failure against
+the shared file. That was unfair without checking the other one. **I have now checked four nodes
+across both files** — `F/01 List` and `F/01 List — dark` in the shared file, `F/01 List` in the
+sectioned file, and the page root — and `get_variable_defs` returns `{}` every time.
+
+So the precise, checkable claim is narrower than "no variables": **whatever collection exists,
+nothing on either canvas is bound to it.** Functionally that's the same problem — the frames carry
+raw hex, so switching modes moves nothing — but the collection may well exist as described.
+
+- [ ] **Bind the variables**, or the light/dark modes are decorative
+- [ ] **Wire the components.** `instances: 0` in *both* files. The four row-state variants are
+      correct and well built, and nothing references them — all 96 screens are raw frames and
+      text, so editing a component changes nothing
+
+**Cannot verify remotely:** Auto Layout. `get_metadata` doesn't expose layout mode, so that box
+stays unchecked without prejudice — the entry above says it's done and I have no evidence either
+way.
+
+> HANDOFF → terminal: (1) declare one file canonical and say which in this Log; (2) bind the
+> variables; (3) wire the component instances.
+
+**Three things from the shared file that aren't in the sectioned one, and matter to the product:**
+
+1. **Round 1 uses custom line-icon glyphs** — and the entry above independently arrived at "a
+   purpose-built monoline SVG icon set" after finding emoji render blank in Figma. **Two sessions
+   reached the same answer from different directions.** That's now the strongest option in
+   `SOURCING.md`, not a workaround: legally clean, weightless, scales with Dynamic Type, and one
+   coherent system without 414 photographs.
+2. **Round 2's `H · RECEIPT` is the price-intelligence product**, designed before
+   `PRICE-INTELLIGENCE.md` existed. Its store-compare uses **receipt count** as the confidence
+   signal where the spec uses **coverage**. Different questions — "do I trust this store's data"
+   vs "how much of this basket is priced" — and the screen probably needs both.
+3. **Round 1 is the only place Settings and Item-detail screens exist.** Whichever direction wins
+   needs those two, and Round 1 is the reference.
