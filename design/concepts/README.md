@@ -105,3 +105,33 @@ it doesn't have to own the whole interface to do its work.
 ```
 node scratchpad/shot.mjs      # Playwright, 393×852 @2x per frame
 ```
+
+---
+
+# F — Hybrid (Ledger × Bento) ← the direction
+
+Built after the A/B/C/D/E round. Takes **Ledger's typographic treatment of price** — monospace,
+tabular, dotted leaders, ruled aisle subtotals, uppercase micro-labels — and puts it inside
+**Bento's structure** of warm paper, rounded cards and emoji-on-tint tiles.
+
+Screens: **List · The one bar · Where to shop · One item everywhere · Spend.**
+
+## Three problems it solves
+
+**1. Capture buttons no longer sit on screen permanently.** Barcode, photo and receipt collapse
+into a second row inside the input bar, next to `Speak` — the pattern every AI app has converged
+on (DeepSeek, Grok, Gemini, ChatGPT, Notion, Meta AI all use a bottom bar with mode chips and a
+mic). They're reachable in one tap and invisible the rest of the time.
+
+**2. AI does not get its own tab.** It's **the same input field.** Type `milk` → it adds. Say
+*"stuff for tacos and something for breakfast"* → it expands into items you can drop individually.
+One input, three interpretations — so there's nothing new to learn and no second place to look.
+This is the answer to "does the AI live in the list screen or somewhere else": **neither. It's
+the bar that was already there.**
+
+**3. Price intelligence gets real screens.** `Where to shop` ranks your stores for *this list*
+with coverage stated on every row; `One item everywhere` shows what you've actually paid per
+store, per litre, with age; and the `Cheapest possible` card prices the inconvenience — *saves
+$12.60 but adds a second stop* — rather than pretending time is free.
+
+Spec: `PRICE-INTELLIGENCE.md`.

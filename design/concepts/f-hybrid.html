@@ -1,0 +1,247 @@
+<meta charset="utf-8">
+<title>Concept F — Hybrid (Ledger × Bento)</title>
+<style>
+:root{--paper:#F7F4EE;--card:#FFFFFF;--ink:#191713;--mute:#8C857A;--line:#E4DFD5;--persimmon:#C9502C;
+ --green:#B9CDA8;--butter:#F1DCA4;--rose:#EFC2B4;--sky:#B7CCDD;--lilac:#D0C4E0;--clay:#DDC5AA;--good:#1F7A4D}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#2E2B26;font-family:-apple-system,"SF Pro Text",system-ui,sans-serif;padding:52px 40px;display:flex;gap:34px}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-variant-numeric:tabular-nums}
+.col{display:flex;flex-direction:column;gap:12px}
+.cap{color:#B6AFA3;font-size:12px;letter-spacing:.18em;text-transform:uppercase}
+.ph{width:393px;height:852px;background:var(--paper);color:var(--ink);overflow:hidden;display:flex;flex-direction:column;position:relative}
+.sb{display:flex;justify-content:space-between;padding:15px 20px 0;font-size:12px;font-weight:600}
+.hd{padding:15px 20px 10px;display:flex;align-items:flex-end;justify-content:space-between}
+h1{font-size:27px;font-weight:700;letter-spacing:-.028em}
+.meta{font-size:12.5px;color:var(--mute);margin-top:3px}
+.tot{text-align:right}
+.tot .v{font-size:26px;font-weight:700;letter-spacing:-.03em}
+.tot .l{font-size:10px;color:var(--mute);letter-spacing:.03em;margin-top:1px}
+.body{flex:1;overflow:hidden;padding:0 20px}
+.sect{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;font-weight:700;
+ letter-spacing:.2em;text-transform:uppercase;color:var(--mute);margin:14px 0 7px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+/* ledger row inside a bento card */
+.card{background:var(--card);border-radius:18px;overflow:hidden}
+.row{display:flex;align-items:center;gap:11px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.tile{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-size:18px;flex:none}
+.nm{font-size:15.5px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.q{background:rgba(25,23,19,.08);border-radius:100px;font-size:10.5px;font-weight:700;padding:2px 7px;flex:none}
+.dots{flex:1;border-bottom:1.5px dotted var(--line);transform:translateY(-3px);min-width:8px}
+.pr{font-size:15px;font-weight:700;letter-spacing:-.02em}
+.est{color:var(--mute);font-weight:500}
+.non{color:#CFC9BE;font-weight:500}
+.done .nm{color:var(--mute);text-decoration:line-through}
+.done .tile{filter:grayscale(1);opacity:.4}
+.tick{width:21px;height:21px;border-radius:7px;border:1.8px solid #CFC9BE;flex:none}
+.tick.on{background:var(--good);border-color:var(--good);position:relative}
+.tick.on::after{content:"";position:absolute;left:7px;top:3px;width:5px;height:10px;border:2px solid #fff;border-top:0;border-left:0;transform:rotate(43deg)}
+.subt{display:flex;justify-content:space-between;font-size:11px;color:var(--mute);padding:8px 14px;background:rgba(25,23,19,.028)}
+/* the one bar: search + AI + capture */
+.bar{position:absolute;left:16px;right:16px;bottom:22px;background:var(--card);border-radius:26px;
+ box-shadow:0 8px 30px rgba(25,23,19,.14),0 1px 0 rgba(255,255,255,.7) inset;padding:12px 12px 10px;z-index:5}
+.bin{display:flex;align-items:center;gap:9px;padding:2px 4px 10px}
+.bin .ph2{font-size:16px;color:var(--mute);flex:1}
+.brow{display:flex;align-items:center;gap:7px;border-top:1px solid var(--line);padding-top:10px}
+.bb{width:34px;height:34px;border-radius:11px;background:rgba(25,23,19,.05);display:grid;place-items:center;font-size:15px}
+.spk{margin-left:auto;height:34px;border-radius:100px;background:var(--ink);color:#fff;display:flex;align-items:center;gap:6px;padding:0 15px;font-size:13.5px;font-weight:600}
+.nav{position:absolute;left:16px;right:16px;bottom:22px;display:flex;background:var(--card);border-radius:100px;padding:5px;
+ box-shadow:0 6px 22px rgba(25,23,19,.1);z-index:4}
+.nb{flex:1;text-align:center;padding:11px 0;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);border-radius:100px}
+.nb.on{background:var(--ink);color:var(--paper)}
+/* nudge */
+.nudge{display:flex;align-items:center;gap:10px;background:rgba(201,80,44,.08);border:1px solid rgba(201,80,44,.2);
+ border-radius:14px;padding:11px 13px;font-size:13px;margin-top:12px}
+.nudge b{color:var(--persimmon)}
+/* store compare */
+.st{display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid var(--line)}
+.st:last-child{border-bottom:0}
+.logo{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:13px;font-weight:800;flex:none;color:#fff}
+.stn{font-size:15.5px;font-weight:600}
+.cov{font-size:11.5px;color:var(--mute);margin-top:2px}
+.sv{font-size:11px;font-weight:700;color:var(--good)}
+.badge{font-size:9px;font-weight:800;letter-spacing:.14em;background:var(--good);color:#fff;padding:3px 7px;border-radius:100px}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}
+.bt{border-radius:17px;padding:13px;display:flex;flex-direction:column;justify-content:space-between;min-height:80px}
+.w2{grid-column:span 2}.w3{grid-column:span 3}.w4{grid-column:span 4}.w6{grid-column:span 6}
+.btn{border-radius:100px;text-align:center;padding:15px;font-size:14px;font-weight:600;margin-top:11px}
+.solid{background:var(--ink);color:var(--paper)}
+.ghost{background:var(--card);border:1px solid var(--line)}
+.ai{display:flex;gap:10px;padding:13px 0}
+.bub{background:var(--card);border-radius:18px;border-top-left-radius:6px;padding:13px 15px;font-size:14.5px;line-height:1.5;max-width:290px}
+.bubu{background:var(--ink);color:var(--paper);border-radius:18px;border-top-right-radius:6px;padding:12px 15px;font-size:14.5px;margin-left:auto;max-width:250px}
+.orb{width:30px;height:30px;border-radius:50%;flex:none;background:linear-gradient(140deg,var(--persimmon),#E8894F)}
+</style>
+
+<!-- 1 · LIST -->
+<div class="col"><div class="cap">F · Hybrid — list</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div><h1>Weekly shop</h1><div class="meta">Trader Joe's · 5 of 7 left</div></div>
+  <div class="tot"><div class="v mono">≈ $30</div><div class="l">3 est · 1 unpriced</div></div></div>
+ <div class="body">
+  <div class="nudge"><span style="font-size:16px">◇</span><div>4 of these are cheaper at <b>Costco</b> — about <b>$6.20</b> less.</div>
+   <span style="color:var(--mute);font-size:17px">›</span></div>
+  <div class="sect"><span>Produce</span><span class="mono">≈ 9.90</span></div>
+  <div class="card">
+   <div class="row"><i class="tick"></i><span class="tile" style="background:var(--green)">🍌</span><span class="nm">Bananas</span><span class="q">×6</span><span class="dots"></span><span class="pr est mono">~2.50</span></div>
+   <div class="row"><i class="tick"></i><span class="tile" style="background:var(--green)">🥬</span><span class="nm">Baby spinach</span><span class="dots"></span><span class="pr mono">3.40</span></div>
+   <div class="row"><i class="tick"></i><span class="tile" style="background:var(--green)">🥑</span><span class="nm">Avocados</span><span class="q">×3</span><span class="dots"></span><span class="pr est mono">~4.00</span></div></div>
+  <div class="sect"><span>Dairy</span><span class="mono">≈ 11.20</span></div>
+  <div class="card">
+   <div class="row"><i class="tick"></i><span class="tile" style="background:var(--butter)">🥛</span><span class="nm">Oat milk</span><span class="q">×2</span><span class="dots"></span><span class="pr est mono">~5.00</span></div>
+   <div class="row done"><i class="tick on"></i><span class="tile" style="background:var(--butter)">🥚</span><span class="nm">Free-range eggs</span><span class="dots"></span><span class="pr mono">6.20</span></div>
+   <div class="row"><i class="tick"></i><span class="tile" style="background:var(--butter)">🍶</span><span class="nm">Greek yogurt</span><span class="dots"></span><span class="pr non mono">—</span></div></div>
+  <div class="sect"><span>Pantry</span><span class="mono">≈ 9.00</span></div>
+  <div class="card">
+   <div class="row done"><i class="tick on"></i><span class="tile" style="background:var(--clay)">🫒</span><span class="nm">Olive oil</span><span class="dots"></span><span class="pr est mono">~9.00</span></div></div>
+ </div>
+ <div class="bar">
+  <div class="bin"><span style="color:var(--mute);font-size:16px">＋</span><span class="ph2">Add an item, or just say it…</span></div>
+  <div class="brow"><span class="bb">⌗</span><span class="bb">◳</span><span class="bb">🧾</span>
+   <span class="spk">🎙 Speak</span></div></div>
+</div></div>
+
+<!-- 2 · AI / ONE BAR -->
+<div class="col"><div class="cap">F · Hybrid — the one bar</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div><h1>Weekly shop</h1><div class="meta">Listening…</div></div></div>
+ <div class="body">
+  <div class="ai"><span class="orb"></span><div class="bub">Heard: <b>“stuff for tacos and something for breakfast”</b></div></div>
+  <div class="bubu">Add all 7</div>
+  <div class="sect"><span>Tacos · 5</span><span>tap to drop any</span></div>
+  <div class="card">
+   <div class="row"><span class="tile" style="background:var(--butter)">🌮</span><span class="nm">Tortillas</span><span class="dots"></span><span class="pr est mono">~3.00</span></div>
+   <div class="row"><span class="tile" style="background:var(--rose)">🥩</span><span class="nm">Ground beef</span><span class="q">1 lb</span><span class="dots"></span><span class="pr est mono">~7.00</span></div>
+   <div class="row"><span class="tile" style="background:var(--green)">🍋</span><span class="nm">Limes</span><span class="q">×4</span><span class="dots"></span><span class="pr est mono">~2.00</span></div>
+   <div class="row"><span class="tile" style="background:var(--clay)">🧂</span><span class="nm">Cumin</span><span class="dots"></span><span class="pr est mono">~4.00</span></div>
+   <div class="row"><span class="tile" style="background:var(--butter)">🧀</span><span class="nm">Cotija</span><span class="dots"></span><span class="pr est mono">~5.00</span></div></div>
+  <div class="sect"><span>Breakfast · 2</span><span></span></div>
+  <div class="card">
+   <div class="row"><span class="tile" style="background:var(--clay)">🥣</span><span class="nm">Rolled oats</span><span class="dots"></span><span class="pr est mono">~3.00</span></div>
+   <div class="row"><span class="tile" style="background:var(--rose)">🍓</span><span class="nm">Strawberries</span><span class="dots"></span><span class="pr est mono">~4.50</span></div></div>
+  <p style="font-size:11.5px;color:var(--mute);line-height:1.6;padding-top:14px">
+   Runs on-device. Nothing left your phone.</p>
+ </div>
+ <div class="bar">
+  <div class="bin"><span style="color:var(--persimmon);font-size:16px">◉</span>
+   <span class="ph2" style="color:var(--ink)">stuff for tacos and something for breakfast</span></div>
+  <div class="brow"><span class="bb">⌗</span><span class="bb">◳</span><span class="bb">🧾</span>
+   <span class="spk" style="background:var(--persimmon)">◼ Stop</span></div></div>
+</div></div>
+
+<!-- 3 · COMPARE -->
+<div class="col"><div class="cap">F · Hybrid — this list, priced</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div><h1>Where to shop</h1><div class="meta">18 items · your own receipt prices</div></div></div>
+ <div class="body">
+  <div class="card" style="margin-top:6px">
+   <div class="st"><span class="logo" style="background:#0071CE">W</span>
+    <div style="flex:1"><div class="stn">Walmart <span class="badge">CHEAPEST</span></div><div class="cov">15 of 18 priced · 12 min away</div></div>
+    <div style="text-align:right"><div class="pr mono" style="font-size:19px">$78.20</div><div class="sv">saves $5.80</div></div></div>
+   <div class="st"><span class="logo" style="background:#E31837">T</span>
+    <div style="flex:1"><div class="stn">Target</div><div class="cov">14 of 18 priced · 9 min away</div></div>
+    <div style="text-align:right"><div class="pr mono" style="font-size:19px">$81.40</div><div class="sv">saves $2.60</div></div></div>
+   <div class="st"><span class="logo" style="background:#005DAA">C</span>
+    <div style="flex:1"><div class="stn">Costco</div><div class="cov">11 of 18 priced · 24 min away</div></div>
+    <div style="text-align:right"><div class="pr mono" style="font-size:19px">$79.90</div><div class="sv">saves $4.10</div></div></div>
+   <div class="st"><span class="logo" style="background:#8C857A">TJ</span>
+    <div style="flex:1"><div class="stn">Trader Joe's <span style="font-size:10px;color:var(--mute);font-weight:700">· CURRENT</span></div><div class="cov">18 of 18 priced · 6 min away</div></div>
+    <div style="text-align:right"><div class="pr mono" style="font-size:19px">$84.00</div></div></div></div>
+  <div class="sect"><span>Or split the trip</span><span></span></div>
+  <div class="card" style="padding:16px">
+   <div style="display:flex;justify-content:space-between;align-items:flex-end">
+    <div><div style="font-size:15px;font-weight:700">Cheapest possible</div>
+     <div class="cov" style="margin-top:3px">Walmart + Costco · 2 stops</div></div>
+    <div style="text-align:right"><div class="pr mono" style="font-size:22px">$71.40</div><div class="sv">saves $12.60</div></div></div>
+   <div style="display:flex;gap:5px;margin-top:14px;height:8px;border-radius:100px;overflow:hidden">
+    <i style="flex:62;background:#0071CE;display:block"></i><i style="flex:38;background:#005DAA;display:block"></i></div>
+   <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--mute);margin-top:7px">
+    <span>11 items · Walmart</span><span>7 items · Costco</span></div></div>
+  <p style="font-size:11.5px;color:var(--mute);line-height:1.6;padding:12px 2px 0">
+   Prices come from receipts you've scanned. Items we don't have a price for at a store are
+   estimated and marked.</p>
+  <div class="btn solid">Build the cheapest list</div>
+ </div>
+ <div class="nav"><div class="nb">List</div><div class="nb">Aisles</div><div class="nb on">Prices</div><div class="nb">House</div></div>
+</div></div>
+
+<!-- 4 · ITEM PRICE HISTORY -->
+<div class="col"><div class="cap">F · Hybrid — one item, everywhere</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div style="display:flex;align-items:center;gap:12px">
+   <span class="tile" style="background:var(--butter);width:46px;height:46px;font-size:23px;border-radius:14px">🥛</span>
+   <div><h1 style="font-size:24px">Oat milk</h1><div class="meta">1 L carton · Dairy</div></div></div></div>
+ <div class="body">
+  <div class="sect"><span>What you've paid</span><span>per litre</span></div>
+  <div class="card">
+   <div class="st" style="padding:13px 14px"><span class="logo" style="background:#0071CE;width:32px;height:32px;font-size:11px">W</span>
+    <div style="flex:1"><div class="stn" style="font-size:14.5px">Walmart <span class="badge">BEST</span></div><div class="cov">3 receipts · 12 days ago</div></div>
+    <div class="pr mono" style="font-size:17px">$2.48</div></div>
+   <div class="st" style="padding:13px 14px"><span class="logo" style="background:#005DAA;width:32px;height:32px;font-size:11px">C</span>
+    <div style="flex:1"><div class="stn" style="font-size:14.5px">Costco</div><div class="cov">1 receipt · 6 weeks ago · 6-pack</div></div>
+    <div class="pr mono" style="font-size:17px">$2.65</div></div>
+   <div class="st" style="padding:13px 14px"><span class="logo" style="background:#8C857A;width:32px;height:32px;font-size:11px">TJ</span>
+    <div style="flex:1"><div class="stn" style="font-size:14.5px">Trader Joe's</div><div class="cov">5 receipts · 3 days ago</div></div>
+    <div class="pr mono" style="font-size:17px">$3.29</div></div>
+   <div class="st" style="padding:13px 14px;opacity:.55"><span class="logo" style="background:#CFC9BE;width:32px;height:32px;font-size:11px">T</span>
+    <div style="flex:1"><div class="stn" style="font-size:14.5px">Target</div><div class="cov">No receipt yet — estimated</div></div>
+    <div class="pr est mono" style="font-size:17px">~$3.00</div></div></div>
+  <div class="sect"><span>Trader Joe's, over time</span><span>+8%</span></div>
+  <div class="card" style="padding:16px 14px">
+   <svg width="100%" height="86" viewBox="0 0 320 86" preserveAspectRatio="none">
+    <polyline points="6,58 58,55 110,50 162,46 214,40 266,34 314,30" fill="none" stroke="#C9502C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="314" cy="30" r="4.5" fill="#C9502C"/>
+    <line x1="0" y1="72" x2="320" y2="72" stroke="#E4DFD5" stroke-width="1"/></svg>
+   <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--mute);margin-top:2px">
+    <span>Feb · $3.05</span><span>Jul · $3.29</span></div></div>
+  <div class="btn ghost">Edit this price</div>
+ </div>
+ <div class="nav"><div class="nb">List</div><div class="nb">Aisles</div><div class="nb on">Prices</div><div class="nb">House</div></div>
+</div></div>
+
+<!-- 5 · SPEND -->
+<div class="col"><div class="cap">F · Hybrid — spend</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div><h1>July</h1><div class="meta">4 trips · 3 stores</div></div></div>
+ <div class="body">
+  <div class="grid" style="margin-top:6px">
+   <div class="bt w6" style="background:var(--ink);color:var(--paper);min-height:118px">
+    <div style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;opacity:.55">Spent this month</div>
+    <div><div class="mono" style="font-size:44px;font-weight:700;letter-spacing:-.04em;line-height:1">$284.60</div>
+     <div style="font-size:13px;color:var(--green);margin-top:3px">↓ $18 vs June</div></div></div>
+   <div class="bt w3" style="background:var(--green)"><div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.62">From receipts</div>
+    <div class="mono" style="font-size:25px;font-weight:700">34%</div></div>
+   <div class="bt w3" style="background:var(--card)"><div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)">Estimated</div>
+    <div class="mono" style="font-size:25px;font-weight:700;color:var(--mute)">66%</div></div>
+  </div>
+  <div class="sect"><span>By store</span><span>avg per trip</span></div>
+  <div class="card">
+   <div class="row"><span class="logo" style="background:#8C857A;width:30px;height:30px;border-radius:9px;font-size:10px">TJ</span>
+    <span class="nm">Trader Joe's</span><span class="q">2 trips</span><span class="dots"></span><span class="pr mono">$84.00</span></div>
+   <div class="row"><span class="logo" style="background:#0071CE;width:30px;height:30px;border-radius:9px;font-size:11px">W</span>
+    <span class="nm">Walmart</span><span class="q">1 trip</span><span class="dots"></span><span class="pr mono">$71.30</span></div>
+   <div class="row"><span class="logo" style="background:#005DAA;width:30px;height:30px;border-radius:9px;font-size:11px">C</span>
+    <span class="nm">Costco</span><span class="q">1 trip</span><span class="dots"></span><span class="pr mono">$45.30</span></div></div>
+  <div class="nudge" style="background:rgba(31,122,77,.08);border-color:rgba(31,122,77,.22)">
+   <span style="font-size:16px">↓</span><div>Same basket at Walmart would have run about
+    <b style="color:var(--good)">$31 less</b> across July.</div></div>
+  <div class="sect"><span>Where it went</span><span>tile = spend</span></div>
+  <div class="grid">
+   <div class="bt w4" style="background:var(--green);min-height:74px"><span style="font-size:19px">🥬</span>
+    <div><div style="font-size:12.5px;font-weight:700">Produce</div><div class="mono" style="font-size:14px;font-weight:700">$92.40</div></div></div>
+   <div class="bt w2" style="background:var(--butter);min-height:74px"><span style="font-size:19px">🥛</span>
+    <div><div style="font-size:11.5px;font-weight:700">Dairy</div><div class="mono" style="font-size:13px;font-weight:700">$68</div></div></div>
+   <div class="bt w3" style="background:var(--clay);min-height:62px"><span style="font-size:17px">🫙</span>
+    <div><div style="font-size:11.5px;font-weight:700">Pantry</div><div class="mono" style="font-size:13px;font-weight:700">$54</div></div></div>
+   <div class="bt w2" style="background:var(--rose);min-height:62px"><span style="font-size:17px">🥩</span>
+    <div><div style="font-size:11px;font-weight:700">Meat</div><div class="mono" style="font-size:12px;font-weight:700">$41</div></div></div>
+   <div class="bt w1" style="grid-column:span 1;background:var(--sky);min-height:62px;padding:9px">
+    <span style="font-size:15px">🍞</span><div class="mono" style="font-size:11px;font-weight:700">$29</div></div>
+  </div>
+ </div>
+ <div class="nav"><div class="nb">List</div><div class="nb">Aisles</div><div class="nb on">Prices</div><div class="nb">House</div></div>
+</div></div>
