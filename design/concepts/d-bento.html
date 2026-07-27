@@ -1,0 +1,175 @@
+<meta charset="utf-8">
+<title>Concept D — Bento</title>
+<style>
+:root{--bg:#EFECE6;--card:#FFFFFF;--ink:#1C1A17;--mute:#8B8478;--green:#B7CCA6;--butter:#F0D9A0;--rose:#EFC0B4;--sky:#B6CBDD;--lilac:#CFC2E0;--clay:#DCC3A8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#3B3833;font-family:"SF Pro Rounded","Avenir Next",system-ui,sans-serif;padding:52px 40px;display:flex;gap:34px}
+.col{display:flex;flex-direction:column;gap:12px}
+.cap{color:#C0BAAF;font-size:12px;letter-spacing:.18em;text-transform:uppercase}
+.ph{width:393px;height:852px;background:var(--bg);color:var(--ink);overflow:hidden;display:flex;flex-direction:column;position:relative}
+.sb{display:flex;justify-content:space-between;padding:15px 20px 0;font-size:12px;font-weight:600}
+.hd{padding:16px 20px 12px;display:flex;align-items:flex-end;justify-content:space-between}
+h1{font-size:29px;font-weight:700;letter-spacing:-.025em}
+.meta{font-size:12.5px;color:var(--mute);margin-top:4px}
+.tt{text-align:right}
+.tt .v{font-size:27px;font-weight:700;letter-spacing:-.03em}
+.tt .l{font-size:10.5px;color:var(--mute);letter-spacing:.04em}
+.body{flex:1;overflow:hidden;padding:0 20px}
+.sect{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);margin:15px 0 9px;display:flex;justify-content:space-between}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}
+.t{border-radius:19px;padding:13px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.t .e{font-size:23px;line-height:1}
+.t .n{font-size:13.5px;font-weight:600;letter-spacing:-.01em;line-height:1.2}
+.t .p{font-size:15px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+.t .p.est{font-weight:500;opacity:.62}
+.t .p.non{opacity:.35;font-weight:500}
+.t .q{position:absolute;top:11px;right:11px;background:rgba(28,26,23,.11);border-radius:100px;font-size:10.5px;font-weight:700;padding:2px 7px}
+.t.done{background:transparent!important;border:1.5px dashed rgba(28,26,23,.17)}
+.t.done .n{text-decoration:line-through;opacity:.4}
+.t.done .p{opacity:.3}
+.t.done .e{opacity:.35}
+.w2{grid-column:span 2}.w3{grid-column:span 3}.w4{grid-column:span 4}.w6{grid-column:span 6}
+.h1x{min-height:84px}.h2x{min-height:112px}
+.arc{position:absolute;right:20px;bottom:24px;width:62px;height:62px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:32px;font-weight:300;box-shadow:0 10px 30px rgba(28,26,23,.3);z-index:3}
+.orb{position:absolute;width:46px;height:46px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-size:19px;box-shadow:0 5px 16px rgba(28,26,23,.16);z-index:2}
+.o1{right:26px;bottom:100px}.o2{right:88px;bottom:118px}.o3{right:140px;bottom:100px}
+.nav{position:absolute;left:20px;bottom:26px;display:flex;gap:5px;background:var(--card);border-radius:100px;padding:5px;box-shadow:0 5px 20px rgba(28,26,23,.11);z-index:3}
+.nb{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:17px;opacity:.42}
+.nb.on{background:var(--bg);opacity:1;box-shadow:inset 0 0 0 2px var(--ink)}
+.srch{margin:6px 20px 0;background:var(--card);border-radius:19px;padding:15px 18px;display:flex;align-items:center;gap:10px;font-size:17px;box-shadow:0 3px 12px rgba(28,26,23,.05)}
+.sg{background:var(--card);border-radius:17px;padding:13px 15px;display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.sw{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:17px;flex:none}
+.mem{background:var(--card);border-radius:19px;padding:15px;display:flex;align-items:center;gap:13px;margin-bottom:9px}
+.av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:17px;font-weight:700;flex:none}
+.btn{border-radius:100px;text-align:center;padding:16px;font-size:14px;font-weight:600;margin-top:11px}
+.solid{background:var(--ink);color:#fff}
+.ghost{background:var(--card)}
+</style>
+
+<div class="col"><div class="cap">D · Bento — list</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div><h1>Weekly shop</h1><div class="meta">Trader Joe's · 5 of 7 left</div></div>
+  <div class="tt"><div class="v">≈ $30</div><div class="l">3 est · 1 unpriced</div></div></div>
+ <div class="body">
+  <div class="sect"><span>Produce</span><span>≈ $9.90</span></div>
+  <div class="grid">
+   <div class="t w3 h2x" style="background:var(--green)"><span class="q">×6</span><span class="e">🍌</span><div><div class="n">Bananas</div><div class="p est">~$2.50</div></div></div>
+   <div class="t w3 h1x" style="background:var(--green)"><span class="e">🥬</span><div><div class="n">Baby spinach</div><div class="p">$3.40</div></div></div>
+   <div class="t w3 h1x" style="background:var(--green)"><span class="q">×3</span><span class="e">🥑</span><div><div class="n">Avocados</div><div class="p est">~$4</div></div></div>
+  </div>
+  <div class="sect"><span>Dairy</span><span>≈ $11.20</span></div>
+  <div class="grid">
+   <div class="t w4 h2x" style="background:var(--butter)"><span class="q">×2</span><span class="e">🥛</span><div><div class="n">Oat milk</div><div class="p est">~$5</div></div></div>
+   <div class="t w2 h1x done"><span class="e">🥚</span><div><div class="n">Eggs</div><div class="p">$6.20</div></div></div>
+   <div class="t w2 h1x" style="background:var(--butter)"><span class="e">🍶</span><div><div class="n">Yogurt</div><div class="p non">—</div></div></div>
+  </div>
+  <div class="sect"><span>Pantry</span><span>≈ $9.00</span></div>
+  <div class="grid">
+   <div class="t w3 h1x done"><span class="e">🫒</span><div><div class="n">Olive oil</div><div class="p est">~$9</div></div></div>
+   <div class="t w3 h1x" style="background:rgba(28,26,23,.045);border:1.5px dashed rgba(28,26,23,.15);align-items:center;justify-content:center">
+    <div style="text-align:center;color:var(--mute)"><div style="font-size:22px">+</div><div style="font-size:12px;margin-top:3px">Add to pantry</div></div></div>
+  </div>
+ </div>
+ <div class="orb o1">🎙</div><div class="orb o2">📷</div><div class="orb o3">⌗</div>
+ <div class="arc">+</div>
+ <div class="nav"><div class="nb on">🧺</div><div class="nb">🗺</div><div class="nb">👥</div><div class="nb">📊</div></div>
+</div></div>
+
+<div class="col"><div class="cap">D · Bento — add</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div><h1>Add</h1><div class="meta">Tap a tile or keep typing</div></div></div>
+ <div class="srch"><span style="opacity:.4">🔍</span><span>oat</span><span style="width:2px;height:19px;background:var(--ink);display:block"></span></div>
+ <div class="body" style="padding-top:14px">
+  <div class="sect"><span>Matches</span><span>4</span></div>
+  <div class="sg"><span class="sw" style="background:var(--butter)">🥛</span><div style="flex:1"><div style="font-size:15px;font-weight:600">Oat milk</div><div style="font-size:12px;color:var(--mute)">Dairy · carton</div></div><span style="font-weight:700;opacity:.6">~$2.50</span></div>
+  <div class="sg"><span class="sw" style="background:var(--clay)">🥣</span><div style="flex:1"><div style="font-size:15px;font-weight:600">Rolled oats</div><div style="font-size:12px;color:var(--mute)">Pantry · 500g</div></div><span style="font-weight:700;opacity:.6">~$3</span></div>
+  <div class="sg"><span class="sw" style="background:var(--butter)">🥛</span><div style="flex:1"><div style="font-size:15px;font-weight:600">Oat milk, barista</div><div style="font-size:12px;color:var(--mute)">Dairy · carton</div></div><span style="font-weight:700;opacity:.6">~$3.50</span></div>
+  <div class="sg" style="border:1.5px dashed rgba(28,26,23,.17);background:transparent"><span class="sw" style="background:rgba(28,26,23,.06)">✎</span><div style="flex:1"><div style="font-size:15px;font-weight:600;color:var(--mute)">Add “oat” as typed</div></div></div>
+  <div class="sect" style="margin-top:18px"><span>You usually buy</span><span></span></div>
+  <div class="grid">
+   <div class="t w2 h1x" style="background:var(--rose)"><span class="e">🍞</span><div class="n" style="font-size:12.5px">Bread</div></div>
+   <div class="t w2 h1x" style="background:var(--sky)"><span class="e">🧀</span><div class="n" style="font-size:12.5px">Cheddar</div></div>
+   <div class="t w2 h1x" style="background:var(--green)"><span class="e">🍎</span><div class="n" style="font-size:12.5px">Apples</div></div>
+   <div class="t w2 h1x" style="background:var(--lilac)"><span class="e">🧻</span><div class="n" style="font-size:12.5px">Kitchen roll</div></div>
+   <div class="t w2 h1x" style="background:var(--clay)"><span class="e">☕️</span><div class="n" style="font-size:12.5px">Coffee</div></div>
+   <div class="t w2 h1x" style="background:var(--butter)"><span class="e">🧈</span><div class="n" style="font-size:12.5px">Butter</div></div>
+  </div>
+ </div>
+ <div class="nav"><div class="nb on">🧺</div><div class="nb">🗺</div><div class="nb">👥</div><div class="nb">📊</div></div>
+</div></div>
+
+<div class="col"><div class="cap">D · Bento — aisles</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div><h1>Trader Joe's</h1><div class="meta">Drag tiles into your walking order</div></div></div>
+ <div class="body" style="padding-top:12px">
+  <div class="grid" style="gap:10px">
+   <div class="t w3 h2x" style="background:var(--green)"><span class="q">1</span><span class="e">🥬</span><div class="n">Produce</div></div>
+   <div class="t w3 h2x" style="background:var(--butter)"><span class="q">2</span><span class="e">🥛</span><div class="n">Dairy</div></div>
+   <div class="t w2 h1x" style="background:var(--clay)"><span class="q">3</span><span class="e">🫙</span><div class="n" style="font-size:12.5px">Pantry</div></div>
+   <div class="t w2 h1x" style="background:var(--rose)"><span class="q">4</span><span class="e">🍞</span><div class="n" style="font-size:12.5px">Bakery</div></div>
+   <div class="t w2 h1x" style="background:#E0B3AC"><span class="q">5</span><span class="e">🥩</span><div class="n" style="font-size:12.5px">Meat</div></div>
+   <div class="t w3 h1x" style="background:var(--sky)"><span class="q">6</span><span class="e">🧊</span><div class="n" style="font-size:12.5px">Frozen</div></div>
+   <div class="t w3 h1x" style="background:var(--lilac);opacity:.5"><span class="q">7</span><span class="e">🧴</span><div class="n" style="font-size:12.5px">Household</div></div>
+  </div>
+  <div class="sg" style="margin-top:20px;border-radius:19px;padding:16px">
+   <span class="sw" style="background:var(--green)">📍</span>
+   <div style="flex:1"><div style="font-size:14.5px;font-weight:600">Learn my real order</div>
+    <div style="font-size:12px;color:var(--mute);margin-top:2px">Reorders from how you actually shop</div></div>
+   <span style="width:44px;height:26px;border-radius:100px;background:var(--ink);position:relative;flex:none"><i style="position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;display:block"></i></span></div>
+  <div class="sect" style="margin-top:16px"><span>Your stores</span><span>3</span></div>
+  <div class="grid">
+   <div class="t w2 h1x" style="background:var(--card)"><span class="e">🏪</span><div class="n" style="font-size:12px">Whole Foods</div></div>
+   <div class="t w2 h1x" style="background:var(--card)"><span class="e">🏬</span><div class="n" style="font-size:12px">Corner shop</div></div>
+   <div class="t w2 h1x" style="background:transparent;border:1.5px dashed rgba(28,26,23,.17);align-items:center;justify-content:center"><span style="font-size:22px;color:var(--mute)">+</span></div>
+  </div>
+ </div>
+ <div class="nav"><div class="nb">🧺</div><div class="nb on">🗺</div><div class="nb">👥</div><div class="nb">📊</div></div>
+</div></div>
+
+<div class="col"><div class="cap">D · Bento — household</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div><h1>Flat 2B</h1><div class="meta">3 people · synced 2 min ago</div></div></div>
+ <div class="body" style="padding-top:12px">
+  <div class="mem"><span class="av" style="background:var(--butter)">J</span><div style="flex:1"><div style="font-size:16px;font-weight:600">Juan</div><div style="font-size:12.5px;color:var(--mute)">You · added 4 today</div></div></div>
+  <div class="mem"><span class="av" style="background:var(--green)">M</span><div style="flex:1"><div style="font-size:16px;font-weight:600">Mara</div><div style="font-size:12.5px;color:var(--mute)">Shopping now · added 2</div></div>
+   <span style="width:10px;height:10px;border-radius:50%;background:#4E9A62;flex:none"></span></div>
+  <div class="mem"><span class="av" style="background:var(--sky)">S</span><div style="flex:1"><div style="font-size:16px;font-weight:600">Sam</div><div style="font-size:12.5px;color:var(--mute)">Last seen yesterday</div></div></div>
+  <div style="background:var(--card);border-radius:23px;padding:20px;margin-top:16px">
+   <div style="font-size:16px;font-weight:700">Bring someone in</div>
+   <p style="font-size:13.5px;line-height:1.6;color:var(--mute);margin-top:8px">Send the link. They're in instantly — no account, no sign-up. People you invite stay free forever.</p>
+   <div style="margin-top:15px;background:var(--bg);border-radius:14px;padding:14px;text-align:center;font-size:13.5px;font-weight:600">bagged.app/j/7K2M-QX41</div>
+   <div class="btn solid">Copy invite link</div>
+   <div class="btn ghost" style="background:var(--bg)">Share…</div></div>
+ </div>
+ <div class="nav"><div class="nb">🧺</div><div class="nb">🗺</div><div class="nb on">👥</div><div class="nb">📊</div></div>
+</div></div>
+
+<div class="col"><div class="cap">D · Bento — spend</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div><h1>July</h1><div class="meta">4 trips · Trader Joe's</div></div></div>
+ <div class="body" style="padding-top:12px">
+  <div class="grid" style="gap:10px">
+   <div class="t w6 h2x" style="background:var(--ink);color:#fff;min-height:130px">
+    <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.55">Spent this month</div>
+    <div><div style="font-size:48px;font-weight:700;letter-spacing:-.04em;line-height:1">$284<span style="font-size:24px;opacity:.6">.60</span></div>
+     <div style="font-size:13px;color:var(--green);margin-top:4px">↓ $18 vs June</div></div></div>
+   <div class="t w3 h1x" style="background:var(--green)"><div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.6">From receipts</div><div style="font-size:26px;font-weight:700;letter-spacing:-.03em">34%</div></div>
+   <div class="t w3 h1x" style="background:var(--card)"><div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)">Estimated</div><div style="font-size:26px;font-weight:700;letter-spacing:-.03em;color:var(--mute)">66%</div></div>
+  </div>
+  <div class="sect" style="margin-top:18px"><span>Where it went</span><span>Tile size = spend</span></div>
+  <div class="grid" style="gap:9px">
+   <div class="t w4 h2x" style="background:var(--green)"><span class="e">🥬</span><div><div class="n">Produce</div><div class="p">$92.40</div></div></div>
+   <div class="t w2 h2x" style="background:var(--butter)"><span class="e">🥛</span><div><div class="n" style="font-size:12.5px">Dairy</div><div class="p" style="font-size:14px">$68</div></div></div>
+   <div class="t w3 h1x" style="background:var(--clay)"><span class="e">🫙</span><div><div class="n" style="font-size:12.5px">Pantry</div><div class="p" style="font-size:14px">$54</div></div></div>
+   <div class="t w2 h1x" style="background:#E0B3AC"><span class="e">🥩</span><div><div class="n" style="font-size:12px">Meat</div><div class="p" style="font-size:13px">$41</div></div></div>
+   <div class="t w1 h1x" style="grid-column:span 1;background:var(--rose);padding:10px"><span class="e" style="font-size:18px">🍞</span><div class="p" style="font-size:12px">$29</div></div>
+  </div>
+  <div class="btn solid" style="margin-top:14px">📷 Scan a receipt</div>
+ </div>
+ <div class="nav"><div class="nb">🧺</div><div class="nb">🗺</div><div class="nb">👥</div><div class="nb on">📊</div></div>
+</div></div>

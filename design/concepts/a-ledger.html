@@ -1,0 +1,168 @@
+<meta charset="utf-8">
+<title>Concept A — Ledger</title>
+<style>
+:root{--paper:#FBFAF7;--ink:#14130F;--mute:#8A857B;--rule:#DCD7CC;--red:#B8412C}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#33312D;font-family:ui-monospace,"SF Mono",Menlo,monospace;padding:52px 40px;display:flex;gap:34px}
+.col{display:flex;flex-direction:column;gap:12px}
+.cap{color:#B9B3A6;font-size:12px;letter-spacing:.18em;text-transform:uppercase}
+.ph{width:393px;height:852px;background:var(--paper);color:var(--ink);position:relative;overflow:hidden;display:flex;flex-direction:column}
+.ph::before,.ph::after{content:"";position:absolute;left:0;right:0;height:9px;
+  background:radial-gradient(circle at 5px 0,transparent 4.5px,var(--paper) 5px) 0 0/10px 9px repeat-x;z-index:5}
+.ph::before{top:-1px;transform:rotate(180deg)}
+.ph::after{bottom:-1px}
+.sb{display:flex;justify-content:space-between;padding:16px 20px 0;font-size:12px;letter-spacing:.04em}
+.hd{padding:16px 20px 10px}
+.eyebrow{font-size:10px;letter-spacing:.28em;color:var(--mute)}
+h1{font-size:20px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;margin-top:5px}
+.meta{font-size:11px;color:var(--mute);margin-top:5px;letter-spacing:.05em}
+.dbl{border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);height:3px;margin:10px 20px 0}
+.body{flex:1;overflow:hidden;padding:0 20px}
+.grp{margin-top:13px}
+.gl{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.22em;color:var(--mute);padding-bottom:4px;border-bottom:1px dashed var(--rule)}
+.row{display:flex;align-items:baseline;gap:6px;padding:9px 0;font-size:13.5px}
+.bx{width:13px;height:13px;border:1.4px solid var(--ink);flex:none;position:relative;top:2px}
+.bx.on{background:var(--ink)}
+.bx.on::after{content:"×";position:absolute;inset:-4px 0 0 1.5px;color:var(--paper);font-size:14px;line-height:1}
+.nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:186px}
+.q{color:var(--mute);font-size:11px}
+.dots{flex:1;border-bottom:1.4px dotted var(--rule);transform:translateY(-4px)}
+.pr{font-variant-numeric:tabular-nums;font-size:13.5px}
+.est{color:var(--mute)}
+.non{color:var(--rule)}
+.done .nm{text-decoration:line-through;color:var(--mute)}
+.sub{display:flex;justify-content:space-between;font-size:11px;color:var(--mute);padding-top:6px;border-top:1px solid var(--rule);margin-top:3px}
+.tot{margin:0 20px;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:11px 0}
+.tot .l1{display:flex;justify-content:space-between;font-size:17px;font-weight:700;letter-spacing:.06em}
+.tot .l2{font-size:10px;color:var(--mute);letter-spacing:.14em;margin-top:5px}
+.nav{display:flex;border-top:1px dashed var(--rule);margin:9px 20px 0;padding-top:9px;padding-bottom:16px;gap:5px}
+.nb{flex:1;text-align:center;font-size:9.5px;letter-spacing:.16em;padding:8px 0;color:var(--mute);border:1px solid transparent}
+.nb.on{background:var(--ink);color:var(--paper)}
+/* add screen */
+.inp{margin:12px 20px 0;border:1.4px solid var(--ink);padding:11px 12px;font-size:15px;display:flex;gap:2px}
+.cur{width:9px;background:var(--ink);animation:none}
+.sug{padding:11px 0;font-size:13.5px;display:flex;justify-content:space-between;border-bottom:1px dashed var(--rule)}
+.tag{font-size:9px;letter-spacing:.16em;color:var(--mute);border:1px solid var(--rule);padding:2px 5px}
+.kbd{margin-top:auto;background:#E4E0D6;padding:12px 8px 22px;display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
+.kbd span{background:var(--paper);text-align:center;font-size:12px;padding:9px 0;border:1px solid var(--rule)}
+/* aisles */
+.ai{display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px dashed var(--rule);font-size:13px}
+.num{font-size:10px;color:var(--mute);width:16px}
+.grip{margin-left:auto;color:var(--rule);letter-spacing:2px}
+/* household */
+.mem{display:flex;align-items:center;gap:11px;padding:13px 0;border-bottom:1px dashed var(--rule)}
+.av{width:30px;height:30px;border:1.4px solid var(--ink);display:grid;place-items:center;font-size:12px}
+.mn{font-size:13.5px}.ms{font-size:10.5px;color:var(--mute)}
+.btn{border:1.4px solid var(--ink);text-align:center;padding:13px;font-size:11px;letter-spacing:.18em;margin-top:15px}
+.btn.fill{background:var(--ink);color:var(--paper)}
+/* spend */
+.bar{height:15px;border:1.2px solid var(--ink);display:flex;margin:5px 0 3px}
+.bar i{display:block;background:repeating-linear-gradient(45deg,var(--ink) 0 2px,transparent 2px 4px)}
+.sl{display:flex;justify-content:space-between;font-size:11.5px;padding:9px 0;border-bottom:1px dashed var(--rule)}
+</style>
+
+<div class="col"><div class="cap">A · Ledger — list</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div class="eyebrow">TRADER JOE'S · SUN 26 JUL</div><h1>Weekly Shop</h1>
+ <div class="meta">5 OF 7 REMAINING · 2 SHOPPERS</div></div>
+ <div class="dbl"></div>
+ <div class="body">
+  <div class="grp"><div class="gl"><span>01 PRODUCE</span><span>3 ITEMS</span></div>
+   <div class="row"><i class="bx"></i><span class="nm">Bananas</span><span class="q">×6</span><span class="dots"></span><span class="pr est">~2.50</span></div>
+   <div class="row"><i class="bx"></i><span class="nm">Baby spinach</span><span class="dots"></span><span class="pr">3.40</span></div>
+   <div class="row"><i class="bx"></i><span class="nm">Avocados</span><span class="q">×3</span><span class="dots"></span><span class="pr est">~4.00</span></div>
+   <div class="sub"><span>SUBTOTAL</span><span>≈ 9.90</span></div></div>
+  <div class="grp"><div class="gl"><span>02 DAIRY</span><span>3 ITEMS</span></div>
+   <div class="row"><i class="bx"></i><span class="nm">Oat milk</span><span class="q">×2</span><span class="dots"></span><span class="pr est">~5.00</span></div>
+   <div class="row done"><i class="bx on"></i><span class="nm">Free-range eggs</span><span class="dots"></span><span class="pr">6.20</span></div>
+   <div class="row"><i class="bx"></i><span class="nm">Greek yogurt</span><span class="dots"></span><span class="pr non">— · —</span></div>
+   <div class="sub"><span>SUBTOTAL</span><span>≈ 11.20</span></div></div>
+  <div class="grp"><div class="gl"><span>03 PANTRY</span><span>1 ITEM</span></div>
+   <div class="row done"><i class="bx on"></i><span class="nm">Olive oil</span><span class="dots"></span><span class="pr est">~9.00</span></div></div>
+ </div>
+ <div class="tot"><div class="l1"><span>TOTAL</span><span>≈ 30.10</span></div>
+  <div class="l2">3 ESTIMATED · 1 NOT PRICED YET</div></div>
+ <div class="nav"><div class="nb on">LIST</div><div class="nb">AISLES</div><div class="nb">HOUSE</div><div class="nb">SPEND</div></div>
+</div></div>
+
+<div class="col"><div class="cap">A · Ledger — add</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div class="eyebrow">ADD TO LIST</div><h1>New Entry</h1></div>
+ <div class="inp"><span>oat</span><span class="cur">&nbsp;</span></div>
+ <div class="body" style="padding-top:6px">
+  <div class="gl" style="margin-top:12px"><span>MATCHES</span><span>4</span></div>
+  <div class="sug"><span>Oat milk <span class="q">· carton</span></span><span class="pr est">~2.50</span></div>
+  <div class="sug"><span>Rolled oats <span class="q">· 500g</span></span><span class="pr est">~3.00</span></div>
+  <div class="sug"><span>Oat milk, barista <span class="q">· carton</span></span><span class="pr est">~3.50</span></div>
+  <div class="sug"><span>Oatcakes</span><span class="pr est">~2.00</span></div>
+  <div class="gl" style="margin-top:16px"><span>NOT LISTED</span><span></span></div>
+  <div class="sug"><span>Add “oat” as written</span><span class="tag">FREE TEXT</span></div>
+ </div>
+ <div class="kbd"><span>q</span><span>w</span><span>e</span><span>r</span><span>t</span><span>y</span><span>u</span><span>i</span><span>o</span><span>p</span>
+  <span>a</span><span>s</span><span>d</span><span>f</span><span>g</span><span>h</span><span>j</span><span>k</span><span>l</span><span>⌫</span>
+  <span>z</span><span>x</span><span>c</span><span>v</span><span>b</span><span>n</span><span>m</span><span style="grid-column:span 3;background:#14130F;color:#FBFAF7">ADD ⏎</span></div>
+</div></div>
+
+<div class="col"><div class="cap">A · Ledger — aisles</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div class="eyebrow">AISLE ORDER</div><h1>Trader Joe's</h1>
+ <div class="meta">DRAG TO MATCH YOUR WALK</div></div>
+ <div class="dbl"></div>
+ <div class="body">
+  <div class="ai"><span class="num">01</span><span>Produce</span><span class="grip">≡</span></div>
+  <div class="ai"><span class="num">02</span><span>Dairy</span><span class="grip">≡</span></div>
+  <div class="ai"><span class="num">03</span><span>Pantry</span><span class="grip">≡</span></div>
+  <div class="ai"><span class="num">04</span><span>Bakery</span><span class="grip">≡</span></div>
+  <div class="ai"><span class="num">05</span><span>Meat &amp; fish</span><span class="grip">≡</span></div>
+  <div class="ai"><span class="num">06</span><span>Frozen</span><span class="grip">≡</span></div>
+  <div class="ai" style="opacity:.4"><span class="num">07</span><span>Household</span><span class="grip">≡</span></div>
+  <div class="gl" style="margin-top:20px"><span>OTHER STORES</span><span></span></div>
+  <div class="ai"><span class="num">—</span><span>Whole Foods</span><span class="grip">›</span></div>
+  <div class="ai"><span class="num">—</span><span>Corner shop</span><span class="grip">›</span></div>
+  <div class="btn">+ ADD A STORE</div>
+ </div>
+ <div class="nav"><div class="nb">LIST</div><div class="nb on">AISLES</div><div class="nb">HOUSE</div><div class="nb">SPEND</div></div>
+</div></div>
+
+<div class="col"><div class="cap">A · Ledger — household</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div class="eyebrow">HOUSEHOLD</div><h1>Flat 2B</h1><div class="meta">3 PEOPLE · SYNCED 2 MIN AGO</div></div>
+ <div class="dbl"></div>
+ <div class="body">
+  <div class="mem"><span class="av">J</span><div><div class="mn">Juan</div><div class="ms">YOU · ADDED 4 TODAY</div></div></div>
+  <div class="mem"><span class="av">M</span><div><div class="mn">Mara</div><div class="ms">ADDED 2 TODAY</div></div></div>
+  <div class="mem"><span class="av">S</span><div><div class="mn">Sam</div><div class="ms">LAST SEEN YESTERDAY</div></div></div>
+  <div class="gl" style="margin-top:22px"><span>INVITE</span><span></span></div>
+  <p style="font-size:11.5px;line-height:1.65;color:var(--mute);padding:12px 0">Anyone with the link joins instantly. No account, no sign-up. People you invite stay free forever.</p>
+  <div style="border:1.4px dashed var(--rule);padding:14px;font-size:11.5px;text-align:center;letter-spacing:.06em">bagged.app/j/7K2M-QX41</div>
+  <div class="btn fill">COPY INVITE LINK</div>
+  <div class="btn">SHARE…</div>
+ </div>
+ <div class="nav"><div class="nb">LIST</div><div class="nb">AISLES</div><div class="nb on">HOUSE</div><div class="nb">SPEND</div></div>
+</div></div>
+
+<div class="col"><div class="cap">A · Ledger — spend</div>
+<div class="ph">
+ <div class="sb"><span>9:41</span><span>▮▮▮ ᯤ ▰</span></div>
+ <div class="hd"><div class="eyebrow">THIS MONTH</div><h1>Spend</h1><div class="meta">4 TRIPS · TRADER JOE'S</div></div>
+ <div class="dbl"></div>
+ <div class="body">
+  <div style="padding:16px 0 4px;font-size:38px;letter-spacing:-.02em;font-weight:700">$284<span style="font-size:20px;color:var(--mute)">.60</span></div>
+  <div class="meta" style="margin:0 0 14px">↓ $18 VS LAST MONTH</div>
+  <div class="bar"><i style="width:34%"></i></div>
+  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mute);letter-spacing:.1em"><span>OBSERVED 34%</span><span>ESTIMATED 66%</span></div>
+  <div class="gl" style="margin-top:22px"><span>BY AISLE</span><span>$</span></div>
+  <div class="sl"><span>Produce</span><span class="pr">92.40</span></div>
+  <div class="sl"><span>Dairy</span><span class="pr">68.10</span></div>
+  <div class="sl"><span>Pantry</span><span class="pr">54.00</span></div>
+  <div class="sl"><span>Meat &amp; fish</span><span class="pr">41.20</span></div>
+  <div class="sl"><span>Bakery</span><span class="pr">28.90</span></div>
+  <div class="btn">SCAN A RECEIPT →</div>
+  <p style="font-size:10.5px;color:var(--mute);text-align:center;padding-top:10px;line-height:1.6">Every receipt you scan replaces<br>estimates with what you actually paid.</p>
+ </div>
+ <div class="nav"><div class="nb">LIST</div><div class="nb">AISLES</div><div class="nb">HOUSE</div><div class="nb on">SPEND</div></div>
+</div></div>
