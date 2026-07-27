@@ -220,3 +220,41 @@ direction.**
   adopting wholesale.
 - **G and J are honourable no's.** G is memorable and completely impractical to maintain as it grows;
   J is right for the aisle and wrong for the sofa, and the same app has to do both.
+
+---
+
+### 2026-07-26 (later) — round three, L–P, beyond the ticket
+
+Asked for after the ticket closed: five more, researched against Mobbin rather than invented.
+
+| | Name | Navigation | Where the price lives | Mobbin reference |
+|---|---|---|---|---|
+| **L** | **Route** | **Route ribbon** of stop pips you tap to jump | **Accrues along the walk**; each item shows what it adds | Apple Maps' add-a-stop sheet ("adds 5 min"), Slopes, Placify |
+| **M** | **Board** | **Board name as switcher**, columns page sideways | **Column footer subtotal** — cost belongs to the aisle | Trello, Asana, Notion board views |
+| **N** | **Thread** | **Thread chips** across the top | **A running receipt message** that rewrites itself | inDrive, Gojek quick-chat, Beside, Truecaller |
+| **O** | **Dial** | **The ring itself** — tap a segment, no bar at all | **The centre of the ring**, one focused number at a time | Zero, Streaks, Tiimo focus, stoic. |
+| **P** | **Ticker** | **Ticker tape** along the foot | **Price + Δ against your own average**, with a sparkline | market/finance boards; Strava's stat rows |
+
+Two of these are more than styling exercises:
+
+- **L · Route** is the only direction that makes `PRICE-INTELLIGENCE.md`'s hardest idea legible —
+  *pricing the extra stop*. Apple Maps already teaches the pattern with "adds 5 min", and L reuses it
+  for "saves $6.20, adds 24 min and a second stop". That framing is worth stealing into **F**
+  regardless of whether L ever ships.
+- **P · Ticker** is the only direction that treats **grocery inflation as the story**. Δ-against-your-
+  own-average is a genuinely different claim from a raw price, it is only possible once the price book
+  exists, and no competitor can copy it without the same history. Also worth stealing into F's Spend
+  screen.
+
+**N · Thread** is the most interesting failure. A household list *is* a conversation, and the thread
+handles attribution and the assistant with no new surface — but a chat log is a poor place to scan
+seven things in an aisle, and scrolling back to find an item is worse than any list here.
+
+**M** and **O** are no's. M's columns hide the total the app exists to show, and O looks superb at
+seven items and collapses at forty.
+
+**Nothing here displaces F.** The recommendation stands: ship F, steal L's cost-of-detour framing and
+P's Δ-vs-your-average, and test F at 40 items against K's density.
+
+Same file, now **sixteen sections A → P, 74 frames**, `00 · Compare` rebuilt to hold all sixteen List
+screens at 50%. Page normalised — 40px gutters, 120px section gaps, every frame at the same y.
