@@ -1,4 +1,20 @@
-# Figma file map — `Lpx5Pdgvy3Gx8l5ZSDS0JH`
+# Figma file map
+
+> ⚠️ **There are two files with overlapping A→P work.** Neither is a superset of the other.
+>
+> | | `joF6lVqRiHaWqc9v5q4kLg` · `Concepts A–K` | `Lpx5Pdgvy3Gx8l5ZSDS0JH` · `5 Directions` |
+> |---|---|---|
+> | Organisation | **18 proper Sections** | 174 loose frames, no sections |
+> | Content | Round 3 only (A→P) | **Three rounds** (R1, R2, R3 A→P) |
+> | Nodes | 4,128 frames | 7,236 frames |
+> | Components / instances | 8 / **0** | 8 / **0** |
+>
+> **Declare one canonical and port the rest.** This document maps the second one — the one that
+> was shared — because it holds Rounds 1 and 2, which exist nowhere else.
+
+---
+
+## `Lpx5Pdgvy3Gx8l5ZSDS0JH` · page `5 Directions`
 
 **File:** one page, `5 Directions` (`0:1`). Account: Juan Diego Lugo, pro tier.
 **Scale:** 174 top-level frames · 7,236 frames · 5,368 text nodes · 8 components · **0 instances**.
@@ -104,11 +120,15 @@ text instead.** Editing a component changes nothing on the canvas.
 Either wire F's screens to instances, or delete the set — **an unused component library is a
 false claim about the file's state**, and the next person will trust it.
 
-**2. ⚠️ No variables, despite the label saying otherwise.**
+**2. ⚠️ Nothing on either canvas is bound to a variable.**
 
-The section header reads *"plus the light/dark variable collection"*. `get_variable_defs` returns
-`{}` on `F/01 List` **and** on `F/01 List — dark`. Colours are raw hex throughout. Either build the
-collection or correct the label.
+The section header reads *"plus the light/dark variable collection"*, and the ticket log describes
+it in detail — 14 colour variables, light and dark modes. **It may well exist as a collection.**
+But `get_variable_defs` returns `{}` on `F/01 List` and `F/01 List — dark` here, *and* on
+`F/01 List` in the sectioned file. Four nodes, two files, nothing bound.
+
+Functionally that's the same problem as having none: the frames carry raw hex, so switching modes
+moves nothing.
 
 **Not verifiable from here:** Auto Layout. `get_metadata` doesn't expose layout mode, so the
 ticket's *"Auto Layout on every list row, card and group"* box can't be confirmed or denied
