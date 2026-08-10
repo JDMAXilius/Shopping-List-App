@@ -12,9 +12,100 @@
 > **Declare one canonical and port the rest.** This document maps the second one — the one that
 > was shared — because it holds Rounds 1 and 2, which exist nowhere else.
 
+> ⚠️ **The shared file now has TWO pages.** `get_metadata` with no nodeId still lists only
+> `0:1 · 5 Directions` — that listing is stale. The second page is `74:16 · Bagged · Screens`
+> and it is **the real app spec**, not concept exploration. Mapped in the next section.
+
 ---
 
-## `Lpx5Pdgvy3Gx8l5ZSDS0JH` · page `5 Directions`
+## `Lpx5Pdgvy3Gx8l5ZSDS0JH` · page `74:16` · **Bagged · Screens** — the app spec
+
+**59 screens at 390×844, in nine lettered flows. 991 frames · 846 text · 323 instances across
+119 components.**
+
+> **The instances number is the headline.** The concepts page has **0**. This page is built on a
+> real component system — `SectionHeader` ×47, `ToggleRow` ×31, `StoreAvatar` ×30, `ItemMark` ×26,
+> `NavBar` ×15, `CaptureButton` ×15, `SourceTag` ×11, plus `StatTile`, `HeroNumberCard`,
+> `TreemapTile`, `ShelfRow`, `ListRow`, `FactRow`. **This is the file to build from.**
+
+| Flow | Screens |
+|---|---|
+| **A · Onboarding** | Splash · Value showcase · Name your kitchen · Add your first shop · First fill · Sign in / restore |
+| **B · Shelf** | Shelf · Item detail · Add by hand · Edit item · **Eat me first** · Locations editor · Shelf empty |
+| **C · Capture** | Capture sheet · Receipt camera · Receipt review · **Unmatched line resolver** · Barcode scanner · Enter by hand · Capture result |
+| **D · List** | List · Item row detail · Add item · Aisle order editor · Shop switcher · **Cheaper elsewhere** · Empty / all done |
+| **E · Prices** | Prices · Item price history · Trips · Month / spend · Trip detail · Category detail · **Store comparison** |
+| **F · Kitchen** | Invite · Kitchen home · Member detail · Guest view |
+| **G · Surfaces** | Lock screen · Places · Add/edit a shop · **Home screen widgets · Watch app · Siri & Shortcuts · CarPlay · Live Activity** |
+| **H · Settings** | Setup · **Bagged Plus paywall** · Voice settings · Notifications · Data & privacy · About |
+| **I · States** | Generic empty · Offline · Scan failed · Processing a receipt · Permission primers ×3 |
+
+### What it got right, and it's a real advance on F
+
+- **`NO PRICE YET` is promoted to the top of the list**, with *"tap to set what you paid"* on each
+  row. That inverts the problem: unpriced items become **the action**, not an afterthought. It is
+  the data-collection loop turned into the primary UI, and it's better than anything in A–P
+- Finished aisles collapse to `✓ PRODUCE · done (2) · ≈ $11.40`
+- `C4 · Unmatched line resolver` addresses the receipt-OCR risk in `PRICE-INTELLIGENCE.md` §7
+- `D6 · Cheaper elsewhere` and `E7 · Store comparison` implement §4.3–4.4
+- **Nine permission/empty/failure states designed** — the work nobody does and everybody needs
+
+### New vocabulary, not yet in any doc
+
+| Screen says | Our docs say |
+|---|---|
+| **kitchen** (*"Name your kitchen"*, *"Kitchen home"*) | household |
+| **shelf** | pantry |
+| **guessed** (*"3 estimated · 1 guessed"*) | *(no such tier)* — we have estimated / observed / unpriced |
+| **Bagged Plus** | *(paywall unnamed)* |
+| **glance** (*"The glance stays free"*) | *(new)* |
+
+**`guessed` is a genuine addition** — a fourth confidence tier below `estimated`. Worth adopting
+or rejecting deliberately, because `DESIGN_HANDOFF.md` §2 defines exactly three.
+
+### ⚠️ Three divergences from the plan of record
+
+**1. The Shelf is the first tab.** Bottom nav is **Shelf · List · Prices · You**, and Shelf is
+leftmost — the primary position. `CAPABILITIES.md` puts pantry at **v2, "only if retention
+holds"**, and `PLAN.md` §3 lists it under *"optional, only if retention holds."*
+
+`B1` shows *"62 things in · 4 running low · 2 to eat soon"* with per-item freshness
+(`plenty`, `eat in 2d`, `~3 days`, `ripe now`) across FRIDGE / PRODUCE locations.
+
+That is **a different product with a different job** — inventory management, not list-making. It
+needs the user to log what they have *and* what they consume, and it needs shelf-life data we
+don't have. It also puts us against NoWaste, Pantry Check and KitchenPal rather than AnyList and
+OurGroceries. **Not wrong — but it is a strategy change, and it should be made on purpose.**
+
+**2. The paywall is annual-only.** `$29.99/year · 7 days free · "about $2.50 a month"`. **No
+monthly tier**, where `PLAN.md` §4 decided `$2.99/mo` *and* `$29.99/yr`.
+
+**3. What's gated cuts across two of our own arguments.** Plus unlocks:
+receipt scanning · price history · **more than one shop** · **Watch, Siri and CarPlay**.
+
+- **"More than one shop" gates the price comparison entirely** — comparison needs ≥2 stores
+  (`PRICE-INTELLIGENCE.md` §3). So the free tier can never see the differentiator, and free
+  reduces to a list app with estimates. Defensible as monetisation; it just needs to be a
+  decision rather than a side effect
+- **Gating Siri contradicts `FEATURES.md` §10.** The whole cost architecture is *"free tier →
+  on-device only"* — and Siri **is** on-device and free to run. Gating it saves nothing and
+  removes the stickiest free feature. If the goal is a monetisation lever, gate Watch and CarPlay
+  and leave Siri free
+
+### Node reference — Screens page
+
+| What | Node |
+|---|---|
+| Page | `74:16` |
+| D1 List | `76:269` |
+| B1 Shelf | `76:7` |
+| H2 Bagged Plus paywall | `76:95` |
+| E7 Store comparison | `81:837` |
+| C4 Unmatched line resolver | `76:282` |
+
+---
+
+## `Lpx5Pdgvy3Gx8l5ZSDS0JH` · page `0:1` · `5 Directions` — the concept explorations
 
 **File:** one page, `5 Directions` (`0:1`). Account: Juan Diego Lugo, pro tier.
 **Scale:** 174 top-level frames · 7,236 frames · 5,368 text nodes · 8 components · **0 instances**.
