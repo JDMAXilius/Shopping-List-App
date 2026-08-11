@@ -159,7 +159,7 @@ Deferred, with the reason:
 | **Receipt scan → price book** | v1.2 | The moat, but the moat is *accumulated history*, not the capability. Start accumulating in v1 |
 | Voice / natural-language add | v1.2 | "AI" is table stakes marketing now, not a differentiator |
 | Pantry inventory + expiry | v2, maybe | A second product. Would double scope and split positioning |
-| Recipe import | v2, late, unambitious | **AnyList has owned this for 14 years at 4.9★.** Do not fight there |
+| Recipe import | **Cut, not deferred** | **AnyList has owned this for 14 years at 4.9★.** This app does not cook |
 
 **Never building:**
 
@@ -209,7 +209,7 @@ Each rung is tried before the next. Everything in rungs 1–3 is **free, offline
 | **2. Siri, no app launch** | **App Intents** — "add milk to my list" handled by the system | **$0** | Hands-free while driving or cooking |
 | **3. Photo of a printed list** | Vision framework on-device text recognition | **$0** | Typed/printed notes, receipts |
 | **4. Messy phrasing** | **Foundation Models** — Apple's ~3B on-device LLM (iOS 26), no API key, no per-token bill, no network | **$0** | "get stuff for tacos" → items |
-| **5. Genuinely hard cases** | Cloud model | **paid** | Bad handwriting, recipe URL parsing. **Gate behind the subscription so revenue covers it** |
+| **5. Genuinely hard cases** | Cloud model | **paid** | Bad handwriting and messy receipts. **Gate behind the subscription so revenue covers it** |
 
 ### Why rung 1 covers most of it — we already built the hard part
 
@@ -249,7 +249,7 @@ for low-frequency, paid-tier work. That rule is what makes the economics safe �
 | Loose phrasing → items | **iPhone** — Foundation Models (iOS 26) | On-device LLM, no API key | $0 |
 | **Receipt → line items + prices** | **Claude API** | Messy layouts, wrapped lines, abbreviations, tax/discount rows. Beyond a 3B on-device model | see below |
 | **Handwriting → items** | **Claude API** | Vision reads handwriting unevenly; this is the one place it genuinely fails | see below |
-| Recipe URL/text → ingredients | **Claude API** | Long, unstructured, quantity parsing | see below |
+| ~~Recipe URL/text → ingredients~~ | ~~Claude API~~ | **Cut — no recipes** | — |
 
 ### What the cloud calls actually cost
 

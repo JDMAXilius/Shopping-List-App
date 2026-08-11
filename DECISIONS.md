@@ -14,7 +14,7 @@ One page. Everything decided, everything recommended, and what's still open.
 - ✅ **Position narrow, support broad** — named and marketed as groceries; nothing stops you making a hardware-store list. No list *types*, no modes, no to-do features
 - ✅ **Five core features and nothing else in v1:** the list · household sharing · offline · aisle order · cost
 - ⭐ **Ship honest prices, not precise ones** — `~` and grey for estimates, solid ink for observed, `≈` on totals. Never fake precision
-- ❌ **Don't fight AnyList on recipes and meal planning.** They've owned it 14 years at 4.9★
+- ❌ **No recipes. No meal planning. No cooking.** Not deferred — cut. AnyList has owned that for 14 years at 4.9★ and it is not the job this app does
 
 ## Name and brand
 
@@ -49,7 +49,7 @@ One page. Everything decided, everything recommended, and what's still open.
 - ✅ **21 of 24 features never touch Claude.** All of v1.0 runs at zero marginal cost
 - ✅ **Voice add is not an AI problem** — it's on-device transcription plus the resolver we already built. ~$0
 - ✅ **Adopt the `reminders` App Schema domain** — Siri does the language understanding for add, check-off and aisle sections, plus store-arrival geofencing free
-- ✅ **Claude's entire surface is three features:** receipt scan, handwriting, and eventually recipe import. All paid-tier, ~4×/month, off the critical path
+- ✅ **Claude's entire surface is two features:** receipt scan and handwriting. Both paid-tier, ~4×/month, off the critical path. *(Recipe import was the third — cut Aug 2026)*
 - ✅ Receipt scanning costs **$0.22–$1.08 per subscriber per year** against $29.99 — at most 3.6%
 - ❌ **Never put a high-frequency or free-tier action on the cloud.** 20 voice adds/week × 100k free users ≈ 1M calls/year on users who generate no revenue
 - ❌ **Never sell "AI" as a headline.** Listonic put an AI badge on their lead screenshot; it's furniture now. Sell speed

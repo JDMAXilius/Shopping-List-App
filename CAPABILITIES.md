@@ -194,7 +194,7 @@ Everything downstream is fed by this. Four ways in, all producing the same thing
   *"Expiry — ~ Guess it for me"* ❓
 - ✅ **Edit anything** *(B4)*
 - ✅ **Empty state that teaches the loop** *(B7)* — *"One receipt fills it"*
-- ✅ **Cook with what's turning** *(B5)* → *"Opens in Otto"* ⚠️ external app
+- ❌ ~~**Cook with what's turning** → *"Opens in Otto"*~~ — **cut. No recipes, no cross-app handoff** *(decided Aug 2026)*
 
 ## 3. The List — what to buy
 
@@ -321,5 +321,5 @@ own coverage: *"8 of 8 priced"*, *"Three things have no Costco receipt yet."*
 - **Recurring staples suggested when overdue** — replaced by the shelf running down, which is
   better
 - **Multiple lists** — only one "Weekly shop" appears anywhere
-- **Recipe import** — replaced by *"Opens in Otto"*
+- **Recipe import** — **cut entirely.** Not deferred, not v2. This app does not do recipes
 - **Multi-store split basket** ("shop A for these, B for those") — E7 compares, it doesn't split

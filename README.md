@@ -61,8 +61,8 @@ path)
 - **$2.99/mo · $29.99/yr · 7-day trial.** No ads, no lifetime tier, people you invite are free forever
 - **Design direction F · Hybrid**, taking one organ each from A (receipt typography), K (density +
   unit price), L (shop mode), P (Δ vs your usual)
-- **21 of 24 features never touch the cloud.** Claude does receipts, handwriting, and eventually
-  recipe import — ~$0.22–1.08 per subscriber per year
+- **22 of 24 features never touch the cloud.** Claude does exactly two things — receipts and
+  handwriting — at ~$0.22–1.08 per subscriber per year. **No recipes**
 
 ## Two rules everything else serves
 

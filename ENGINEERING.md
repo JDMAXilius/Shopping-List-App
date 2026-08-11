@@ -89,14 +89,15 @@ cost.
 ### v2 — only if retention holds
 
 Pantry loop, predictive restock and multi-store split are all **rung 1** — counters, intervals and
-a set-cover over prices. Recipe import is the only one that reaches for Claude, and it is
-deliberately late and unambitious.
+a set-cover over prices. **Nothing in v2 reaches for Claude** — recipe import was the only
+candidate and it is cut.
 
 ---
 
 ## 3. The whole Claude surface is three features
 
-**#23 handwriting, #24 receipts, and eventually recipe import.** Everything else — 21 of 24
+**#23 handwriting and #24 receipts. That is all.** *(Recipe import was the third and is cut.)*
+Everything else — 22 of 24
 features — is plain code or a system framework.
 
 All three share the same shape, and it's the shape that makes the economics safe:
