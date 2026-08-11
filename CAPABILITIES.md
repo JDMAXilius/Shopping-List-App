@@ -1,123 +1,187 @@
-# Everything the app does — the flat list
+# Everything the app does — read from the 59-screen spec
 
-The complete capability list in plain bullets, so it can be read in one pass. Detail lives in
-`FEATURES.md` (why), `ENGINEERING.md` (how), `STACK.md` (built with what).
+> **Rewritten from `Bagged · Screens` (`74:16`), July 2026.** The previous version described a
+> list-first app with pantry deferred to v2. **The spec is a different product** — see
+> `docs/SCREENS_SPEC_REVIEW.md`. This document now matches the screens.
 
-**Legend:** ✅ v1.0 · 🔸 v1.1 · 🔹 v1.2 · ⬜ v2, only if retention holds · ❓ undecided
+**Legend:** ✅ in the spec · 🔒 behind Bagged Plus · ❓ shown but unspecified · ⚠️ contested
 
 ---
 
-## The list
+## The product in one line
 
-- ✅ Add an item by typing — ≤2 taps, ≤2 seconds
-- ✅ Autocomplete ranked personal history → household history → catalog
-- ✅ Add anything, even if it isn't in the catalog — free text is a first-class item
-- ✅ Quantity and unit as real fields, not text glued into the name
-- ✅ Per-item note ("Honeycrisp or Envy")
-- ✅ Check off with one thumb
-- ✅ Undo any action
-- ✅ Checked items sink to the bottom, never disappear
-- ✅ Delete by swipe
-- ✅ Multiple lists
-- 🔸 Recurring staples — suggested when overdue, never auto-added
-- 🔸 Barcode scan to add
+> **Bagged — knows what you have, remembers what you paid.**
 
-## Sharing
+## The loop everything serves
 
-- ✅ Shared household lists
-- ✅ Join by link with **no account required**
-- ✅ Live sync between members
-- ✅ See who added what
-- ⬜ Assign an item to a person
+```
+scan a receipt  →  every line lands on the shelf, with its price
+                →  the shelf runs down over time
+                →  what's running low becomes the list
+                →  shop  →  scan the receipt  →  repeat
+```
 
-## Offline
+**One photo does two jobs**: it fills the pantry *and* records the prices. That single action is
+why the app has no cold-start problem — *"One photo · every line · about 6 seconds."*
 
-- ✅ Everything works with no signal — adding, checking, editing, prices
-- ✅ Changes queue and sync on reconnect
-- ✅ Conflict resolution that never duplicates or loses an item
-- ✅ No account needed to use the app at all
+---
 
-## Aisle order
+# The five core features
 
-- ✅ Items grouped by category automatically
-- ✅ Per-store aisle profiles
-- ✅ Drag to reorder categories per store
-- 🔸 Learned aisle order from your actual check-off sequence — always overridable
-- 🔸 Store-arrival reminder (system geofence)
+## 1. Capture — the engine
 
-## Cost — the differentiator
+Everything downstream is fed by this. Four ways in, all producing the same thing: **priced items**.
 
-- ✅ Estimated price on every item, from trip one
-- ✅ Per-category subtotals
-- ✅ Running trip total
-- ✅ Visible honesty: `~` and grey for estimates, solid ink for real prices, `≈` on the total
-- ✅ Count of unpriced items shown, never hidden
-- 🔸 Edit any price — your correction becomes the truth for your store
-- 🔸 Price history per item per store
-- 🔹 **Receipt scan → prices filled in automatically**
-- ⬜ Spend over time
-- ⬜ Multi-store split — where this trip is cheapest
+- ✅ **Receipt photo → every line** *(C2)* — *"14 lines found · 12 matched to your catalog"* 🔒
+- ✅ **Review before commit** *(C3)* — *"Nothing goes on the shelf until you say so."* Per-line
+  confidence: `sure` · `not sure` · `no match`. *"2 lines still need you. They stay off the shelf."*
+- ✅ **Teach it once** *(C4)* — match an unrecognised line, and *"next time MILK 2% GAL lands on a
+  receipt, Bagged matches it to Whole milk without asking."* Or create a new item, or ignore the
+  line forever
+- ✅ **Barcode scan** *(C5)* — one thing at a time, with a quantity stepper
+- ✅ **Type it in** *(C6)* — works with no camera and no signal. *"Every line you type becomes a
+  price observation, tagged `typed`. It counts the same as a scan."*
+- ✅ **Result summary** *(C7)* — *"12 things went on the shelf · Trader Joe's · 26 Jul · $67.31"*
 
-## Voice and capture
+## 2. The Shelf — what you have
 
-- ✅ Voice add, on-device, works offline, costs nothing
-- ✅ **In-app mic button** — the default path, zero setup
-- ✅ **Action Button** — one press, speak, added. No wake word, no unlocking *(iPhone 15 Pro+)*
-- ✅ **Control Center control** — swipe and tap *(iOS 18)*
-- ✅ **Back Tap** — double-tap the back of the phone, if the user sets it up
-- ✅ Siri without the wake word — hold the side button
-- ✅ "Hey Siri, add milk to my list" — fully hands-free, app never opens
-- 🔹 Photo of a printed list → items
-- 🔹 Meal → ingredients ("stuff for tacos", "chicken parm and a stir fry")
-- ✅ **Quick-pick grid** — tap through ~40 likely items instead of facing a blank list. Catalog-based on trip 1, history-based after
-- ❌ **Not** "generate my weekly list" — a generic list is worthless and a wrong one is worse than blank. History does this better (see `FEATURES.md` §10)
-- 🔹 Handwritten list → items
-- ⬜ Recipe link → ingredients
+- ✅ **Everything in the kitchen, grouped by location** *(B1)* — *"62 things in · 4 running low ·
+  2 to eat soon"*
+- ✅ **Freshness per item** — `plenty` · `9 left` · `2 weeks` · `~3 days` · `eat in 2d` · `ripe now`
+- ✅ **Eat me first** *(B5)* — *"5 things turning, soonest first"*
+- ✅ **How much is left** *(B2)* — *"About 72% left · runs out in ~5 days"* ⚠️ **see §Unanswered**
+- ✅ **Locations you define** *(B6)* — Fridge, Produce, Cupboard, Freezer. Drag to reorder;
+  renaming keeps the contents
+- ✅ **Add by hand** *(B3)* — type or dictate, with quantity, location, category and expiry.
+  *"Expiry — ~ Guess it for me"* ❓
+- ✅ **Edit anything** *(B4)*
+- ✅ **Empty state that teaches the loop** *(B7)* — *"One receipt fills it"*
+- ✅ **Cook with what's turning** *(B5)* → *"Opens in Otto"* ⚠️ external app
 
-## On the phone
+## 3. The List — what to buy
 
-- ✅ Lock-screen widget with tappable checkboxes
-- ✅ Home-screen widget
-- ⭐ **Live Activity for the trip** — items remaining and the running total on the lock screen while you shop. *New, from the Tiimo teardown: a shopping trip is a session, and session framing is stronger than a static widget*
-- ✅ Dark mode
-- ✅ Dynamic Type, VoiceOver, Reduce Motion
-- ✅ Haptic feedback on every state change
-- ✅ Optional sound
-- ⬜ Apple Watch
-- ⬜ iPad
+- ✅ **Unpriced items promoted to the top** *(D1)* — *"tap to set what you paid"*. The gap is the
+  action, not an afterthought
+- ✅ **Grouped by aisle, with subtotals**, finished aisles collapsing to `✓ PRODUCE · done (2)`
+- ✅ **Running total with its own honesty** — `≈ $30.40 · 3 estimated · 1 guessed`
+- ✅ **Add by typing or speaking** *(D1, D3)* — one bar. *"Recognition runs on this phone. Nothing
+  you say is sent anywhere"*
+- ✅ **Autocomplete shows what you've paid** *(D3)* — `12 observations · $4.99`
+- ✅ **Add anything not in the catalog** — *"Add 'oat m' as a new thing"*
+- ✅ **Aisle order per shop** *(D4)* — *"saved for Trader Joe's only. Costco keeps its own"*
+- ✅ **Switch which shop the list is for** *(D5)* — prices, aisle order and the wake-up all follow
+- ✅ **Cheaper elsewhere** *(D6)* 🔒 — same basket at both shops, per-item deltas, and it states
+  its own gaps: *"Three things have no Costco receipt yet, so they are not in this number"*
+- ✅ **Done state that closes the loop** *(D7)* — *"3 of those prices were estimates. Scan the
+  receipt and they become measured"*, plus a preview of what runs out next
+
+## 4. Prices — what you paid
+
+- ✅ **Your whole price book** *(E1)* — `212 items · 38 receipts · 3 stores`, `▲ +8.1% since May`,
+  per-item trend
+- ✅ **Item history** *(E2)* 🔒 — every observation, oldest → newest, per store, with deltas.
+  *"12 observations, one estimated"*
+- ✅ **Trips** *(E3)* — `38 trips · $2,940 tracked`, **per-trip budget**, `under` / `over` ❓
+- ✅ **Month** *(E4)* — vs last month, `FROM RECEIPTS 34% / ESTIMATED 66%`, per-store average, and
+  *"Same basket at Costco would have run about $31 less across July"*
+- ✅ **Trip detail** *(E5)* — every line, vs budget, with the receipt facsimile kept
+- ✅ **Category detail** *(E6)* — per category per month, item breakdown, vs last month
+- ✅ **Store comparison** *(E7)* 🔒 — *"Your 8 staples, priced at 3 stores"*, with **coverage stated
+  per store** (`8 of 8 priced`), a `your usual` baseline, and per-item cheapest
+
+## 5. The Kitchen — shared
+
+- ✅ **Invite by link** *(F1)* — *"They just tap the link."* Copy · QR · Message · WhatsApp.
+  **New link revokes the old one**
+- ✅ **No account for the people you invite** *(A6, F2)* — *"Sara Ruiz · Guest · no account"*
+- ✅ **Roles** — owner · guest · invited
+- ✅ **Activity feed** *(F2)* — *"Sara added Oat milk · 2h"*, *"Mateo ticked off Eggs · yesterday"*
+- ✅ **Per-member privacy** *(F3)* — `The list: Edit` · `Your shelf: Hidden` ·
+  **`Prices and receipts: Never`**. Prices are private *inside* the household
+- ✅ **Guest view** *(F4)* — the list only, with a *"Get Bagged"* upsell and *"Leave this list"*
+- ✅ **Remove anyone at any time**
+
+---
+
+# Everything else
+
+## Offline — a property of all five, not a feature beside them
+
+- ✅ Everyone edits the same list, offline or on *(I2)*
+- ✅ Changes sync when you're back
+- ✅ Typing works with no camera and no signal *(C6)*
+
+## Surfaces
+
+- ✅ **Lock-screen widget with tappable boxes** *(G1)* — plus step-by-step install instructions
+- ✅ **Home-screen widgets, three sizes** *(G4)* — previewed with your real data
+- ✅ **Live Activity** *(G8)* — lock screen + Dynamic Island. *"Starts when you arrive"*
+- ✅ **Apple Watch** *(G5)* 🔒 — tick items, see the total
+- ✅ **Siri & Shortcuts** *(G6)* 🔒 — four phrases: add · what's left · read my list aloud · start a
+  shop. On-device recognition ⚠️ *gating this saves nothing — see `FEATURES.md` §10*
+- ✅ **CarPlay** *(G7)* 🔒 — read only
+
+## Places
+
+- ✅ **The list wakes up where you shop** *(G2)* — geofence with a wake-up radius *(G3)*
+- ✅ **Works with location off** — *"At Trader Joe's? Yes / Not now"* *(A4, G2)*
+- ✅ **Learns your shops** — *"or let it learn from where you stop"*
+- ✅ **Location never leaves the phone** — no server knows where you shop
+
+## Onboarding
+
+- ✅ Name your kitchen *(A3)* · add your first shop *(A4)* · fill your shelf from one receipt *(A5)*
+- ✅ Permission primers for camera, location and notifications, each stating what happens if you
+  decline *(I5, I5b, I5c)*
+
+## Settings
+
+- ✅ Voice — on-device, language *(H3)* · Notifications, individually switchable *(H4)*
+- ✅ **Data & privacy** *(H5)* — every data class the app holds, where it lives, and **CSV export**
+- ✅ About, version *(H6)*
 
 ## Money
 
-- ✅ 7-day free trial
-- ✅ $2.99/month or $29.99/year
-- ✅ Free tier keeps the core list working forever
-- ✅ No ads, ever
-- ✅ People you invite are free forever
+- ✅ **Bagged Plus — $29.99/year, 7 days free** *(H2)* ⚠️ *annual only; `PLAN.md` decided monthly too*
+- 🔒 Gated: receipt scan · price history · more than one shop · Watch, Siri, CarPlay
+- ✅ *"The glance stays free for everyone. Plus is what pays for it."*
+- ✅ No ads
 
-## Pantry — v2, and only maybe
+## States designed
 
-- ⬜ What's already at home
-- ⬜ Predictive restock
+- ✅ Generic empty *(I1)* · Offline *(I2)* · Scan failed *(I3)* · Processing a receipt *(I4)* ·
+  three permission primers *(I5–I5c)* · Shelf empty *(B7)* · List all-done *(D7)*
 
 ---
 
-## ❓ The open question: only groceries, or any list?
+# The honesty rules, as the screens use them
 
-**Decided position: groceries by name and by design, but the app does not refuse other lists.**
+| Tier | Renders | Meaning |
+|---|---|---|
+| **measured** | `$4.49` solid | from a receipt or typed in |
+| **estimated** | `~$5.00` | from the seeded catalog |
+| **guessed** | *counted only* ❓ | **never visually defined — define it or fold it into estimated** |
+| **no price yet** | `—` | nothing known |
 
-- ✅ You can make a hardware-store list, a packing list, a party list — nothing stops you
-- ✅ Off-catalog items already make this work with no extra code
-- ❌ **No** separate "list types", modes, or templates
-- ❌ **No** to-do features — due dates, priorities, subtasks, reminders-as-tasks
-- ❌ **No** projects, tags, or folders
+Totals carry `≈` and break themselves down: *"3 estimated · 1 guessed"*. Comparisons state their
+own coverage: *"8 of 8 priced"*, *"Three things have no Costco receipt yet."*
 
-The evidence for this is in `FEATURES.md` §11: AnyList is *named* AnyList, supports five list
-types, and still titles itself `AnyList: Grocery Shopping List`. **Position narrow, support
-broad.** Every feature that only makes sense for a non-grocery list is a feature we don't build.
+---
 
-## ❓ Still undecided
+# ⚠️ Unanswered in the spec
 
-- Item imagery: emoji, licensed photos, or generated photos (see `SOURCING.md`)
-- Store category at launch — Shopping or Productivity
-- Opt-in anonymous price pooling between households
-- Opt-in reporting of unmatched search terms, to grow the catalog
+1. **How does the shelf know something is running out?** *"About 72% left"* implies consumption
+   tracking. Nothing in 59 screens says whether the user logs it or the app infers it. **The Shelf
+   is the first tab and this is undecided**
+2. **Where do expiry guesses come from?** The catalog has no shelf-life field
+3. **Budgets** — shown in E3/E5, specified nowhere. If they ship: they report, they never scold
+4. **`guessed`** — a fourth tier that only ever appears in a footnote
+
+# What our old docs had that the spec drops
+
+- **Monthly subscription** — spec is annual-only
+- **Recurring staples suggested when overdue** — replaced by the shelf running down, which is
+  better
+- **Multiple lists** — only one "Weekly shop" appears anywhere
+- **Recipe import** — replaced by *"Opens in Otto"*
+- **Multi-store split basket** ("shop A for these, B for those") — E7 compares, it doesn't split
