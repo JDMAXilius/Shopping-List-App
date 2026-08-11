@@ -27,10 +27,11 @@ months of building.
 | | Doc | What it answers |
 |---|---|---|
 | **1** | **`DECISIONS.md`** | **Everything decided, on one page. Start here** |
-| 2 | `CAPABILITIES.md` | Every feature as a flat list |
-| 3 | `PLAN.md` | Plan of record — strategy, pricing, GTM, risks |
-| 4 | `ARCHITECTURE.md` | The pattern, concurrency, and every file the app will have |
-| 5 | `FILES.md` | Visual map of the repo and the planned app |
+| **2** | **`docs/V1_SCOPE.md`** | **What ships: 62 features, 27 surfaces, and what was cut** |
+| 3 | `CAPABILITIES.md` | Every feature as a flat list |
+| 4 | `PLAN.md` | Plan of record — strategy, pricing, GTM, risks |
+| 5 | `ARCHITECTURE.md` | The pattern, concurrency, and every file the app will have |
+| 6 | `FILES.md` | Visual map of the repo and the planned app |
 
 ### Reference
 
