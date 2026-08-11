@@ -8,6 +8,144 @@
 
 ---
 
+## The full list
+
+**Capture**
+- Scan a receipt — every line at once
+- Review every line before anything is saved
+- Per-line confidence: sure · not sure · no match
+- Match an unknown line once, remembered forever
+- Create a new item from a receipt line
+- Ignore a receipt line permanently
+- Scan a barcode
+- Type a receipt in by hand
+- Dictate items instead of typing
+- Summary after every capture
+- Receipt photo kept with the trip
+
+**Shelf**
+- See everything in your kitchen
+- Counts: things in · running low · to eat soon
+- Grouped by location — fridge, produce, cupboard, freezer
+- Create, rename and reorder your own locations
+- How much of an item is left
+- Days until it runs out
+- Expiry date per item
+- Automatic expiry guess
+- Eat me first — what's turning soonest
+- Add an item by hand
+- Edit quantity, location, expiry, category
+- Cook with what's turning
+- Empty state that fills from one receipt
+
+**List**
+- Add by typing
+- Add by speaking
+- Autocomplete from your catalog
+- See what you've paid inside the autocomplete
+- Add anything that isn't in the catalog
+- Quantity per item
+- Tick off with one thumb
+- Grouped by aisle
+- Per-aisle subtotals
+- Finished aisles collapse
+- Unpriced items promoted to the top
+- Tap to set what you paid
+- Running trip total
+- Breakdown of estimated vs guessed
+- Aisle order per shop, drag to reorder
+- Switch which shop the list is for
+- Cheaper elsewhere — same basket at another shop
+- All-done state with a runs-out preview
+
+**Prices**
+- Your price book — items, receipts, stores
+- Overall price trend since a given month
+- Price change per item
+- Full price history per item
+- Every observation dated and attributed to a store
+- Change between observations
+- Trips list
+- Budget per trip
+- Over / under budget
+- Monthly spend
+- Month against last month
+- Share of prices from receipts vs estimated
+- Average spend per trip, per store
+- Trip detail with every line
+- Category detail
+- Store comparison across shops
+- Coverage stated per store
+- Cheapest store per item
+- "Your usual" baseline
+
+**Kitchen**
+- Shared lists
+- Invite by link
+- QR code invite
+- Share via Message, WhatsApp or anything else
+- A new link revokes the old one
+- Guests need no account
+- Roles — owner, guest, invited
+- Activity feed of who did what
+- Per-member permissions
+- Hide your shelf from a member
+- Never share prices with a member
+- Guest view
+- Remove anyone at any time
+- Leave a list
+
+**Offline**
+- Everything works with no signal
+- Changes sync when you're back
+- Offline banner
+- Typing works with no camera and no signal
+
+**Surfaces**
+- Lock-screen widget with tappable boxes
+- Home-screen widgets — small, medium, large
+- Widget previews using your real data
+- Step-by-step widget setup
+- Live Activity on the lock screen
+- Dynamic Island
+- Apple Watch app
+- Siri phrases — add, what's left, read aloud, start a shop
+- Shortcuts
+- CarPlay, read only
+
+**Places**
+- Add a shop by search or by dropping a pin
+- Wake-up radius per shop
+- The list wakes when you arrive
+- Manual arrival prompt when location is off
+- Learns shops from where you stop
+- Edit or delete a shop
+- Location never leaves the phone
+
+**Onboarding**
+- Name your kitchen
+- Add your first shop
+- Fill your shelf from one receipt
+- Sign in and restore purchases
+- Camera, location and notification primers
+- Every primer says what happens if you decline
+
+**Settings**
+- On-device voice, with language choice
+- Notification toggles, each on its own
+- Full inventory of everything the app holds
+- CSV export
+- About and version
+
+**Money**
+- Bagged Plus — $29.99 a year
+- 7 days free
+- Free tier stays free
+- No ads
+- Restore purchases
+
+---
+
 ## The product in one line
 
 > **Bagged — knows what you have, remembers what you paid.**
