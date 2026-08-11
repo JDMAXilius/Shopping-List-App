@@ -62,7 +62,9 @@ path)
 - **Design direction F · Hybrid**, taking one organ each from A (receipt typography), K (density +
   unit price), L (shop mode), P (Δ vs your usual)
 - **22 of 24 features never touch the cloud.** Claude does exactly two things — receipts and
-  handwriting — at ~$0.22–1.08 per subscriber per year. **No recipes**
+  handwriting — at ~$0.22–1.08 per subscriber per year
+- **No recipes and no pantry.** List-first, shaped like Amazon Fresh's shopping list. The receipt
+  scan stays — it feeds the price book, not an inventory
 
 ## Two rules everything else serves
 

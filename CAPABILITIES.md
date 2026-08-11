@@ -8,6 +8,36 @@
 
 ---
 
+## ⚠️ DECIDED, August 2026 — list-first, Amazon Fresh shaped
+
+**No recipes. No pantry.** The reference point is **Amazon Fresh's shopping list**, not a kitchen
+inventory app.
+
+| | |
+|---|---|
+| **The app is** | a shared grocery **list** that knows what things cost |
+| **The Shelf is** | **cut from v1.** Not the first tab, not a tab at all |
+| **Recipes are** | cut entirely — not deferred |
+| **The receipt scan** | stays, and is still the engine — but it feeds **the price book**, not a pantry |
+
+**What this resolves.** The Shelf required consumption tracking that nothing in 59 screens
+specified, and the research says that exact gap — *"the inventory drifts out of sync within
+weeks"* — is where pantry apps die (`docs/SCOPE_REVIEW.md` §3). **Cutting it removes the single
+biggest risk in the project**, along with the shelf-life dataset we don't have and a competitive
+set (NoWaste, Pantry Check) we never wanted.
+
+**Taken from Amazon Fresh instead:**
+- Items grouped by category, with **`COMPLETED (n)` collapsed** at the bottom
+- A **`SUGGESTED FOR YOU` grid** of tappable common items — recognition over recall, which is the
+  ADHD argument in `INTERACTION.md`, and the answer to a blank list
+- A **pre-made / usual list** card to start from
+- An empty state that offers suggestions rather than apologising
+
+Everything below still describes the full 59-screen spec. **Where it says Shelf, read "designed,
+not shipping in v1."**
+
+---
+
 ## The full list
 
 **Capture**

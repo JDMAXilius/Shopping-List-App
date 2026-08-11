@@ -15,6 +15,7 @@ One page. Everything decided, everything recommended, and what's still open.
 - ✅ **Five core features and nothing else in v1:** the list · household sharing · offline · aisle order · cost
 - ⭐ **Ship honest prices, not precise ones** — `~` and grey for estimates, solid ink for observed, `≈` on totals. Never fake precision
 - ❌ **No recipes. No meal planning. No cooking.** Not deferred — cut. AnyList has owned that for 14 years at 4.9★ and it is not the job this app does
+- ✅ **No pantry either. The Shelf is cut from v1** *(Aug 2026)*. The reference is **Amazon Fresh's shopping list**: list-first, grouped by category, `COMPLETED` collapsed, a suggested-items grid. Cutting the Shelf removes the consumption-tracking problem that kills pantry apps, the shelf-life dataset we don't have, and a competitive set we never wanted
 
 ## Name and brand
 
