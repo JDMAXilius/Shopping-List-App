@@ -160,3 +160,13 @@ in the Log so cloud can finish — but treat that as failure of this part, not a
 
   File: https://www.figma.com/design/Lpx5Pdgvy3Gx8l5ZSDS0JH — page `138:978 · Bagged · Screens
   app current`.
+
+- **2026-08-12 · terminal (QA pass)** — Every frame screenshotted individually at ≥0.65x and
+  inspected. Four defects found and fixed: (1) `14 Setup`'s Plus banner had two default-white
+  container fills hiding its copy; (2) `01 List`'s mic/`+` glyph wrappers carried white fill
+  overrides — white-stroke vectors on white ground rendered as squares; (3) icon-component
+  strokes were raw ink hex, invisible on dark tints — all 24 strokes now bound to `ink/primary`,
+  `01 List — dark` re-cloned (now `162:834`); (4) `02`'s scrim was at 100% — now 40%. `13`'s map
+  card now clips its street lines. Non-defect: `13`'s right edge is properly padded (361-wide
+  content at x=16). `01b` at full res: ~8 of 40 rows visible per screenful with F's default row
+  height — the real datum for the F-vs-K density decision.
