@@ -1,6 +1,6 @@
 # TERMINAL_TICKET_V1_SCREENS
 
-> STATUS: in-progress — terminal 2026-08-12 (70b3e74)
+> STATUS: done — terminal 2026-08-12
 
 **Build the settled v1 — all 28 surfaces — as the new vision, on the empty page
 `138:978 · Bagged · Screens app current`, in the shared file `Lpx5Pdgvy3Gx8l5ZSDS0JH`.**
@@ -103,16 +103,16 @@ in the Log so cloud can finish — but treat that as failure of this part, not a
 
 ## Done when
 
-- [ ] All 28 frames exist on `138:978`, named by index, sectioned, at 393 × 852
-- [ ] Zero shelf/pantry/recipe words or affordances anywhere on the page
-- [ ] Tab bar is `List · Prices · You` + `+` on every full screen that shows chrome
-- [ ] No `guessed` anywhere; three price tiers, never confusable; `≈` on estimated totals
-- [ ] Paywall shows both prices, trial, and the 3-free-scans rule
-- [ ] F components used as instances on every frame; light/dark via variables, proven on 01 + 10
-- [ ] `01b List · full` exists at ~40 items
-- [ ] **`design/references/` complete: all 28 screens with top-3 on disk and in the README** —
+- [x] All 28 frames exist on `138:978`, named by index, sectioned, at 393 × 852
+- [x] Zero shelf/pantry/recipe words or affordances anywhere on the page
+- [x] Tab bar is `List · Prices · You` + `+` on every full screen that shows chrome
+- [x] No `guessed` anywhere; three price tiers, never confusable; `≈` on estimated totals
+- [x] Paywall shows both prices, trial, and the 3-free-scans rule
+- [x] F components used as instances on every frame; light/dark via variables, proven on 01 + 10
+- [x] `01b List · full` exists at ~40 items
+- [x] **`design/references/` complete: all 28 screens with top-3 on disk and in the README** —
       Mobbin research is a required deliverable of this ticket
-- [ ] Log entry appended below; push docs/reference changes to `main`
+- [x] Log entry appended below; push docs/reference changes to `main`
 
 ## Log — append only, never rewrite an earlier entry
 
@@ -120,3 +120,43 @@ in the Log so cloud can finish — but treat that as failure of this part, not a
   confirmed to exist and be empty. `design/app/` (28 renders of the old page) and
   `design/references/` (10 of 28 filled) are pushed to `main`. The old page's renders still
   show shelf copy and 4 tabs — that's exactly what Part 2 replaces.
+
+- **2026-08-12 · terminal** — **Done. All three parts.**
+
+  **Part 3 first (as advised):** all 28 screens now have top-3 Mobbin references on disk —
+  18 missing screens filled, 4 topped up, 84 images total, README pending table retired.
+  Ran as 4 parallel research agents. Notable finds: Woolworths (aisle tags + unit prices +
+  est. total in one shipped list), Splitwise's receipt-confirm contract, Tide Guide's calm
+  two-plan paywall, Yazio's tappable lock-widget checkboxes.
+
+  **Part 2:** all 28 surfaces + `01b List · full` (40 items) + 2 dark duplicates built on
+  `138:978`, sectioned Onboarding · List · Capture · Prices · Kitchen · Places · You · Widget,
+  393×852, F · Hybrid adapted to `List · Prices · You` + persimmon `+`. Foundation built
+  centrally (new `F · Tokens` collection — 17 colours × light/dark modes; `F/List row` with
+  the four state variants; Aisle header / Total bar (double-ruled, A's organ) / Input bar /
+  Tab bar; 12 monoline icon components), then 6 parallel build agents, one per area, working
+  against pre-scaffolded frame IDs with instances + variable bindings only.
+
+  **Both standing embarrassments fixed on this page:** 187 component instances in use
+  (was 0), and light/dark proven by mode switching on `01 List — dark` (155:2110) and
+  `10 Month / spend — dark` (155:2149) — same nodes, different collection mode, no repainted
+  hex. Banned-word scan over every text node on the page: zero hits for shelf/pantry-inventory/
+  recipe/guessed. Paywall shows $2.99/mo AND $29.99/yr + 7-day trial + "You've used 3 free
+  receipt scans". Confidence tiers on receipt review are `sure · not sure · no match` —
+  `guessed` never appears.
+
+  **Deviations, recorded:** (1) fonts are Inter + JetBrains Mono (SF Pro mono variants not in
+  Figma); (2) one sanctioned raw-hex amber `#D9A03F` for the "not sure" confidence dot — no
+  amber token exists; camera/lock-screen blacks are raw by design; (3) icon set has no
+  apple/barcode glyphs — leaf/cart reused, noted for the icon backlog; (4) on `01 List` the
+  SUGGESTED grid is one row of 3 and COMPLETED (2) is fully collapsed — both to keep the
+  bottom stack unoverlapped at 852; (5) `08 Prices` needed a second receipt row — invented
+  "Walmart · Jul 14 · 9 lines · $47.03"; (6) `setBoundVariableForPaint` strips paint opacity —
+  agents worked around with node opacity / paint spreads, worth knowing for anyone extending.
+
+  **`01b` verdict, for the density question:** at 40 items with F's row height, roughly 9 rows
+  are visible above the bottom stack per screenful. The K-density variant question is now
+  answerable from a real frame instead of inference.
+
+  File: https://www.figma.com/design/Lpx5Pdgvy3Gx8l5ZSDS0JH — page `138:978 · Bagged · Screens
+  app current`.
