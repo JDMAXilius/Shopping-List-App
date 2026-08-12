@@ -1,6 +1,6 @@
 # TERMINAL_TICKET_V1_SCREENS
 
-> STATUS: **open** — written by cloud 2026-08-12. Nobody has picked this up yet.
+> STATUS: in-progress — terminal 2026-08-12 (70b3e74)
 
 **Build the settled v1 — all 28 surfaces — as the new vision, on the empty page
 `138:978 · Bagged · Screens app current`, in the shared file `Lpx5Pdgvy3Gx8l5ZSDS0JH`.**
