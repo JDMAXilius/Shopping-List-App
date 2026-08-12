@@ -80,15 +80,26 @@ suggestions:
 - Use the per-screen references in `design/references/` as you go. They're ranked; the "why"
   column in its README says which organ to take.
 
-## Part 3 — Finish what cloud couldn't
+## Part 3 — Complete the Mobbin research for ALL screens *(required, not optional)*
 
-`design/references/` is 10 of 28 screens filled (7 complete, 3 partial). The pending table in
-`design/references/README.md` has the exact `search_screens` query per remaining screen
-(platform `ios`, limit 5, pick top 3, save as `design/references/NN-slug/RANK-app-pattern.webp`).
-If this terminal has the Mobbin MCP, fill them and update that README's tables; if not, say so
-in the Log and cloud will finish.
+**Every one of the 28 screens must end with its top-3 references on disk.** `design/references/`
+is currently 10 of 28 filled (7 complete, 3 partial). This part is a deliverable of the ticket,
+same as the frames — do it *before* Part 2 if you can, because the references inform the designs.
 
-Top-ups needed: `05` (+1), `17` (+1), `18` (+2), `22` (+2).
+For each remaining screen:
+
+1. Run the `search_screens` query from the pending table in `design/references/README.md`
+   (platform `ios`, limit 5). The query is written; refine it only if results are weak.
+2. Pick the 3 strongest by relevance to what our screen has to do (`docs/V1_SCOPE.md`), not by
+   looks. Save as `design/references/NN-slug/RANK-app-pattern.webp`.
+3. Move the screen from the README's pending table into its Filled section — ranked, with the
+   `mobbin_url` link and a one-line "why" each, matching the existing entries.
+
+**Missing entirely (18):** 02, 03, 06, 07, 08, 09, 10, 12, 13, 14, 15, 16, 19, 20, 24, 26, 27, 28.
+**Top-ups (4):** `05` (+1), `17` (+1), `18` (+2), `22` (+2).
+
+If Mobbin genuinely isn't available in the terminal, record exactly which screens are still open
+in the Log so cloud can finish — but treat that as failure of this part, not a permitted path.
 
 ## Done when
 
@@ -99,7 +110,8 @@ Top-ups needed: `05` (+1), `17` (+1), `18` (+2), `22` (+2).
 - [ ] Paywall shows both prices, trial, and the 3-free-scans rule
 - [ ] F components used as instances on every frame; light/dark via variables, proven on 01 + 10
 - [ ] `01b List · full` exists at ~40 items
-- [ ] `design/references/` filled or the gap declared in the Log
+- [ ] **`design/references/` complete: all 28 screens with top-3 on disk and in the README** —
+      Mobbin research is a required deliverable of this ticket
 - [ ] Log entry appended below; push docs/reference changes to `main`
 
 ## Log — append only, never rewrite an earlier entry
