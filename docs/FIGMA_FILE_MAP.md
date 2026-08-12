@@ -250,3 +250,28 @@ remotely — it needs someone with the file open.
 | Round 2 · H4 Store compare | `23:309` |
 | Round 1 · A1 List | `10:2` |
 | Components | `37:9319`–`37:9389` |
+
+---
+
+## `Lpx5Pdgvy3Gx8l5ZSDS0JH` · page `138:978` · **Bagged · Screens app current** — the v1 build *(2026-08-12)*
+
+**The settled v1, built.** 31 frames at 393×852 in nine sections: `F · Components` +
+Onboarding · List · Capture · Prices · Kitchen · Places · You · Widget. All 28 surfaces from
+`V1_SCOPE.md` plus `01b List · full` (40 items) and dark duplicates of 01 and 10.
+Three-tab nav (`List · Prices · You` + persimmon `+`), F · Hybrid system, no Shelf anywhere.
+
+**Both gaps flagged above are fixed on this page:**
+
+1. **Instances: 187** — every screen is composed from the `F/List row` variant set (`146:1331`),
+   `F/Aisle header` (`147:10`), `F/Total bar` (`147:19`), `F/Input bar` (`147:1313`),
+   `F/Tab bar` (`147:1325`) and 12 `F/Icon/*` components.
+2. **Variables bound and mode-proven** — new collection `F · Tokens`
+   (`VariableCollectionId:144:2`), 17 colours × light (`144:0`) / dark (`144:1`).
+   `01 List — dark` (`162:834`) and `10 Month / spend — dark` (`155:2149`) are clones driven by
+   `setExplicitVariableModeForCollection`, not repaints.
+
+Note: `74:16` still binds to the older light-only `Bagged color` collection — the two
+collections coexist deliberately; do not migrate `74:16`.
+
+Full build + QA log: `docs/TERMINAL_TICKET_V1_SCREENS.md`. Handoff summary:
+`docs/TICKET_SESSION_HANDOFF.md`.
