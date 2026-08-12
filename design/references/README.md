@@ -7,12 +7,10 @@ own screen render in `design/app/` — same numbering, so `design/references/01-
 **⚠️ Internal design reference only.** These are screenshots of other companies' apps, captured
 via Mobbin. Study them; never ship, publish or trace them.
 
-**⚠️ Coverage is partial — 6 of 28 screens have their references on disk.** The Mobbin
-connector reconnected mid-session and now every call returns *"requires approval"*, which only
-you can grant (approve the Mobbin MCP tool when prompted in the session UI, or re-add the
-connector). The six folders below were assembled from Mobbin searches already cached in this
-session. Every remaining screen has its search already written — column 3 — so filling them is
-mechanical once the connector is approved.
+**⚠️ Coverage is partial — 10 of 28 screens have folders on disk** (7 complete, 3 partial:
+05 has 2 of 3, 18 has 1, 22 has 1). The Mobbin connector was down mid-session and came back;
+the remaining screens carry their search query in the pending table — filling them is
+mechanical. Handoff: `docs/TERMINAL_TICKET_V1_SCREENS.md` Part 3.
 
 ---
 
@@ -25,6 +23,35 @@ mechanical once the connector is approved.
 | 1 | [Woolworths — list with aisle tags](https://mobbin.com/screens/922e06ed-4f48-410e-a077-9ea26daeefd2) | The only shipped list carrying **aisle location tags, per-item prices, unit prices** (`$1.70 per 100g`) **and `Est. Total $43.75`** at once — the closest existing screen to our whole product |
 | 2 | [Amazon Fresh — manage list](https://mobbin.com/flows/c5dd5b81-9a19-46f4-ae13-557b5f4da25e) | Our named shape. **`COMPLETED (5)` collapsed + `SUGGESTED FOR YOU` grid** in one screen — the two patterns V1_SCOPE borrows by name |
 | 3 | [Instacart — est. total](https://mobbin.com/screens/7b40d92a-4c38-4a42-bb2c-7b12fbda1d0e) | **`$10.98 Est. total · $4.50 est. savings` pinned to the bottom** — the existence proof for our running `≈` total |
+
+### 04 · Receipt review — `design/references/04-receipt-review/`
+
+| # | Reference | Why |
+|---|---|---|
+| 1 | [GoPay — receipt scanned, confirm](https://mobbin.com/screens/465e2773-660b-4a11-b7af-fb9747fef87e) | Receipt thumbnail + **Rescan** + line items + *"Make sure this amount is correct"* flagged in amber — a per-line confidence warning, shipped |
+| 2 | [Splitwise — confirm items](https://mobbin.com/screens/9a5af576-4e42-476a-b512-75855c6baef9) | *"Add, delete, or modify"* — receipt thumb, editable line list, `+ Add item`, totals. Our review contract exactly |
+| 3 | [Airwallex — line items](https://mobbin.com/screens/8d42e55a-4139-4967-b70d-fb5f3f88e4aa) | Line items + view-receipt link as a quiet reference layout |
+
+### 05 · Unmatched line resolver — `design/references/05-line-resolver/` *(2 of 3)*
+
+| # | Reference | Why |
+|---|---|---|
+| 1 | [MyFitnessPal — "Do these matches look right?"](https://mobbin.com/screens/8b313dbe-0360-45ae-8219-6f260f49d83b) | Raw scanned text quoted *under* the matched catalog name (`"Cottage cheese"` → *Cottage cheese, reduced fat*) — precisely our resolver's job |
+| 2 | [Yuka — unknown product](https://mobbin.com/screens/0809f49a-2a01-465a-b7bb-4d9af26c0ae3) | *"Unknown product → Fill in the information"* — the create-new-item-from-unknown path |
+
+### 21 · Receipt camera — `design/references/21-receipt-camera/`
+
+| # | Reference | Why |
+|---|---|---|
+| 1 | [Brex — scan receipt](https://mobbin.com/screens/fd01b9e0-474a-44d5-a88f-62b18f3a8548) | Minimal scan chrome; **Done carries a count badge** for multi-receipt capture |
+| 2 | [GoPay — lighting tip](https://mobbin.com/screens/02c2c4f6-6fb3-4aaf-a0d3-7a2d2ef53e09) | In-viewfinder coaching (*"make sure the receipt is readable"*) — better than failing after the shot |
+| 3 | [Bevel — photo or describe](https://mobbin.com/screens/cd1fedb9-7c53-4b03-af89-51793c7ea557) | **Import** and **Describe** flank the shutter — the same alternates as our *Choose a photo / Enter by hand* |
+
+### 22 · Barcode scanner — `design/references/22-barcode-scanner/` *(1 of 3)*
+
+| # | Reference | Why |
+|---|---|---|
+| 1 | [Walmart — scanner result card](https://mobbin.com/screens/4c4569e1-f276-4336-92e8-13ebed48d275) | Result rises as a card over the live viewfinder, price first, one primary action |
 
 ### 11 · Kitchen — `design/references/11-kitchen/`
 
@@ -74,8 +101,6 @@ prediction, not a result — replace them with what the search actually returns.
 |---|---|---|
 | 02 Item detail + set price | `grocery or pantry item detail screen with editable price quantity and notes` | Instacart, Flink, Getir |
 | 03 Aisle order editor | `reorderable list editor with drag handles to change section order` | Todoist, Things, Notion |
-| 04 Receipt review | `receipt scan review screen listing extracted line items to confirm` | YNAB, Expensify, Fudget |
-| 05 Line resolver | `match unrecognized scanned product to a catalog item suggestion list` | Yuka, MyFitnessPal |
 | 06 Capture result | `success summary screen after scanning showing what was added` | Yuka, Flashfood |
 | 07 Enter by hand | `manual expense entry form with line items and amounts` | YNAB, Money Manager |
 | 08 Prices | `personal price tracking screen showing what you paid per item over time` | Flipp, Basket |
@@ -88,8 +113,6 @@ prediction, not a result — replace them with what the search actually returns.
 | 16 About | `about screen with version support links and legal` | — any |
 | 19 Sign in / restore | `sign in screen with Continue with Apple and email and restore purchases` | Tiimo, Bear, Flighty |
 | 20 Capture chooser | `bottom sheet choosing between camera scan barcode and manual entry` | Yuka, MyFitnessPal |
-| 21 Receipt camera | `receipt scanning camera screen capturing a paper receipt` | Expensify, YNAB |
-| 22 Barcode scanner | `barcode scanner camera screen with result card` | Yuka, Amazon |
 | 24 Shop switcher | `bottom sheet picking which store you are shopping at` | Flink, Instacart |
 | 26 Paywall | `subscription paywall with annual and monthly plans and a 7 day free trial` | Tiimo, Flighty, Bear |
 | 27 First receipt | `first time success moment after completing the core action` | Duolingo-likes, Flighty |
