@@ -13,7 +13,9 @@ Amazon Fresh's shopping list.
 
 ---
 
-# Features — 62 in v1
+# Features — 85 in v1
+
+*(This header said 62; the honest count of the bullets below is 85. Corrected per `PRODUCT.md`.)*
 
 ## 1. The list *(the product)*
 

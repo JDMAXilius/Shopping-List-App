@@ -2,6 +2,10 @@
 
 One page. Everything decided, everything recommended, and what's still open.
 
+> **August 2026: `PRODUCT.md` is now the final word and outranks this index where they differ.**
+> It closes the items below marked ⭐/❓ on imagery (line-icon glyphs), quantity placement
+> (×N under the name), density (F row height stands), and the photo-ranking question (moot).
+
 **Legend:** ✅ decided · ⭐ my recommendation, awaiting your call · ❓ genuinely open
 
 ---

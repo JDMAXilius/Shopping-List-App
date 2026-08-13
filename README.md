@@ -3,7 +3,7 @@
 *Working name — not yet trademark-cleared (`NAMING.md` §9).*
 
 A household grocery list for iOS. **Every item carries a price, every aisle a subtotal, every trip
-a total.** No competitor in the category does this.
+a total.** No dedicated grocery app owns cost — that's the wedge (`PRODUCT.md` §1).
 
 **Status: planning complete, zero lines of app code.** 71 files, ~8,400 lines of research,
 strategy, architecture and design. The catalog and resolver are built and tested.
@@ -26,12 +26,13 @@ months of building.
 
 | | Doc | What it answers |
 |---|---|---|
-| **1** | **`DECISIONS.md`** | **Everything decided, on one page. Start here** |
-| **2** | **`docs/V1_SCOPE.md`** | **What ships: 62 features, 27 surfaces, and what was cut** |
-| 3 | `CAPABILITIES.md` | Every feature as a flat list |
-| 4 | `PLAN.md` | Plan of record — strategy, pricing, GTM, risks |
-| 5 | `ARCHITECTURE.md` | The pattern, concurrency, and every file the app will have |
-| 6 | `FILES.md` | Visual map of the repo and the planned app |
+| **1** | **`PRODUCT.md`** | **The final word — style, screens, workflow, money, what works/what doesn't. Outranks everything** |
+| **2** | **`DECISIONS.md`** | Everything decided, indexed on one page |
+| **3** | **`docs/V1_SCOPE.md`** | What ships: 85 features, 27 surfaces, and what was cut |
+| 4 | `CAPABILITIES.md` | Every feature as a flat list |
+| 5 | `PLAN.md` | Plan of record — strategy, pricing, GTM, risks |
+| 6 | `ARCHITECTURE.md` | The pattern, concurrency, and every file the app will have |
+| 7 | `FILES.md` | Visual map of the repo and the planned app |
 
 ### Reference
 
@@ -104,6 +105,6 @@ Figma             16 directions across two files — see docs/FIGMA_FILE_MAP.md
   for Otto (Expo RN recipe app, this repo)"* — false here, and it references a TypeScript/Expo
   stack we decided against. `engine-porter`, `verifier` and `ui-systems` assume the same. Retarget
   or remove before anyone invokes them
-- **Two Figma files** hold overlapping A→P work and neither is a superset. Declare one canonical
-- **`instances: 0`** in both Figma files — the components exist and nothing references them
-- **F has never been seen at 40 items.** Every density judgement is inference from a 7-item mockup
+- ~~Two Figma files, no canonical~~ — **resolved:** page `138:978 · Bagged · Screens app current` is canonical; older pages are quarries
+- ~~`instances: 0`~~ — **resolved:** the new page runs on real component instances + the `F · Tokens` light/dark collection
+- ~~F never seen at 40 items~~ — **resolved:** `01b List · full` exists; F's row height stands (`PRODUCT.md` §2)
