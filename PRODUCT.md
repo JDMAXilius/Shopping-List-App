@@ -67,8 +67,13 @@ type: system sans (SF Pro) everywhere EXCEPT prices —
       prices & totals are MONOSPACE, tabular numerals, always
 ```
 
-`BRAND.md` §5's older token values are **deprecated**. Dark mode ships at launch, driven by the
-variable collection (proven by mode-switch on `01 List — dark` and `10 Month / spend — dark`).
+`BRAND.md` §5's older token values are **deprecated**.
+
+**One style for the entire app — decided (Aug 2026).** There are no appearance variants: no
+light/dark modes, no themes. The warm-paper look above is the app's single appearance under
+every system setting — the brand *is* the look, the way a printed receipt has one look. The two
+dark frames on the Figma page are kept as exploration only; they are not product. (This also
+deletes a whole class of work: every screen designed once, tested once, maintained once.)
 **Grey estimate text must be contrast-verified at 4.5:1 — verified, not assumed — before build.**
 
 - **Why warm paper wins:** the category is cool-toned (AnyList blue-grey, OurGroceries grey,
@@ -191,7 +196,8 @@ the job).
 - **7 states:** Empty list · All done · Offline · Scan failed · Processing · Camera primer ·
   Location primer
 - **1 target:** Widget extension (lock + home screen)
-- **2 dark proofs:** `01 List — dark`, `10 Month / spend — dark`
+
+*(The page also holds two dark-variant frames — exploration only. One style ships; see §2.)*
 
 **Navigation: three tabs + one action.** `List · Prices · You`, persimmon `+` for capture.
 Every screen has its top-3 shipped-app references in `design/references/` (28/28 complete).

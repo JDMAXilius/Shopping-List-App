@@ -106,7 +106,7 @@ Amazon Fresh's shopping list.
 - Home-screen widget
 - **Siri** — add · what's left · read my list aloud
 - Shortcuts, Action Button, Control Center *(all from the same App Intents)*
-- Dark mode
+- One appearance — the same warm paper under every system setting (no light/dark variants)
 - Dynamic Type, VoiceOver, Reduce Motion
 - Haptics on every state change
 - Sound on by default — two sounds, quiet, silent-switch respected
