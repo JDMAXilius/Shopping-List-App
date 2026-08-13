@@ -201,11 +201,13 @@ Widget extension *(lock screen + home screen, one target)*
 
 ---
 
-# What still needs a decision
+# What still needed a decision — all closed (Aug 2026)
 
-1. **`guessed`** — the spec's fourth confidence tier. **Recommendation: drop it.** Three tiers are
-   already the hard part; a fourth that's only ever counted weakens the rule
-2. **Item imagery** — line-icon glyphs is the standing recommendation. Two sessions arrived at it
-   independently, and it's the only option that's legally clean, weightless and scales with
-   Dynamic Type
-3. **F at 40 items** — every density judgement is still inference from a 7-item mockup
+All three are now decided in **`PRODUCT.md`**, the final product decision document:
+
+1. **`guessed` — dropped.** Three tiers, never confusable. The rebuilt screens carry zero
+   occurrences (verified by text-node scan)
+2. **Item imagery — line-icon glyphs.** Decided with rationale in `PRODUCT.md` §Style; built
+   into the F icon components on page `138:978`
+3. **F at 40 items — F's row height stands.** Judged from the real `01b List · full` frame,
+   not inference; reasoning in `PRODUCT.md` §Style
