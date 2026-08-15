@@ -1,259 +1,176 @@
-# File structure — the whole repository, present and planned
+# The app, as files — final visual layout
 
-A single visual map. Everything that exists today, and every file the app will have.
-
-**Legend:** `✅` exists now · `○` planned · `★` highest-value / highest-risk file
-
----
-
-## 1. The repository today — 25 files
-
-```
-Shopping-List-App/
-│
-├── ✅ DECISIONS.md ................ every decision on one page — START HERE
-│
-├── Strategy & research
-│   ├── ✅ RESEARCH.md ............. product + competitive research, the data model
-│   ├── ✅ MARKET.md ............... sizing, segments, subscription unit economics
-│   ├── ✅ FEATURES.md ............. the five core features · AI ladder · scope
-│   ├── ✅ CAPABILITIES.md ......... every capability as a flat bullet list
-│   ├── ✅ PLAN.md ................. plan of record — strategy, pricing, GTM, sequence
-│   └── research/
-│       ├── ✅ competitors.md ...... revenue & downloads dossier
-│       └── ✅ store-teardown.md ... App Store listing teardowns
-│
-├── Brand
-│   ├── ✅ BRAND.md ................ positioning, palette, voice, store presence
-│   └── ✅ NAMING.md ............... naming evidence + §9 screening results
-│
-├── Engineering
-│   ├── ✅ ENGINEERING.md .......... method per feature · on-device ladder · size
-│   ├── ✅ STACK.md ................ Swift 6 + SwiftUI, the three dependencies
-│   ├── ✅ ARCHITECTURE.md ......... pattern, concurrency, data flow, file plan
-│   ├── ✅ INTERACTION.md .......... ADHD design, motion, haptics, sound
-│   ├── ✅ SOURCING.md ............. catalog IP + imagery licensing
-│   ├── ✅ OPS.md .................. platform argument, services, release path
-│   └── ✅ FILES.md ................ this file
-│
-├── data/catalog/                    ← the built, working catalog
-│   ├── ✅ README.md
-│   ├── ✅ catalog.json ............ 414 items, 22 categories, 8 regions · 48 KB
-│   ├── ✅ schema.sql .............. SQLite schema + indexes
-│   ├── ✅ build.mjs ............... validates + compiles → catalog.db (200 KB)
-│   ├── ✅ resolve.mjs ............. query resolver + 23 passing tests
-│   └── ⛔ catalog.db .............. build artifact, gitignored
-│
-├── design/
-│   ├── ✅ brand-sheet.html / .png
-│   └── mockups/
-│       └── ✅ list-screen.html / .png
-│
-└── ✅ .gitignore
-```
-
----
-
-## 2. The app — planned, ~80 files
+Matches `ARCHITECTURE.md` (final). Every file has one job; anything not here is a **no** until
+argued for. `★` = highest-risk, build first.
 
 ```
 Bagged/
 │
-├── ○ Bagged.xcodeproj
-│
-├── Packages/ ─────────────────── layer-first: all three targets link these
+├── Packages/                          # layer-first — app, widget AND intents link these
 │   │
-│   ├── Core/ ───────────────── pure logic · imports nothing · no UI, no I/O
+│   ├── Core/                          # pure logic · imports nothing · tests run on CLI
 │   │   ├── Sources/Core/
-│   │   │   ├── ○ Item.swift ................... Item, ListItem, quantity + unit
-│   │   │   ├── ○ Household.swift .............. Household, Member, InviteToken
-│   │   │   ├── ○ Store.swift .................. Store, AisleOrder
-│   │   │   ├── ○ Money.swift .................. Money, Currency, rounding rules
-│   │   │   ├── ○ PriceObservation.swift ....... observation vs estimate, provenance
-│   │   │   ├── ○ Operation.swift .............. the op-log enum + payloads
-│   │   │   ├── ○ LogicalClock.swift ........... per-device counter
-│   │   │   ├── ★ Merge.swift .................. last-write-wins per field, idempotent add
-│   │   │   └── ○ Identifiers.swift ............ typed UUID wrappers
+│   │   │   ├── Item.swift             # Item, ListItem, quantity + unit
+│   │   │   ├── Kitchen.swift          # Kitchen, Member, InviteToken
+│   │   │   ├── Shop.swift             # Shop, AisleOrder
+│   │   │   ├── Money.swift            # Money, rounding — ~$4.50 never $4.37
+│   │   │   ├── PriceObservation.swift # measured vs estimate, 90-day decay
+│   │   │   ├── Operation.swift        # the op enum: add/check/uncheck/edit/delete/price/shop
+│   │   │   ├── LogicalClock.swift     # per-device counter
+│   │   │   ├── Merge.swift          ★ # LWW per field, idempotent add — the sync brain
+│   │   │   └── Identifiers.swift      # typed UUID wrappers
 │   │   └── Tests/CoreTests/
-│   │       ├── ○ MergeTests.swift
-│   │       ├── ★ ConflictHarnessTests.swift ... two devices, offline edits, reconnect
-│   │       ├── ○ LogicalClockTests.swift
-│   │       └── ○ MoneyTests.swift
+│   │       ├── ConflictHarnessTests ★ # two devices, offline edits, reconnect — test #1
+│   │       ├── MergeTests · LogicalClockTests · MoneyTests
 │   │
-│   ├── Catalog/ ────────────── the resolver · pure · heavily tested
+│   ├── Catalog/                       # the owned IP
 │   │   ├── Sources/Catalog/
-│   │   │   ├── ○ CatalogDatabase.swift ........ read-only open of catalog.db
-│   │   │   ├── ★ Resolver.swift ............... query → item, the ranked cascade
-│   │   │   ├── ○ Normalizer.swift ............. case, articles, plurals, qualifiers
-│   │   │   ├── ○ QuantityParser.swift ......... "2 lb chicken" → qty, unit, name
-│   │   │   ├── ○ EditDistance.swift ........... bounded, for typos
-│   │   │   ├── ○ PriceSeed.swift .............. region multiplier + rounding
-│   │   │   └── Resources/
-│   │   │       └── ○ catalog.db ............... 200 KB, from data/catalog/
+│   │   │   ├── CatalogDatabase.swift  # read-only open of the bundled db
+│   │   │   ├── Resolver.swift         # query → item, ranked cascade
+│   │   │   ├── Normalizer.swift       # case, articles, singularise, qualifiers
+│   │   │   ├── QuantityParser.swift   # "2 lb chicken" → qty, unit, name
+│   │   │   ├── EditDistance.swift     # typos = mis-transcriptions, same fix
+│   │   │   ├── PriceSeed.swift        # 414 × 8 regions, hard rounding
+│   │   │   └── Resources/catalog.db   # 200 KB, built by data/catalog/build.mjs
 │   │   └── Tests/CatalogTests/
-│   │       ├── ★ ResolverTests.swift .......... the existing 23 cases, ported
-│   │       ├── ○ QuantityParserTests.swift
-│   │       ├── ○ NormalizerTests.swift
-│   │       └── ○ PriceSeedTests.swift ......... asserts $0.50 / $1 rounding
+│   │       ├── ResolverTests          # the 23 golden cases, ported
+│   │       ├── QuantityParserTests · NormalizerTests · PriceSeedTests
 │   │
-│   ├── Data/ ───────────────── GRDB · App Group · sync
+│   ├── Data/                          # persistence + sync
 │   │   ├── Sources/Data/
-│   │   │   ├── ★ AppDatabase.swift ............ DatabasePool, App Group URL, WAL
-│   │   │   ├── ○ Migrations.swift ............. forward-only, versioned
-│   │   │   ├── ○ Observed.swift ............... ValueObservation → @Observable (~40 lines)
-│   │   │   ├── ★ Repository.swift ............. the ONLY read/write surface above SQL
-│   │   │   ├── Records/
-│   │   │   │   ├── ○ ListRecord.swift
-│   │   │   │   ├── ○ ListItemRecord.swift
-│   │   │   │   ├── ○ HouseholdRecord.swift
-│   │   │   │   ├── ○ StoreRecord.swift
-│   │   │   │   ├── ○ PriceRecord.swift
-│   │   │   │   └── ○ OpRecord.swift
+│   │   │   ├── AppDatabase.swift      # DatabasePool, App Group URL, WAL
+│   │   │   ├── Migrations.swift       # forward-only, versioned
+│   │   │   ├── Observed.swift         # ValueObservation → @Observable, ~40 lines
+│   │   │   ├── Repository.swift     ★ # the ONLY file that writes SQL
+│   │   │   ├── Records/               # ListItem · Kitchen · Shop · Price · Receipt · Op
 │   │   │   └── Sync/
-│   │   │       ├── ★ SyncEngine.swift ......... actor: drain, retry, backoff
-│   │   │       ├── ○ SyncTransport.swift ...... protocol + SupabaseTransport
-│   │   │       └── ○ DeviceIdentity.swift ..... anonymous UUID, upgradeable
+│   │   │       ├── SyncEngine.swift   # actor — drain, retry, backoff
+│   │   │       ├── SyncTransport.swift# protocol + SupabaseTransport
+│   │   │       └── DeviceIdentity.swift
 │   │   └── Tests/DataTests/
-│   │       ├── ○ MigrationTests.swift ......... each against a prior-release fixture
-│   │       ├── ○ RepositoryTests.swift
-│   │       └── ○ SyncEngineTests.swift ........ against a fake transport
+│   │       ├── MigrationTests · RepositoryTests · SyncEngineTests (fake transport)
 │   │
-│   └── DesignKit/ ──────────── tokens + primitives · zero feature code
+│   └── DesignKit/                     # tokens + shared components · zero feature code
 │       ├── Sources/DesignKit/
-│       │   ├── ○ Palette.swift ................ paper, card, ink, muted, line, persimmon
-│       │   ├── ○ Typography.swift ............. scale + Dynamic Type mapping
-│       │   ├── ○ Motion.swift ................. durations, springs, Reduce Motion paths
-│       │   ├── ○ Haptics.swift ................ the event → pattern map
-│       │   ├── ○ Sound.swift .................. two sounds, ambient session, silent switch
-│       │   ├── Components/
-│       │   │   ├── ★ ItemRow.swift ............ the most-seen view in the app
-│       │   │   ├── ○ QuantityChip.swift ....... ⚠ placement still undecided
-│       │   │   ├── ○ PriceLabel.swift ......... estimate vs observed rendering
-│       │   │   ├── ○ SectionHeader.swift
-│       │   │   ├── ○ TotalBar.swift
-│       │   │   └── ○ EmptyState.swift
-│       │   └── Resources/
-│       │       ├── ○ Sounds/check.caf ......... must survive 40 repetitions
-│       │       ├── ○ Sounds/complete.caf
-│       │       └── ○ Colors.xcassets
+│       │   ├── Palette.swift          # paper, ink, persimmon, confirmed, aisle tints
+│       │   ├── Typography.swift       # system sans; prices = mono tabular
+│       │   ├── Motion.swift           # 150–250ms, spring, interruptible, Reduce Motion
+│       │   ├── Haptics.swift          # event → pattern map
+│       │   ├── Sound.swift            # the two sounds, ambient session, silent switch
+│       │   ├── Glyphs.swift           # line-icon set: 22 categories + top items
+│       │   ├── Components/            # ItemRow · PriceLabel · AisleHeader · TotalBar
+│       │   │                          #   · InputBar · TabPill · EmptyState
+│       │   └── Resources/             # check.caf · complete.caf · Glyphs · Colors
 │       └── Tests/DesignKitTests/
-│           └── ○ SnapshotTests.swift .......... light, dark, largest Dynamic Type
+│           └── SnapshotTests          # ONE style · default + largest Dynamic Type
 │
-├── App/ ──────────────────────── feature-first: change is local to a screen
-│   ├── ○ BaggedApp.swift .................. @main, environment wiring, bootstrap
-│   ├── ○ RootView.swift
-│   ├── ○ Route.swift ...................... the navigation enum
-│   ├── ○ Sheet.swift ...................... the sheet enum — never loose booleans
-│   ├── ○ EnvironmentValues+.swift ......... @Entry keys for the stores
+├── App/
+│   ├── BaggedApp.swift                # @main, environment wiring, db bootstrap
+│   ├── RootView.swift                 # TabView: List · Prices · You, + capture button
+│   ├── Route.swift · Sheet.swift      # the two navigation enums — all of navigation
+│   ├── Environment+.swift             # @Entry keys for the three stores
 │   │
-│   ├── Features/List/
-│   │   ├── ★ ListScreen.swift ............. the app, essentially
-│   │   ├── ★ ListStore.swift .............. the core @Observable store
-│   │   ├── ★ AddField.swift ............... the ≤2-tap add path
-│   │   ├── ○ AutocompleteResults.swift .... personal → household → catalog
-│   │   ├── ○ ItemDetailSheet.swift ........ quantity, note, price
-│   │   └── ○ CheckOffAnimation.swift ...... strike, desaturate, sink
+│   ├── Features/
+│   │   ├── List/                      # tab 1 — the product
+│   │   │   ├── ListScreen.swift       # aisles, subtotals, NO PRICE YET, COMPLETED(n)
+│   │   │   ├── ListStore.swift      ★ # the core store
+│   │   │   ├── AddItemSheet.swift     # autocomplete + hold-to-speak
+│   │   │   ├── ItemDetailSheet.swift  # qty, note, set-what-you-paid
+│   │   │   ├── AisleOrderEditor.swift # drag to reorder, per shop
+│   │   │   └── ShopSwitcherSheet.swift
+│   │   │
+│   │   ├── Capture/                   # the + — the engine
+│   │   │   ├── CaptureSession.swift   # per-flow @Observable
+│   │   │   ├── CaptureChooserSheet.swift
+│   │   │   ├── ReceiptCameraScreen.swift
+│   │   │   ├── ReceiptReviewScreen.swift   # nothing commits unreviewed
+│   │   │   ├── LineResolverScreen.swift    # matched once, remembered forever
+│   │   │   ├── CaptureResultScreen.swift   # "6 prices are now real"
+│   │   │   ├── EnterByHandScreen.swift     # no camera, no signal
+│   │   │   ├── BarcodeScanScreen.swift
+│   │   │   └── FirstReceiptSheet.swift     # the aha, once
+│   │   │
+│   │   ├── Prices/                    # tab 2 — the differentiator
+│   │   │   ├── PricesScreen.swift     # the price book
+│   │   │   ├── PriceStore.swift
+│   │   │   ├── PriceHistoryScreen.swift    # per store, dated, deltas
+│   │   │   └── MonthSpendScreen.swift      # Δ vs your usual, ink never red
+│   │   │
+│   │   ├── Kitchen/                   # sharing — the growth loop
+│   │   │   ├── KitchenScreen.swift    # members + activity
+│   │   │   ├── InviteSheet.swift      # link + QR; new link revokes old
+│   │   │   ├── JoinScreen.swift       # guests: no account, ever
+│   │   │   ├── NameKitchenSheet.swift # contextual — appears at first invite
+│   │   │   └── SignInScreen.swift     # owners only
+│   │   │
+│   │   ├── Places/
+│   │   │   ├── PlacesScreen.swift     # shops, wake-up radius
+│   │   │   ├── ShopEditorScreen.swift # pin + radius + aisle order
+│   │   │   └── FirstShopSheet.swift   # contextual — first switcher use
+│   │   │
+│   │   └── You/                       # tab 3
+│   │       ├── SetupScreen.swift
+│   │       ├── DataPrivacyScreen.swift# everything held, and where · CSV export
+│   │       ├── AboutScreen.swift
+│   │       ├── WhyItWorksThisWay.swift# the ADHD page — rationale, no health claims
+│   │       ├── PaywallScreen.swift    # $2.99/mo · $29.99/yr · zero dark patterns
+│   │       └── SubscriptionStore.swift
 │   │
-│   ├── Features/Stores/
-│   │   ├── ○ StorePickerScreen.swift
-│   │   └── ○ AisleOrderEditor.swift ....... drag to reorder, per store
-│   │
-│   ├── Features/Household/
-│   │   ├── ○ ShareListSheet.swift ......... invite link generation
-│   │   ├── ○ JoinListScreen.swift ......... no-account join
-│   │   └── ○ MembersScreen.swift
-│   │
-│   ├── Features/Prices/
-│   │   ├── ○ PriceEditorSheet.swift
-│   │   └── ○ PriceHistoryScreen.swift
-│   │
-│   ├── Features/Capture/
-│   │   ├── ○ VoiceAddButton.swift ......... on-device, $0
-│   │   ├── ○ BarcodeScanScreen.swift
-│   │   ├── ○ PhotoImportScreen.swift ...... Vision first, Claude fallback
-│   │   └── ○ ReceiptScanScreen.swift ...... the one real Claude feature
-│   │
-│   ├── Features/Paywall/
-│   │   ├── ○ PaywallScreen.swift .......... price, period, trial visible — not behind a link
-│   │   └── ○ SubscriptionStore.swift
-│   │
-│   ├── Features/Settings/
-│   │   ├── ○ SettingsScreen.swift
-│   │   ├── ○ SoundHapticsSettings.swift
-│   │   └── ○ WhyItWorksThisWay.swift ...... the ADHD page — rationale, no health claims
-│   │
-│   └── Services/
-│       ├── ○ SpeechService.swift .......... SFSpeechRecognizer, on-device flag
-│       ├── ○ VisionService.swift .......... text + barcode recognition
-│       ├── ○ FoundationModelsService.swift  availability-gated, iOS 26+
-│       └── ○ AIClient.swift ............... protocol + ClaudeClient, URLSession, no SDK
+│   └── Services/                      # thin wrappers returning plain values
+│       ├── SpeechService.swift        # on-device only, requiresOnDeviceRecognition
+│       ├── VisionService.swift        # barcode + printed text
+│       ├── LocationService.swift      # geofences, on-device, never uploaded
+│       ├── ScanClient.swift           # calls scan-receipt Edge Function — NO AI key in app
+│       ├── FoundationModelsService.swift  # iOS 26+, availability-gated
+│       └── CSVExporter.swift
 │
-├── Widget/ ───────────────────── separate process · cannot run app code
-│   ├── ○ BaggedWidget.swift ............... @main widget bundle
-│   ├── ○ ListWidgetView.swift ............. lock screen + home screen
-│   ├── ○ WidgetProvider.swift ............. timeline, reads Repository directly
-│   └── ★ ToggleItemIntent.swift ........... the tappable checkbox
+├── Widget/                            # own process — reads db, never stores
+│   ├── BaggedWidget.swift · ListWidgetView.swift
+│   ├── WidgetProvider.swift           # timeline via Repository
+│   └── ToggleItemIntent.swift         # the tappable lock-screen checkbox → op-log
 │
-└── Intents/ ──────────────────── the `reminders` App Schema cluster
-    ├── Entities/
-    │   ├── ○ ListEntity.swift ............. @AppEntity(schema: .reminders.list)
-    │   ├── ○ ItemEntity.swift ............. @AppEntity(schema: .reminders.reminder)
-    │   └── ○ SectionEntity.swift .......... @AppEntity(schema: .reminders.section)
-    ├── ○ CreateListIntent.swift
-    ├── ★ CreateReminderIntent.swift ....... "Hey Siri, add milk"
-    ├── ○ UpdateReminderIntent.swift ....... check off, edit
-    ├── ○ DeleteRemindersIntent.swift
-    ├── ○ SectionIntents.swift ............. create + update — the aisle groups
-    └── ○ BaggedShortcuts.swift ............ AppShortcutsProvider
+├── Intents/                           # Siri · Shortcuts · Action Button · Control Center
+│   ├── Entities/                      # ListEntity · ItemEntity · SectionEntity
+│   ├── CreateReminderIntent.swift     # "add milk"        (.reminders schema)
+│   ├── UpdateReminderIntent.swift     # check off, edit
+│   ├── DeleteRemindersIntent.swift
+│   ├── SectionIntents.swift           # aisle groups
+│   └── BaggedShortcuts.swift          # ⚠️ whole cluster or Xcode fails the build
+│
+└── supabase/                          # the entire backend
+    ├── migrations/
+    │   ├── 0001_schema.sql            # kitchen · member · invite · op · entitlement
+    │   └── 0002_rls.sql             ★ # membership isolation — THE security model
+    ├── functions/
+    │   ├── scan-receipt/index.ts      # entitlement + quota → Claude → line items
+    │   ├── join-kitchen/index.ts      # invite token → anonymous member
+    │   └── revenuecat-webhook/index.ts
+    └── tests/rls.test.sql             # kitchen A cannot read kitchen B — proven
 ```
 
----
+**~120 files total** — ~95 Swift sources, 12 test files, 5 resource bundles, 6 backend files —
+covering 28 surfaces, the widget, the full Siri cluster, and the backend. States (empty ·
+offline · scan failed · primers) are view states inside their screens, not files.
 
-## 3. How to read this shape
+## Where a change lands
 
-**Packages are layer-first; `App/Features/` is feature-first.** That looks inconsistent and isn't.
-All three targets link the packages, so a feature-first package would mean the widget importing a
-feature module just to read a row. Inside the app, change is local to a screen, so features win.
-
-**Four boundaries carry all the weight:**
-
-| Boundary | Rule | What breaks if ignored |
-|---|---|---|
-| `Core` / `Catalog` import nothing | Pure Swift, runs on the command line | The expensive-to-get-wrong logic becomes untestable without a simulator |
-| `Repository` is the only SQL | One file writes queries | Sync bugs spread across the codebase |
-| `Widget` links packages, never `App` | Separate process | Build failures, or worse, a widget that needs the app running |
-| `DesignKit` has no feature code | Tokens only | `INTERACTION.md` has nowhere single to land |
-
-**The App Group is the load-bearing detail.** All three targets open the *same* SQLite file, so:
-only the app runs migrations; the widget checks the schema version and renders last-known state on
-mismatch; every intent write goes through `Repository` so it produces a valid op-log entry.
-
----
-
-## 4. Counts
-
-| | Files |
+| Change | Touches |
 |---|---|
-| Repository today | **25** |
-| `Packages/` planned | ~48 |
-| `App/` planned | ~28 |
-| `Widget/` + `Intents/` planned | ~14 |
-| **App total, planned** | **~90** |
+| New synonym / catalog item | `data/catalog/` (repo) → rebuilt `catalog.db` |
+| A sync bug | `Core/Merge.swift` or `Data/Sync/` — nowhere else |
+| A new screen | Its feature folder + `Route.swift` |
+| Anything visual | `DesignKit` only — widget inherits it free |
+| Price rules | `Core/Money.swift` + `Catalog/PriceSeed.swift` |
+| Paywall / gating | `SubscriptionStore` + `supabase/functions/` |
 
-Roughly a third is tests, and that ratio is deliberate — `Core`, `Catalog` and `Data` hold the
-logic where a bug costs a household their list.
+## The repo around it (planning corpus, already built)
 
----
-
-## 5. Build order
-
-1. **`Core` + `Catalog`** — the resolver's 23 cases and the conflict harness. **No Xcode signing,
-   no simulator, no Apple approvals. Can start today.**
-2. **`Data` + App Group** — forces the shared-database decision while it's cheap
-3. **RLS policies + `SyncEngine`**, tested with two accounts, before any screen exists
-4. **`DesignKit`**, then `Features/List`
-5. **`Widget/`** — proves the App Group layout in practice
-6. **`Services/`** speech and Vision — small, off the critical path
-7. **`Intents/`** — the largest native piece; Xcode enforces cluster completeness
-8. **`Features/Paywall`** — after the Paid Applications Agreement clears
-9. **Foundation Models** — availability-gated, genuinely optional
+```
+Shopping-List-App/
+├── PRODUCT.md ★ the final word     ├── data/catalog/   414 items + resolver, 23 tests ✓
+├── ARCHITECTURE.md  this plan      ├── design/app/     29 final screen renders
+├── DECISIONS.md · docs/V1_SCOPE.md ├── design/references/  28 × top-3 Mobbin refs
+├── STACK · ENGINEERING · OPS       ├── design/concepts/    6 HTML directions
+├── INTERACTION · BRAND · NAMING    ├── research/       competitors · store · tiimo
+└── PLAN · MARKET · VALIDATION      └── Figma 138:978   the canonical 31 frames
+```
