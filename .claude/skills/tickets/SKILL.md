@@ -1,9 +1,9 @@
 ---
 name: tickets
-description: Ticket board for the Otto cloud↔terminal handoff loop. Use to list open TERMINAL_TICKET_*.md tickets, pick one up, execute it, and write status back so the other session (Claude Code cloud or this terminal) can pull and continue. Invoke as /tickets [list|<name>|done <name>].
+description: Ticket board for the Bagged cloud↔terminal handoff loop. Use to list open TERMINAL_TICKET_*.md tickets, pick one up, execute it, and write status back so the other session (Claude Code cloud or this terminal) can pull and continue. Invoke as /tickets [list|<name>|done <name>].
 ---
 
-# Otto ticket board — cloud ↔ terminal loop
+# Bagged ticket board — cloud ↔ terminal loop
 
 Tickets live in `docs/TERMINAL_TICKET_*.md` (+ `docs/TICKET_SESSION_HANDOFF.md` as the
 running handoff). **Git is the channel**: the cloud session and this terminal both push to

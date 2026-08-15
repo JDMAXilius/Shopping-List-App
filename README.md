@@ -101,10 +101,9 @@ Figma             16 directions across two files — see docs/FIGMA_FILE_MAP.md
 
 ## ⚠️ Known issues
 
-- **`.claude/skills/otto-lead/` targets a different app.** It says *"you are the design+build lead
-  for Otto (Expo RN recipe app, this repo)"* — false here, and it references a TypeScript/Expo
-  stack we decided against. `engine-porter`, `verifier` and `ui-systems` assume the same. Retarget
-  or remove before anyone invokes them
+- ~~Crew targeted the old Otto app~~ — **resolved:** the agent crew (`.claude/agents/`) and the
+  lead skill (`bagged-lead`) are retargeted to Bagged's Swift architecture; execution plan in
+  `docs/WAVES.md`
 - ~~Two Figma files, no canonical~~ — **resolved:** page `138:978 · Bagged · Screens app current` is canonical; older pages are quarries
 - ~~`instances: 0`~~ — **resolved:** the new page runs on real component instances + the `F · Tokens` light/dark collection
 - ~~F never seen at 40 items~~ — **resolved:** `01b List · full` exists; F's row height stands (`PRODUCT.md` §2)
