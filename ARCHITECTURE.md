@@ -1,78 +1,79 @@
-# Architecture — SwiftUI, Swift 6, and the complete file plan
+# Architecture — final
 
-The structural decisions and every file that will exist. No code yet.
+**Aligned with `PRODUCT.md` (Aug 2026).** Language, libraries, file layout, backend, frontend,
+code standards. This is the build blueprint; the previous version of this file is superseded —
+one material correction from it is flagged in §7.
 
-**The constraint that shapes all of this:** three surfaces — **app, widget, App Intents** — read
-and write the same data, and **two of them cannot run app code.** A widget renders in its own
-process. An App Intent fires from a locked screen with the app never launched. Any architecture
-that assumes "the app is running" is wrong before it starts.
-
----
-
-## 1. The pattern: Model–View, not MVVM-per-screen
-
-The 2026 consensus advice is *MVVM + Coordinators + DI*. **That advice is written for rotating
-teams on large apps, and following it here would be cargo cult.**
-
-The reasoning is specific rather than contrarian:
-
-- `@Observable` (iOS 17+) already gives precise, access-tracked invalidation. It **modernised**
-  MVVM's plumbing, and in doing so removed most of the reason a ViewModel existed in SwiftUI
-- Our screens are thin. The logic lives in `Core`, `Catalog` and `Data` — where it's testable
-  without a simulator. A ViewModel per screen would mostly forward calls
-- Six screens do not need coordinators. Coordinators solve navigation reuse across dozens of
-  screens; we have a `NavigationStack` and an enum
-
-**What we do instead: `@Observable` stores scoped to a *domain*, not to a screen.**
-
-| Store | Owns | Lives |
-|---|---|---|
-| `ListStore` | The active list, add/check/edit intents, sync status | App-lifetime, `@Environment` |
-| `SubscriptionStore` | Entitlement state, paywall presentation | App-lifetime, `@Environment` |
-| `CaptureStore` | Voice/scan/photo session state | Created per flow |
-
-**Three observable objects, not eight view models.** Views use `@State` for genuinely local UI —
-is the sheet open, what's in the text field — and read stores from the environment.
-
-Where a screen has real async coordination that isn't domain state (the receipt-scan flow), it
-gets a local `@Observable` created with `@State` in that view. That is a ViewModel in all but
-name, used where it earns its place rather than by default.
-
-### Rules that keep this from rotting
-
-- **A View never touches `AppDatabase` or `SyncEngine` directly.** It goes through a store or
-  through `Repository`
-- **Stores hold no business logic.** They coordinate; `Core` and `Catalog` decide
-- **No store is created inside a view body**
-- **If a store exceeds ~200 lines, the logic belongs in a package**, not in a bigger store
+**The constraint that shapes everything:** three surfaces — **app, widget, App Intents** — read
+and write the same data, and two of them cannot run app code. A widget renders in its own
+process; an intent fires from a locked screen with the app never launched. Any architecture that
+assumes "the app is running" is wrong before it starts.
 
 ---
 
-## 2. Concurrency: Swift 6 strict, and the one sharp edge
+## 1. Language, toolchain, dependencies
 
-Strict concurrency on from day one. Retrofitting it onto a codebase with a widget, background
-sync and a shared database is far worse than paying at the start.
+| | Decision |
+|---|---|
+| Language | **Swift 6**, strict concurrency from day one |
+| UI | **SwiftUI**, iOS 18 minimum |
+| Dependencies | **Three:** GRDB.swift · RevenueCat (`purchases-ios`) · supabase-swift |
+| Backend | **Supabase** — Postgres + Auth + Realtime + Edge Functions (Deno/TypeScript) |
+| AI | **Claude API** — called only from an Edge Function, never from the app |
+| Formatting | Xcode's built-in swift-format, default config. No linter dependency |
+| Everything else | System frameworks: Speech, Vision, App Intents, WidgetKit, CoreLocation, StoreKit 2 (under RevenueCat), FoundationModels (availability-gated) |
 
-| Layer | Isolation | Why |
-|---|---|---|
-| `Core`, `Catalog` | `nonisolated`, all `Sendable` value types | Pure logic, callable from anywhere, testable on the command line |
-| `Repository` | `nonisolated`, backed by GRDB's thread-safe `DatabasePool` | GRDB already handles serialisation; wrapping it in an actor would add a hop for nothing |
-| `SyncEngine` | **`actor`** | Genuinely concurrent — network, retries, backoff, a drain loop |
-| Stores, views | `@MainActor` | UI |
-| `ClaudeClient`, `SpeechService`, `VisionService` | `actor` or `@MainActor` per framework requirement | Speech has main-thread requirements; Vision does not |
+**Owned IP, kept clean:** the catalog (414 items, hand-built, no ODbL input), the resolver, the
+glyph set, the price seeds. Open Food Facts is a runtime barcode lookup only, with attribution.
 
-> ⚠️ **The sharp edge, found in research rather than assumed.** Under Swift 6,
-> `withObservationTracking` requires `@Sendable` closures, which blocks capturing non-`Sendable`
-> state — and it fires **once**, needing re-registration. So **observing `@Observable` outside a
-> SwiftUI view is awkward on purpose.**
->
-> **This is why we don't try.** The widget and App Intents don't observe stores; they read the
-> database directly through `Repository`. One less mechanism, and it happens to be the one the
-> language is pushing us toward.
+## 2. Code standards — less is more, enforced
 
----
+- **Comments: one or two lines, only where the code can't say it** — a constraint, an invariant,
+  a why. No file headers, no doc-comment ceremony, no narrating the next line. A file with zero
+  comments is the normal case
+- **No speculative generality.** Two protocols exist in the whole app (`SyncTransport`,
+  `ScanBackend`) because both need a fake in tests. Nothing else gets a protocol, a generic, or
+  a configuration point until a second concrete use exists
+- **A store over ~200 lines means logic is in the wrong layer** — move it to a package
+- **No dead code, no `// TODO` older than a week, no commented-out blocks.** Delete; git remembers
+- Value types and `let` by default; force-unwraps never; `guard` early-exit shape
+- Files named for the one thing they contain; if the name needs "And", split it
 
-## 3. Data flow — one direction, one mechanism
+## 3. The pattern — Model–View with domain stores
+
+MVVM-per-screen, coordinators and DI containers are rejected — that advice is for rotating teams
+on large apps. `@Observable` already gives precise invalidation; our screens are thin; the logic
+lives in packages where it's testable without a simulator.
+
+**Three app-lifetime `@Observable` stores, scoped to domains, injected via `@Environment`:**
+
+| Store | Owns |
+|---|---|
+| `ListStore` | The list, add/check/edit intents, shops + aisle order, kitchen membership, sync status |
+| `PriceStore` | The price book, month/spend aggregates, receipt index |
+| `SubscriptionStore` | Entitlement, scan quota, paywall presentation |
+
+Plus one **per-flow** `@Observable`: `CaptureSession`, created with `@State` when a capture
+starts, dead when it ends. Views use `@State` for genuinely local UI only.
+
+Rules: a View never touches `AppDatabase`/`SyncEngine` directly · stores coordinate, packages
+decide · no store created in a view body.
+
+## 4. Concurrency — Swift 6 strict
+
+| Layer | Isolation |
+|---|---|
+| `Core`, `Catalog` | `nonisolated`, all `Sendable` value types — pure logic, CLI-testable |
+| `Repository` | `nonisolated` over GRDB's thread-safe `DatabasePool` |
+| `SyncEngine` | `actor` — drain loop, retries, backoff |
+| Stores, views | `@MainActor` |
+| `SpeechService`, `VisionService`, `LocationService` | per framework requirement |
+
+The sharp edge that shapes the design: under Swift 6, observing `@Observable` outside SwiftUI is
+deliberately awkward (`withObservationTracking` is `@Sendable`, fires once). **So the widget and
+intents never observe stores — they read the database through `Repository`.** One mechanism.
+
+## 5. Data flow — one direction
 
 ```
         ┌──────────── SQLite (App Group container) ────────────┐
@@ -81,264 +82,185 @@ sync and a shared database is far worse than paying at the start.
         ▲                                                       │
         └───────────── write op ◄── Store ◄── user action ◄─────┘
                             │
-                            ▼
-                     op_log table
-                            │
-                     SyncEngine (actor)
-                            │
-                     Supabase (peer, never the read path)
+                     op_log table ──► SyncEngine (actor) ──► Supabase (peer,
+                                                             never the read path)
 ```
 
-- **The database is the single source of truth.** Not a store, not a cache, not the server
-- **Every user action writes an op**, and the op-log write is what updates the UI — via
-  `ValueObservation`, not by the store mutating its own state. **The UI shows what's in the
-  database, always**
-- **`Observed<T>` is ~40 lines we own**, bridging `ValueObservation` to `@Observable`. Not
-  `GRDBQuery` — a hand-rolled bridge serves all three surfaces with one mechanism, and the widget
-  needs plain reads anyway
-- **Sync is invisible.** No spinners, no error alerts. A quiet `SyncStatus` for the rare case
-  where something is genuinely stuck
+- **SQLite is the single source of truth.** Every user action writes an op; the op-log write is
+  what updates the UI via `ValueObservation`. The UI shows what's in the database, always
+- `Observed<T>` is ~40 lines we own, bridging `ValueObservation` → `@Observable`
+- Op-log: `add / check / uncheck / edit / delete / price / shop`, client UUIDs, logical clock,
+  last-write-wins per field, `add` idempotent on normalized name. **Not a CRDT** — a list is a
+  set, not a sequence
+- Sync is invisible: no spinners, no alerts, one quiet `SyncStatus`
 
----
+## 6. Navigation — deliberately boring
 
-## 4. Navigation and dependencies — deliberately boring
+- `TabView` with three roots — **List · Prices · You** — plus the capture `+` overlaid
+- One `Route` enum + one `NavigationStack` per tab; one `Sheet` enum per screen that presents
+- **Onboarding is contextual sheets, not a wizard** (`PRODUCT.md` §5): first shop → first
+  switcher use · kitchen name → first invite · sign-in → owners only · primers → at the moment
+  of permission
+- DI is `@Environment` + `@Entry`. No container, no router object
 
-- **One `Route` enum**, one `NavigationStack`, one `navigationDestination`. No coordinator, no
-  router object
-- **Sheets are an `activeSheet: Sheet?` enum in `@State`** — never a pile of booleans
-- **DI is `@Environment` with the `@Entry` macro** (iOS 18). No container, no resolver, no
-  service locator
-- **Protocols only where we actually swap an implementation** — `SyncTransport` and `AIClient`,
-  because both need a fake in tests. Nothing else gets a protocol "for testability"
+## 7. Backend — Supabase, and the one correction
 
----
+> ⚠️ **Correction to the previous plan:** it placed `ClaudeClient` in the app. That ships the
+> Anthropic API key inside a public binary. **The Claude API is called only from a Supabase Edge
+> Function.** The app holds no AI credentials, ever.
 
-## 5. The file plan
+### Schema (Postgres)
 
-~80 files. Every one has a reason; anything that isn't here is a `no` until argued for.
+```sql
+kitchen   (id uuid pk, name text, created_at timestamptz)
+member    (kitchen_id fk, user_id uuid, role text check (role in ('owner','guest')),
+           joined_at, pk (kitchen_id, user_id))
+invite    (kitchen_id fk, token text unique, created_at, revoked_at timestamptz)
+op        (id uuid pk, kitchen_id fk, device_id uuid, clock bigint, type text,
+           payload jsonb, created_at)                      -- THE sync table
+entitlement (user_id pk, is_plus bool, scans_used int default 0, updated_at)
+```
 
-### Packages — layer-first, because all three surfaces link them
+- **The op-log is the whole sync protocol.** Clients push ops, subscribe to Realtime inserts on
+  `op` for their kitchen, and replay. The server materializes nothing; conflict resolution is
+  client-side (`Core/Merge.swift`), so server logic stays near zero
+- Price observations sync as `price` ops — the price book is kitchen-shared
+- **Never on the server:** receipt photos (kept on device — it's printed on the Data & privacy
+  screen), locations (geofences evaluated on-device), voice audio (never leaves the phone)
+
+### RLS — the entire security model
+
+Every table: `kitchen_id in (select kitchen_id from member where user_id = auth.uid())`.
+Owners authenticate (Sign in with Apple / email); **guests get anonymous Supabase auth sessions**
+bound by the invite flow — no account, full membership. A new invite token revokes the old one's
+future joins. **Policies are written and proven with two real accounts before any UI exists** —
+get this wrong and lists leak between families.
+
+### Edge Functions (three, small)
+
+| Function | Does |
+|---|---|
+| `scan-receipt` | Verify JWT → check `entitlement` (Plus, or `scans_used < 3`, increment) → call Claude with the receipt image + fixed JSON schema (structured outputs; prompt-cached prefix) → return line items. Stateless; image never stored |
+| `join-kitchen` | Validate invite token not revoked → create anonymous session → insert `member` |
+| `revenuecat-webhook` | RevenueCat server event → upsert `entitlement` |
+
+Receipt model: start on **Opus 5** in beta for the accuracy baseline, measure per-line accuracy,
+step down to **Haiku 4.5** (~$0.22/subscriber/yr) if it holds; Batch API is not applicable — the
+user is waiting on the parse. Entitlement is also cached client-side so the paywall state
+survives offline; never lock a user out of their own list.
+
+## 8. The file plan
+
+Layer-first packages (all three surfaces link them), feature-first app folder (change stays
+local to a screen). Anything not listed is a **no** until argued for.
 
 ```
-Packages/Core/Sources/Core/
-  Item.swift                  Item, ListItem, quantity + unit
-  Household.swift             Household, Member, InviteToken
-  Store.swift                 Store, AisleOrder
-  Money.swift                 Money, Currency, rounding rules
-  PriceObservation.swift      observation vs estimate, provenance
-  Operation.swift             the op-log enum + payloads
-  LogicalClock.swift          per-device counter
-  Merge.swift                 last-write-wins per field, idempotent add
-  Identifiers.swift           typed UUID wrappers — no bare UUIDs crossing APIs
-
+Packages/Core/Sources/Core/           # imports nothing, runs on CLI
+  Item.swift  Kitchen.swift  Shop.swift  Money.swift  PriceObservation.swift
+  Operation.swift  LogicalClock.swift  Merge.swift  Identifiers.swift
 Packages/Core/Tests/CoreTests/
-  MergeTests.swift
-  ConflictHarnessTests.swift  ★ two devices, offline edits, reconnect
-  LogicalClockTests.swift
-  MoneyTests.swift
-```
+  MergeTests.swift  ConflictHarnessTests.swift  ★  LogicalClockTests.swift  MoneyTests.swift
 
-```
 Packages/Catalog/Sources/Catalog/
-  CatalogDatabase.swift       read-only open of the bundled catalog.db
-  Resolver.swift              query → item, the ranked cascade
-  Normalizer.swift            case, articles, singularisation, qualifiers
-  QuantityParser.swift        "2 lb chicken breast" → qty, unit, name
-  EditDistance.swift          bounded, for typos and mis-transcriptions
-  PriceSeed.swift             region multiplier + the rounding rules
-  Resources/catalog.db        200 KB, built by data/catalog/build.mjs
-
+  CatalogDatabase.swift  Resolver.swift  Normalizer.swift  QuantityParser.swift
+  EditDistance.swift  PriceSeed.swift  Resources/catalog.db
 Packages/Catalog/Tests/CatalogTests/
-  ResolverTests.swift         the existing 23 cases, ported
-  QuantityParserTests.swift
-  NormalizerTests.swift
-  PriceSeedTests.swift        asserts the $0.50 / $1 rounding
-```
+  ResolverTests.swift (the 23 cases)  QuantityParserTests.swift  NormalizerTests.swift  PriceSeedTests.swift
 
-```
 Packages/Data/Sources/Data/
-  AppDatabase.swift           DatabasePool, App Group URL, WAL, pragmas
-  Migrations.swift            DatabaseMigrator, forward-only, versioned
-  Observed.swift              ValueObservation → @Observable bridge
-  Repository.swift            the ONLY read/write surface above SQL
-  Records/ListRecord.swift
-  Records/ListItemRecord.swift
-  Records/HouseholdRecord.swift
-  Records/StoreRecord.swift
-  Records/PriceRecord.swift
-  Records/OpRecord.swift
-  Sync/SyncEngine.swift       actor: drain, retry, backoff
-  Sync/SyncTransport.swift    protocol + SupabaseTransport
-  Sync/DeviceIdentity.swift   anonymous UUID, upgradeable to an account
-
+  AppDatabase.swift  Migrations.swift  Observed.swift  Repository.swift   # the ONLY SQL surface
+  Records/ (ListItem, Kitchen, Shop, Price, Receipt, Op)                  # 6 files
+  Sync/SyncEngine.swift  Sync/SyncTransport.swift  Sync/DeviceIdentity.swift
 Packages/Data/Tests/DataTests/
-  MigrationTests.swift        each migration against a prior-release fixture
-  RepositoryTests.swift
-  SyncEngineTests.swift       against a fake transport
-```
+  MigrationTests.swift  RepositoryTests.swift  SyncEngineTests.swift (fake transport)
 
-```
-Packages/DesignKit/Sources/DesignKit/
-  Palette.swift               paper, card, ink, muted, line, persimmon, confirmed
-  Typography.swift            scale, Dynamic Type mapping
-  Motion.swift                durations, springs, Reduce Motion equivalents
-  Haptics.swift               the event → pattern map
-  Sound.swift                 the two sounds, audio session, silent switch
-  Components/ItemRow.swift
-  Components/QuantityChip.swift
-  Components/PriceLabel.swift     estimate vs observed rendering
-  Components/SectionHeader.swift
-  Components/TotalBar.swift
-  Components/EmptyState.swift
-  Resources/Sounds/check.caf
-  Resources/Sounds/complete.caf
-  Resources/Colors.xcassets
-
+Packages/DesignKit/Sources/DesignKit/  # zero feature code; widget shares it
+  Palette.swift  Typography.swift  Motion.swift  Haptics.swift  Sound.swift  Glyphs.swift
+  Components/ (ItemRow, PriceLabel, AisleHeader, TotalBar, InputBar, TabPill, EmptyState)
+  Resources/ (Sounds/check.caf, Sounds/complete.caf, Glyphs.xcassets, Colors.xcassets)
 Packages/DesignKit/Tests/DesignKitTests/
-  SnapshotTests.swift         light, dark, largest Dynamic Type
-```
+  SnapshotTests.swift                  # one style × default + largest Dynamic Type
 
-### App
-
-```
 App/
-  BaggedApp.swift             @main, environment wiring, database bootstrap
-  RootView.swift
-  Route.swift                 the navigation enum
-  Sheet.swift                 the sheet enum
-  EnvironmentValues+.swift    @Entry keys for the stores
-
+  BaggedApp.swift  RootView.swift  Route.swift  Sheet.swift  Environment+.swift
 App/Features/List/
-  ListScreen.swift
-  ListStore.swift             ★ the core store
-  AddField.swift              the ≤2-tap add path
-  AutocompleteResults.swift   personal → household → catalog
-  ItemDetailSheet.swift       quantity, note, price
-  CheckOffAnimation.swift     strike, desaturate, sink
-
-App/Features/Stores/
-  StorePickerScreen.swift
-  AisleOrderEditor.swift      drag to reorder, per store
-
-App/Features/Household/
-  ShareListSheet.swift        invite link generation
-  JoinListScreen.swift        no-account join
-  MembersScreen.swift
-
-App/Features/Prices/
-  PriceEditorSheet.swift
-  PriceHistoryScreen.swift
-
+  ListScreen.swift  ListStore.swift  AddItemSheet.swift  ItemDetailSheet.swift
+  AisleOrderEditor.swift  ShopSwitcherSheet.swift
 App/Features/Capture/
-  VoiceAddButton.swift
-  BarcodeScanScreen.swift
-  PhotoImportScreen.swift     Vision first, Claude fallback
-  ReceiptScanScreen.swift
-
-App/Features/Paywall/
-  PaywallScreen.swift         price, period and trial visible — not behind a link
-  SubscriptionStore.swift
-
-App/Features/Settings/
-  SettingsScreen.swift
-  SoundHapticsSettings.swift
-  WhyItWorksThisWay.swift     the ADHD page — design rationale, no health claims
-
+  CaptureSession.swift  CaptureChooserSheet.swift  ReceiptCameraScreen.swift
+  ReceiptReviewScreen.swift  LineResolverScreen.swift  CaptureResultScreen.swift
+  EnterByHandScreen.swift  BarcodeScanScreen.swift  FirstReceiptSheet.swift
+App/Features/Prices/
+  PricesScreen.swift  PriceStore.swift  PriceHistoryScreen.swift  MonthSpendScreen.swift
+App/Features/Kitchen/
+  KitchenScreen.swift  InviteSheet.swift  JoinScreen.swift  NameKitchenSheet.swift  SignInScreen.swift
+App/Features/Places/
+  PlacesScreen.swift  ShopEditorScreen.swift  FirstShopSheet.swift
+App/Features/You/
+  SetupScreen.swift  DataPrivacyScreen.swift  AboutScreen.swift  WhyItWorksThisWay.swift
+  PaywallScreen.swift  SubscriptionStore.swift
 App/Services/
-  SpeechService.swift         SFSpeechRecognizer, requiresOnDeviceRecognition
-  VisionService.swift         text + barcode recognition
-  FoundationModelsService.swift   availability-gated
-  AIClient.swift              protocol + ClaudeClient — URLSession, no SDK
-```
+  SpeechService.swift        # SFSpeechRecognizer, requiresOnDeviceRecognition = true
+  VisionService.swift        # barcode + printed text
+  LocationService.swift      # geofence registration, arrival events; on-device only
+  ScanClient.swift           # calls the scan-receipt Edge Function; no AI key in app
+  FoundationModelsService.swift  # availability-gated
+  CSVExporter.swift
 
-### Widget and Intents
-
-```
 Widget/
-  BaggedWidget.swift          @main widget bundle
-  ListWidgetView.swift        lock screen + home screen
-  WidgetProvider.swift        timeline, reads Repository directly
-  ToggleItemIntent.swift      AppIntent — the tappable checkbox
-
+  BaggedWidget.swift  ListWidgetView.swift  WidgetProvider.swift  ToggleItemIntent.swift
 Intents/
-  Entities/ListEntity.swift       @AppEntity(schema: .reminders.list)
-  Entities/ItemEntity.swift       @AppEntity(schema: .reminders.reminder)
-  Entities/SectionEntity.swift    @AppEntity(schema: .reminders.section)
-  CreateListIntent.swift
-  CreateReminderIntent.swift      "add milk"
-  UpdateReminderIntent.swift      check off, edit
-  DeleteRemindersIntent.swift
-  SectionIntents.swift            create + update — the aisle groups
-  BaggedShortcuts.swift           AppShortcutsProvider
+  Entities/ (ListEntity, ItemEntity, SectionEntity — @AppEntity, .reminders schema)
+  CreateReminderIntent.swift  UpdateReminderIntent.swift  DeleteRemindersIntent.swift
+  SectionIntents.swift  BaggedShortcuts.swift
+  # ⚠️ Xcode enforces schema-cluster completeness — budget the whole reminders domain
+
+supabase/
+  migrations/0001_schema.sql  0002_rls.sql
+  functions/scan-receipt/index.ts  functions/join-kitchen/index.ts  functions/revenuecat-webhook/index.ts
+  tests/rls.test.sql                # kitchen A cannot read kitchen B — proven, not assumed
 ```
 
-### Why this shape
+~90 files for 28 surfaces + widget + intents + backend. States (empty, offline, scan-failed,
+primers) are view states inside their screens, not separate files.
 
-- **Packages are layer-first** because app, widget and intents all link them. Feature-first
-  packages would mean the widget links a feature module to read a row
-- **`App/Features/` is feature-first** because that's where change is local to a screen
-- **`Core` and `Catalog` import nothing** — not even Foundation types beyond the basics. They're
-  the expensive-to-get-wrong logic, and they run on the command line in milliseconds
-- **`Repository` is the only thing that writes SQL.** One file to audit when sync misbehaves
-- **`DesignKit` has zero feature code** — so `INTERACTION.md` has exactly one place to land, and
-  the widget gets the same tokens as the app for free
+## 9. Integrations
 
----
-
-## 6. Integrations
-
-| Integration | How it plugs in | Notes |
+| Integration | Plugs in at | Rule |
 |---|---|---|
-| **Supabase** | `SupabaseTransport: SyncTransport` in `Data/Sync/` | Nothing above this layer knows Supabase exists. **RLS is the security model — policies written and tested with two accounts before any UI** |
-| **RevenueCat** | `SubscriptionStore` only | Entitlement cached locally so the paywall state survives offline. Never lock a user out of their own list |
-| **Claude API** | `ClaudeClient: AIClient` in `App/Services/` | `URLSession` + `Codable`, no SDK. Batch API for receipts, prompt caching on the fixed schema prefix. **Paid tier only, off the critical path** |
-| **App Intents** | `Intents/` target, `reminders` schema domain | ⚠️ **Xcode enforces cluster completeness at build time** — budget for the whole domain, not one intent |
-| **WidgetKit** | `Widget/` target, App Group | Reads `Repository`; writes go through `ToggleItemIntent` and must produce valid op-log entries or a lock-screen check-off won't sync |
-| **Speech / Vision / FoundationModels** | `App/Services/`, thin wrappers | Each returns a plain Swift value. Nothing above them knows which framework produced it |
-| **StoreKit 2** | Under RevenueCat | Not called directly |
+| Supabase | `SupabaseTransport: SyncTransport` | Nothing above this layer knows Supabase exists |
+| RevenueCat | `SubscriptionStore` only | Entitlement cached; offline users keep their list |
+| Claude | `supabase/functions/scan-receipt` only | Key server-side; app calls `ScanClient` |
+| WidgetKit | Reads `Repository`; writes via `ToggleItemIntent` → op-log | A lock-screen tick must sync like any other op |
+| App Group | All targets open the same SQLite via `AppDatabase` | WAL; only the app migrates — the widget renders last-known state on version mismatch |
+| Speech/Vision/CoreLocation | `App/Services/`, thin wrappers returning plain values | Nothing above them knows which framework answered |
 
-### The App Group is the load-bearing detail
+## 10. Testing — the four that matter
 
-All three targets open **the same SQLite file** in a shared App Group container. Consequences,
-each of which is a real bug if ignored:
+1. **The op-log conflict harness** — two simulated devices, offline edits, reconnect, assert no
+   duplicates and no losses. The highest-value test in the project
+2. **Resolver golden tests** — the 23 ported cases, plus every new synonym added from real use
+3. **RLS tests** against a real Supabase branch — membership isolation proven with two accounts
+4. **Snapshot tests** on DesignKit components — one style, default + largest Dynamic Type
 
-1. **WAL mode, and every process opens through `AppDatabase`.** Never a second connection path
-2. **A migration must not run from the widget.** Only the app migrates; the widget checks the
-   schema version and renders last-known state if it doesn't match
-3. **Intent writes go through `Repository`**, which writes the op, so sync stays correct
-4. **The catalog is read-only and bundled separately** from the writable database — different
-   file, different lifetime
+No UI-test suite at v1; the falsification metrics (`PRODUCT.md` §6) are measured in TestFlight.
 
----
+## 11. Build order — structural risk first
 
-## 7. Build order
+1. **`Core` + `Catalog`** — port the resolver, write Merge + the conflict harness. No signing,
+   no simulator. **Can start today**
+2. **`Data` + App Group** — forces the shared-database decision where the widget bites
+3. **`supabase/` schema + RLS**, proven with two accounts, before any screen
+4. **`DesignKit`**, then **List** (add, check, aisles, prices) — the app exists here
+5. **Capture** (camera → review → resolver → result) + `scan-receipt` function
+6. **Prices** screens — reads over data that already exists
+7. **Widget**, then the **App Intents cluster**
+8. **Kitchen/sharing** (invite, join, realtime), **Places** (geofence)
+9. **Paywall** — after the Paid Applications Agreement clears
 
-Structural risk first, while it's still cheap:
+## 12. Deliberately not doing
 
-1. **`Core` + `Catalog`.** Port the resolver's 23 cases, write the merge rules and the conflict
-   harness. No Xcode signing, no simulator, no Apple approvals — **this can start today**
-2. **`Data` + the App Group.** Forces the shared-database decision immediately, which is where
-   the widget's requirements actually bite
-3. **RLS policies and `SyncEngine`**, tested against two accounts, before any screen exists
-4. **`DesignKit`**, then the list screen — add, check off, aisle grouping, prices
-5. **Widget** — proves the App Group layout in practice
-6. **Speech and Vision** — small, self-contained, off the critical path
-7. **App Intents cluster** — the largest native piece
-8. **Paywall** — after the Paid Applications Agreement clears
-9. **Foundation Models** — availability-gated, genuinely optional
-
-**Steps 1–3 have no dependency on the name, the trademark, the domain or Apple's agreements** —
-they can run in parallel with all the paperwork in `OPS.md` §4.
-
----
-
-## 8. What we are deliberately not doing
-
-- **No TCA.** Powerful, opinionated, and a large dependency plus a learning curve for six screens
-- **No coordinator pattern.** An enum and a `NavigationStack` is enough
-- **No ViewModel per screen.** `@Observable` already does that job
-- **No DI container.** `@Environment` and initialisers
-- **No protocol per type.** Two protocols total, both because a fake is genuinely needed
-- **No generic `NetworkManager` / `APIService`.** Two callers, both specific
-- **No CloudKit sync.** It brings its own conflict semantics and ours are the product
-- **No repository per entity.** One `Repository`
+No TCA · no coordinators · no ViewModel-per-screen · no DI container · no repository-per-entity ·
+no generic `NetworkManager` · no CloudKit (its conflict semantics aren't ours) · no analytics or
+crash SDK · no custom fonts · no third-party UI kit · **no appearance variants — one style** ·
+no AI SDK in the app · no server-side rendering of anything the phone can compute.

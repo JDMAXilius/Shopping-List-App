@@ -41,7 +41,7 @@ needs three.
 
 No dependency, no size, no upgrade risk:
 
-- **SwiftUI** — animation, layout, dark mode, Dynamic Type
+- **SwiftUI** — animation, layout, Dynamic Type
 - **`UIFeedbackGenerator` / Core Haptics** — the haptic map in `INTERACTION.md`
 - **AVFoundation** — the two optional sounds
 - **AVFoundation + Vision** — barcode scanning
@@ -120,7 +120,7 @@ points are in `ARCHITECTURE.md`.** Rules that keep this honest:
   23 existing cases port over directly
 - **The op-log conflict harness is the highest-value test in the project.** Two simulated devices,
   offline edits, reconnect, assert no duplicates and no losses. Sync bugs are what lose households
-- **Snapshot tests on `DesignKit`** — light, dark, largest Dynamic Type
+- **Snapshot tests on `DesignKit`** — one style, default + largest Dynamic Type
 - **XCUITest** for the three flows that must never break: add, check off, and offline→sync
 - **RLS tests against a real Supabase branch**, asserting that household A cannot read household B
 - `swift build` + tests in CI on every push
