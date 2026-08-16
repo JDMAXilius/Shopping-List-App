@@ -20,7 +20,6 @@ struct RootView: View {
         ZStack(alignment: .bottom) {
             Palette.paper.color.ignoresSafeArea()
             content
-                .safeAreaPadding(.bottom, 72)
             TabPill(selection: $tab, onAdd: { presentCapture() })
                 .padding(.bottom, 8)
         }
@@ -56,17 +55,24 @@ struct RootView: View {
                         }
                 }
                 .toolbar(.hidden, for: .tabBar)
+                // Plain padding on the page, not a safe-area inset on the TabView:
+                // TabView hosts pages edge-to-edge and swallows both safeAreaPadding
+                // and safeAreaInset (design/app/01-list.png puts the pill BELOW the
+                // card, never over it).
+                .padding(.bottom, 72)
                 .tag(DesignKit.Tab.list)
                 // Waves 7 and 9 replace these two roots with their own screens.
                 EmptyState(
                     glyph: .other,
                     message: "Your price book fills in as you record what you paid.")
                     .toolbar(.hidden, for: .tabBar)
+                    .safeAreaPadding(.bottom, 72)
                     .tag(DesignKit.Tab.prices)
                 EmptyState(
                     glyph: .household,
                     message: "Your kitchen, sharing and settings live here.")
                     .toolbar(.hidden, for: .tabBar)
+                    .safeAreaPadding(.bottom, 72)
                     .tag(DesignKit.Tab.you)
             }
         } else {
