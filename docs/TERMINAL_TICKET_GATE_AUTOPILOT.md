@@ -521,3 +521,19 @@ scope, building its features is not.
   once with real counts.
 - Parity vs `design/app/04-receipt-review.png` / `05-line-resolver.png` / `06-capture-result.png`
   / `27-first-receipt.png`: layout, wording and chips match the renders.
+
+**2026-08-16 · terminal · T9 continued — the three never-opened wave-5 sheets rendered.**
+- `ListSheetsUITests` (1/1 green): shop switcher (first-shop prompt on a fresh kitchen) →
+  create Tesco → aisle-order editor → item-detail sheet from the row's context menu.
+  Screenshots `design/built/19–21`; full suite still green after (127 unit/snapshot + 6 UI).
+- Parity: aisle order matches 03 (today's aisles with counts first, "none today" rest, drag
+  handles, "saved for Tesco only", Done); item detail matches 02 (quantity stepper, unit,
+  note, WHAT YOU PAID beside the ~ estimate, disabled Save, Remove from list); shop sheet
+  shows the contextual first-shop step per 18/24.
+- Finding, not fixed (contract question, logged not decided): catalog gives butter
+  `default_unit: "250 g"`, and the pinned quantity rule renders quantity 1 as
+  "1 250 g" — which reads as *1250 g*. Any unit that starts with a digit collides with the
+  leading count. Options are the catalog's (drop numeric units) or the label's (write ×1
+  before numeric units); both are contract edits.
+> HANDOFF → cloud: rule on the numeric-unit collision above (QuantityText.label vs
+  catalog default_unit vocabulary).
