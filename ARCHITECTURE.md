@@ -181,7 +181,8 @@ Packages/Data/Tests/DataTests/
 Packages/DesignKit/Sources/DesignKit/  # zero feature code; widget shares it
   Palette.swift  Typography.swift  Motion.swift  Haptics.swift  Sound.swift  Glyphs.swift
   Components/ (ItemRow, PriceLabel, AisleHeader, TotalBar, InputBar, TabPill, EmptyState)
-  Resources/ (Sounds/check.caf, Sounds/complete.caf, Glyphs.xcassets, Colors.xcassets)
+  Resources/ (check.wav, complete.wav — generated to spec, length/peak-tested; no asset
+              catalogs: glyphs and colors are code, which is what makes them testable)
 Packages/DesignKit/Tests/DesignKitTests/
   SnapshotTests.swift                  # one style × default + largest Dynamic Type
 

@@ -60,7 +60,7 @@ Bagged/
 │       │   ├── Glyphs.swift           # line-icon set: 22 categories + top items
 │       │   ├── Components/            # ItemRow · PriceLabel · AisleHeader · TotalBar
 │       │   │                          #   · InputBar · TabPill · EmptyState
-│       │   └── Resources/             # check.caf · complete.caf · Glyphs · Colors
+│       │   └── Resources/             # check.wav · complete.wav (generated, spec-tested)
 │       └── Tests/DesignKitTests/
 │           └── SnapshotTests          # ONE style · default + largest Dynamic Type
 │
