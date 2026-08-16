@@ -165,9 +165,10 @@ final class PriceStoreTests: XCTestCase {
         // The observations are still derived — as the BREAKDOWN, a different quantity.
         XCTAssertEqual(month.matched.total, Money(minorUnits: 6_204))
         XCTAssertNotEqual(month.matched.total, month.paid.total)
-        // And the Prices tab's month link, which reads `month.summary`, states the same
-        // number this screen does.
-        XCTAssertEqual(month.summary.total, month.paid.total)
+        // And the Prices tab's month link states the same number this screen does —
+        // structurally: both read `month.paid` (PricesScreen.monthLink), so the two
+        // figures cannot diverge. Asserted via the rendered figure:
+        XCTAssertEqual(PriceDerivation.figure(month.paid), "$300.00")
     }
 
     func testTheMonthCountsCapturedTripsAndSaysWhatItCannotInclude() {

@@ -133,7 +133,7 @@ enum PriceDerivation {
                      names: [ItemID: String], shops: [ShopID: String],
                      catalog: ListCatalog, now: Date) -> (entries: [PriceBookEntry], unnamed: Int) {
         let newest = latest(observations)
-        let listNames = names(of: items)
+        let listNames = PriceDerivation.names(of: items)  // `names` param shadows the helper
         var entries: [PriceBookEntry] = []
         var unnamed = 0
         for (itemID, observation) in newest {
