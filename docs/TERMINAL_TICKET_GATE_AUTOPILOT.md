@@ -113,11 +113,11 @@ Also verify: `shasum Packages/Catalog/Sources/Catalog/Resources/catalog.db` matc
 `data/catalog/catalog.db` (461 items, ~220 KB). A stale bundled db means the app ships a
 different catalog than the one the tests prove.
 
-- [ ] Core green — paste counts
-- [ ] Catalog green, 23/23 goldens — paste counts
-- [ ] Data green, incl. incremental==rebuild + crash-before-mark re-push — paste counts
-- [ ] DesignKit green (Contrast · Glyph · SoundAsset · PriceSemantics · ComponentSemantics)
-- [ ] catalog.db shasum matches
+- [x] Core green — paste counts
+- [x] Catalog green, 23/23 goldens — paste counts
+- [x] Data green, incl. incremental==rebuild + crash-before-mark re-push — paste counts
+- [x] DesignKit green (Contrast · Glyph · SoundAsset · PriceSemantics · ComponentSemantics)
+- [x] catalog.db shasum matches
 
 ### T2 — Create the Xcode project (this unblocks everything below it)
 
@@ -293,3 +293,32 @@ wave-by-wave detail — **read its Log, it has the reasoning behind every ruling
 ## Log
 
 <!-- Append dated entries. Never rewrite above this line. -->
+
+**2026-08-16 · terminal · T0+T1 complete.**
+- T0: Swift 6.2 (swiftlang-6.2.0.19.9, Xcode 26.0.1/17A400), node v22.19.0. `deno` and
+  `supabase` CLI NOT installed and no Homebrew on this Mac — T4 blocked until installed
+  (will retry with standalone installers).
+- Core: built first try, **46 passed, 0 failed** (Merge/ConflictHarness/Identifiers/LogicalClock/Money). Zero fixes needed.
+- Catalog: 23/23 ResolverTests failed at first with `sqlite("unable to open database file")`.
+  Root cause: `schema.sql` set `PRAGMA journal_mode = WAL`; a WAL db can't be opened read-only
+  inside a bundle (needs a writable `-shm`). Changed schema.sql to DELETE journal, rebuilt.
+  Also: `data/catalog/catalog.db` was the stale 414-item build (July 26, with uncheckpointed
+  `-wal` sidecar); rebuilt from catalog.json → 461 items, copied to Resources. Shasums now match:
+  `478d7c707da536508a6ea521df18b6305578a2d0` both copies.
+- The 20 ResolverTests + 2 PriceSeedTests failures after that were the flagged landmine: pinned
+  IDs from the 414 catalog. Regenerated expectations mechanically from `resolve.mjs` against the
+  461 db (scratch script emitted the Swift arrays; no hand-edited values). Top hits unchanged in
+  all 23; one new lower-rank row (`oatcakes`) in `oat`; toilet paper id 369→405. JS reference:
+  **23 passed, 0 failed**. Swift Catalog: **57 passed, 0 failed**.
+- Data: one mechanical fix (`try await database.pool.write` in SyncEngineTests:108 — async
+  overload selection under Swift 6). **29 passed, 0 failed** incl. incremental==rebuild and
+  crash-before-markPushed redelivery.
+- DesignKit: **70 passed, 0 failed** after one ruling. Finding: `ComponentSemanticsTests` was
+  self-contradictory — `testLabelSpeaksTheGapAndThePrompt` pins "Bread, no price yet, tap to set
+  what you paid, not checked" (gap AND prompt) while `testPromptStillOwnsTheSlotWhenItIsOnScreen`
+  pinned the same inputs without "no price yet". The latter's stated purpose is quantity
+  suppression, and the implementation comment ("price phrase … defined once", appended verbatim)
+  matches the former. Ruling: kept the code, fixed the mispinned expectation to include
+  "no price yet". A prompted row speaks gap + prompt.
+- Housekeeping: accidentally committed `Packages/Catalog/.build` in 2b09d7b; untracked and
+  gitignored in 02b749b.

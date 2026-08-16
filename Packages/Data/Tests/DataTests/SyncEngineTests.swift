@@ -105,7 +105,7 @@ final class SyncEngineTests: XCTestCase {
         XCTAssertTrue(try repository.unpushedOps().isEmpty)
 
         // Crash between the push landing and markPushed: pushed_at was never written.
-        try database.pool.write { db in
+        try await database.pool.write { db in
             try db.execute(sql: "UPDATE op SET pushed_at = NULL")
         }
         XCTAssertEqual(try repository.unpushedOps().count, 1)
