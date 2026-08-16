@@ -156,24 +156,40 @@ struct BarcodeScanScreen: View {
         }
     }
 
-    /// A looked-up name is a suggestion and never a fact: it is attributed, it sits above the
-    /// chooser rather than replacing it, and only this button makes it the item.
+    /// A looked-up name is a suggestion and never a fact, and the SHAPE has to say so, not just
+    /// the words: a stranger's guess set in bold under the one persimmon button on screen gets
+    /// tapped because it is there and it is plausible — and a wrong name taught here is permanent
+    /// and kitchen-wide. So it reads as one more option, at body weight, no fill, sitting above
+    /// the chooser it must not outrank. Persimmon stays on the path where the user uses their
+    /// own words, which are never wrong.
     private func suggested(_ name: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionLabel("OPEN FOOD FACTS SAYS")
-            Text(name)
-                .font(.system(.title2, weight: .bold))
-                .foregroundStyle(Palette.ink.color)
             Button {
                 // Exactly what the chooser's own Create does: a name this kitchen was already
                 // taught keeps its item, so two ways in are one history.
                 chosen = session.remembered(name) ?? session.match(itemID: ItemID(), name: name)
                 teaches = true
             } label: {
-                primaryLabel("Use this name")
+                HStack(spacing: 12) {
+                    Text(name)
+                        .font(Typography.itemName)
+                        .foregroundStyle(Palette.ink.color)
+                        .multilineTextAlignment(.leading)
+                    Spacer(minLength: 12)
+                    Text("Use this")
+                        .font(Typography.footnote)
+                        .foregroundStyle(Palette.muted.color)
+                }
+                .padding(14)
+                .frame(minHeight: 56)
+                .contentShape(Rectangle())
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.card.color))
             }
             .buttonStyle(.plain)
-            Text("From the public Open Food Facts database, not from your kitchen — nothing is saved until you say it's right. If it isn't, name it yourself below.")
+            .accessibilityLabel("Use the name \(name), from Open Food Facts")
+            Text("A guess from the public Open Food Facts database, not from your kitchen. Nothing is saved until you say it's right — and if it isn't, name it yourself below.")
                 .font(Typography.footnote)
                 .foregroundStyle(Palette.muted.color)
         }
