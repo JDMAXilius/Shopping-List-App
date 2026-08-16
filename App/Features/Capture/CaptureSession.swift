@@ -210,11 +210,11 @@ final class CaptureSession {
         return line
     }
 
-    // A remembered alias carries an id, not a name, and the catalog can only name what it can
-    // resolve — so an item that is not on the list is shown as the till printed it.
+    // A remembered alias carries an id, not a name. The catalog names it; the list's name, else
+    // the till text, is the fallback for a user-created item the catalog has never heard of.
     private func match(_ itemID: ItemID, fallback: String) -> CaptureMatch {
-        let name = store.rows.first { $0.item.itemID == itemID }?.item.name ?? fallback
-        return CaptureMatch(itemID: itemID, name: name, estimate: catalog.estimate(for: itemID))
+        let listName = store.rows.first { $0.item.itemID == itemID }?.item.name
+        return CaptureMatch(remembered: itemID, fallback: listName ?? fallback, catalog: catalog)
     }
 
     // MARK: - Per-line decisions
