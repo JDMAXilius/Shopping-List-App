@@ -26,8 +26,12 @@ public struct PaidSummary: Hashable, Sendable {
     public let receiptCount: Int
     /// Names the span this covers, worded to read after "in": "July", "the last 7 days".
     public let period: String
+    /// Captured trips whose printed total was never read. They cannot be added — a sum of the
+    /// lines we happened to match is not what the shop charged — so they are named instead.
+    public let unreadCount: Int
 
-    public init(_ receipts: [ReceiptTotal], in period: String, currencyCode: String) {
+    public init(_ receipts: [ReceiptTotal], in period: String, currencyCode: String,
+                unread: Int = 0) {
         var minor = 0
         var currency: String?
         for receipt in receipts {
@@ -37,6 +41,7 @@ public struct PaidSummary: Hashable, Sendable {
         total = Money(minorUnits: minor, currencyCode: currency ?? currencyCode)
         receiptCount = receipts.count
         self.period = period
+        unreadCount = unread
     }
 
     public var hasReceipts: Bool { receiptCount > 0 }
@@ -51,7 +56,13 @@ public struct PaidSummary: Hashable, Sendable {
             return "No receipts captured in \(period), so there is no total to state."
         }
         return "From \(receiptCount) receipt\(receiptCount == 1 ? "" : "s") captured in "
-            + "\(period). A trip you didn't scan isn't in this number."
+            + "\(period). A trip you didn't scan isn't in this number.\(unreadClause)"
+    }
+
+    /// Said out loud, because a silently dropped trip is the same shape of lie as a wrong sum.
+    private var unreadClause: String {
+        guard unreadCount > 0 else { return "" }
+        return " \(unreadCount) more had no total printed on them, so they aren't either."
     }
 
     public var accessibilityPhrase: String {

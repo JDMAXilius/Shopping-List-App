@@ -39,6 +39,9 @@ struct ReceiptRow: Identifiable, Hashable {
     let title: String
     let detail: String
     let total: Money
+    /// False when the till's total was never read: the money shown is then what THIS RECEIPT
+    /// wrote into the price book, which is not what the shop charged.
+    let isPrinted: Bool
 }
 
 struct HistoryEntry: Identifiable, Hashable {
@@ -219,10 +222,14 @@ enum PriceDerivation {
                             currencyCode: String, now: Date, limit: Int = 4) -> [ReceiptRow] {
         receipts.sorted { $0.capturedAt > $1.capturedAt }.prefix(limit).map { receipt in
             let lines = "\(receipt.lineCount) line\(receipt.lineCount == 1 ? "" : "s")"
+            let printed = receipt.totalMinor
+            let detail = "\(recency(receipt.capturedAt, asOf: now)) · \(lines)"
             return ReceiptRow(
                 id: receipt.id, title: shops[receipt.shopID] ?? "A shop",
-                detail: "\(recency(receipt.capturedAt, asOf: now)) · \(lines)",
-                total: Money(minorUnits: receipt.totalMinor, currencyCode: currencyCode))
+                detail: printed == nil ? "\(detail) · total not read" : detail,
+                total: Money(minorUnits: printed ?? receipt.recordedMinor ?? 0,
+                             currencyCode: currencyCode),
+                isPrinted: printed != nil)
         }
     }
 
@@ -314,7 +321,8 @@ enum PriceDerivation {
             calendar.isDate($0.capturedAt, equalTo: now, toGranularity: .month)
         }
         let paid = PaidSummary(totals(thisMonthReceipts, currencyCode: currencyCode),
-                               in: title, currencyCode: currencyCode)
+                               in: title, currencyCode: currencyCode,
+                               unread: unreadTotals(thisMonthReceipts))
 
         let thisMonth = observations.filter {
             calendar.isDate($0.date, equalTo: now, toGranularity: .month)
@@ -350,12 +358,19 @@ enum PriceDerivation {
                 .sorted { $0.paid.total.minorUnits > $1.paid.total.minorUnits })
     }
 
-    /// Receipts hold a bare `totalMinor`; the kitchen's currency is what it is stated in.
+    /// Only a printed total can be spent. A receipt whose total was never read is left OUT —
+    /// summing what we happened to match would understate the month while looking complete.
     private static func totals(_ receipts: [Receipt], currencyCode: String) -> [ReceiptTotal] {
-        receipts.map {
-            ReceiptTotal(printedOnReceipt: Money(minorUnits: $0.totalMinor,
-                                                 currencyCode: currencyCode))
+        receipts.compactMap { receipt in
+            receipt.totalMinor.map {
+                ReceiptTotal(printedOnReceipt: Money(minorUnits: $0, currencyCode: currencyCode))
+            }
         }
+    }
+
+    /// Captured trips whose total was never read, so the screen can say what it left out.
+    static func unreadTotals(_ receipts: [Receipt]) -> Int {
+        receipts.filter { $0.totalMinor == nil }.count
     }
 
     /// How the breakdown relates to the money paid — stated, not left for the user to notice
@@ -434,8 +449,11 @@ enum PriceDerivation {
                   let start = calendar.dateInterval(of: .month, for: receipt.capturedAt)?.start,
                   let months = calendar.dateComponents([.month], from: start, to: now).month,
                   months > 0, months <= 6 else { continue }
+            // Same exclusion as the headline: a month compared day for day must be built the
+            // same way on both sides, or the delta measures the rule and not the spending.
+            guard let printed = receipt.totalMinor else { continue }
             let bucket = buckets[start] ?? (0, 0)
-            buckets[start] = (bucket.total + receipt.totalMinor, bucket.trips + 1)
+            buckets[start] = (bucket.total + printed, bucket.trips + 1)
         }
         guard !buckets.isEmpty else { return nil }
         let usual = buckets.values.reduce(0) { $0 + $1.total } / buckets.count

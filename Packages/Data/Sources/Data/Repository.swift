@@ -247,10 +247,18 @@ public final class Repository: Sendable {
     }
 
     public func receipts() throws -> [Receipt] {
-        try database.pool.read { db in
-            try ReceiptRecord.fetchAll(db, sql: "SELECT * FROM receipt ORDER BY captured_at DESC, id")
-                .map { try $0.receipt() }
-        }
+        try database.pool.read { try Repository.fetchReceipts($0) }
+    }
+
+    /// The month total is made ENTIRELY of these, so a receipt arriving while the screen is open
+    /// has to move the number — re-reading on scene change would leave it quietly too low.
+    @MainActor public func observedReceipts() throws -> Observed<[Receipt]> {
+        Observed(initial: try receipts(), database: database) { try Repository.fetchReceipts($0) }
+    }
+
+    private static func fetchReceipts(_ db: Database) throws -> [Receipt] {
+        try ReceiptRecord.fetchAll(db, sql: "SELECT * FROM receipt ORDER BY captured_at DESC, id")
+            .map { try $0.receipt() }
     }
 
     public func deleteReceipt(_ id: UUID) throws {

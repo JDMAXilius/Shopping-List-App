@@ -366,3 +366,29 @@ final class PriceStoreTests: XCTestCase {
         XCTAssertNil(store.stats.receiptShare)
     }
 }
+
+extension PriceStoreTests {
+    /// The book cached each entry's tier for a whole day, so a price could render in solid ink
+    /// on the book and as an estimate on its own history screen, one tap and one second apart.
+    func testTheBookExpiresWhenAPriceChangesTier_NotAtMidnight() {
+        let now = Date()
+        let aboutToDemote = PriceObservation(
+            itemID: ItemID(), shopID: ShopID(),
+            date: now.addingTimeInterval(-90 * 86_400 + 600),
+            amount: Money(minorUnits: 449), source: .receipt)
+        // Ten minutes away, not midnight: the crossing is what the tier turns on.
+        XCTAssertEqual(PriceStore.expiry([aboutToDemote], after: now).timeIntervalSince(now),
+                       600, accuracy: 1)
+    }
+
+    func testAnAgelessBookStillExpiresAtMidnightSoTodayStopsMeaningYesterday() {
+        let now = Date()
+        let old = PriceObservation(itemID: ItemID(), shopID: ShopID(),
+                                   date: now.addingTimeInterval(-400 * 86_400),
+                                   amount: Money(minorUnits: 449), source: .receipt)
+        // Past 90 days nothing moves again, so midnight is the only thing left that ages.
+        let midnight = Calendar.current.startOfDay(for: now).addingTimeInterval(86_400)
+        XCTAssertEqual(PriceStore.expiry([old], after: now), midnight)
+        XCTAssertEqual(PriceStore.expiry([], after: now), midnight)
+    }
+}
