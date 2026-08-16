@@ -51,6 +51,13 @@ targets:
       - path: App
         excludes:
           - "**/*Tests.swift"
+      # App target, not an extension: the intents call ListDerivation.addPlan and ListCatalog,
+      # which are @MainActor app-target types. An extension would compile a second copy of them.
+      # Schema27 is Apple's .reminders cluster, parked for iOS 27 — see its README.
+      - path: Intents
+        excludes:
+          - "Schema27/**"
+          - "**/*Tests.swift"
     dependencies:
       - package: Core
       - package: Catalog
@@ -138,6 +145,11 @@ targets:
           - "**/*Tests.swift"
         excludes:
           - "UITests/**"
+      - path: Intents
+        includes:
+          - "**/*Tests.swift"
+        excludes:
+          - "Schema27/**"
     dependencies:
       - target: Bagged
       - package: SnapshotTesting

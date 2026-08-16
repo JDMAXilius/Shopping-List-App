@@ -10,9 +10,9 @@ import WidgetKit
 /// The widget's own handle on the App Group database — its own process, so its own pool.
 enum WidgetStore {
     /// Must equal the App Group entitlement on every target and `BaggedApp.appGroupID`.
-    static let appGroupID = "group.app.bagged"
+    static let appGroupID = AppGroup.identifier
     /// Written by `ListStore` under this key; only the App Group can see it.
-    private static let activeShopKey = "bagged.activeShopID"
+    private static let activeShopKey = AppGroup.activeShopKey
 
     /// What this process can honestly do with the file right now — every failure named.
     enum Access {
@@ -68,7 +68,7 @@ enum WidgetStore {
     /// Support directory; this process must not — that is a different file, and always empty.
     static func databaseURL() -> URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?
-            .appending(path: "bagged.sqlite")
+            .appending(path: AppGroup.databaseFile)
     }
 
     /// The shop the app is shopping at: a measured price is that shop's own (`PriceLookup`).

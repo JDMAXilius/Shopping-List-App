@@ -37,10 +37,12 @@ enum IntentRefusal: Error, CustomLocalizedStringResourceConvertible {
 enum IntentVoice {
     /// `shop` is said only when the speaker named one — an unnamed add lands on the shop the app
     /// is already pointed at, and announcing that would be telling someone where they are.
+    /// `shop` is said only when the list actually moved there, because that is a change the
+    /// person needs to know about — the prices they see next are that shop's.
     static func added(_ item: ListItem, merged: Bool, shop: String? = nil) -> String {
-        let at = shop.map { ", for \($0)" } ?? ""
-        return merged ? "\(item.name) is now \(amount(item))\(at)."
-                      : "Added \(described(item))\(at)."
+        let said = merged ? "\(item.name) is now \(amount(item))."
+                          : "Added \(described(item))."
+        return shop.map { "\(said) You're shopping at \($0) now." } ?? said
     }
 
     static func updated(_ item: ListItem, checked: Bool?, renamed: Bool = false,

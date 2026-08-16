@@ -7,7 +7,7 @@ import WidgetKit
 
 @Observable @MainActor
 final class ListStore {
-    private static let activeShopKey = "bagged.activeShopID"
+    private static let activeShopKey = AppGroup.activeShopKey
     private static let historyKey = "bagged.deviceHistory"
 
     private let repository: Repository

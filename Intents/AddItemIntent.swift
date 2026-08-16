@@ -38,6 +38,10 @@ struct AddItemIntent: AppIntent {
     static func add(_ text: String,
                     shop: ShopEntity?) throws -> (entity: ListItemEntity, said: String) {
         let context = try IntentContext.current()
+        // Naming a shop moves the list to it. Filing the row there while the app went on quoting
+        // another shop's prices would be true about the database and misleading about the app.
+        let moved = shop.map { $0.shopID != context.activeShopID } ?? false
+        if let shop, moved { context.switchActiveShop(shop.shopID) }
         let parsed = QuantityParser.parse(text)
         let name = parsed.rest.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { throw IntentRefusal.nothingToAdd }
@@ -55,6 +59,7 @@ struct AddItemIntent: AppIntent {
         guard let row = try context.rows().first(where: { Merge.normalized($0.item.name) == key })
         else { throw IntentRefusal.couldNotWrite }
         return (ListItemEntity(row),
-                IntentVoice.added(row.item, merged: existing != nil, shop: shop?.name))
+                IntentVoice.added(row.item, merged: existing != nil,
+                                  shop: moved ? shop?.name : nil))
     }
 }

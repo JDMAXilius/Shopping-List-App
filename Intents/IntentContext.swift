@@ -34,10 +34,18 @@ struct IntentContext {
 
     /// The shop the app is pointed at, exactly as `ListStore` resolves it — a saved id that no
     /// longer names a shop falls back to the first, so a spoken add lands where a typed one does.
+    /// "Add milk at Trader Joe's" is a statement about where you are shopping, so it moves the
+    /// list there — the row's shop, the prices quoted and the aisle order then all mean one
+    /// thing. (Filing a past RECEIPT deliberately does not re-point the list: W6-P12. A receipt
+    /// says where you WERE.)
+    func switchActiveShop(_ shopID: ShopID) {
+        UserDefaults.appGroup().set(shopID.rawValue.uuidString, forKey: AppGroup.activeShopKey)
+    }
+
     var activeShopID: ShopID? {
         let shops = (try? repository.shops()) ?? []
         // ListStore's own key in the shared defaults; the two must not drift.
-        let saved = UserDefaults.appGroup().string(forKey: "bagged.activeShopID")
+        let saved = UserDefaults.appGroup().string(forKey: AppGroup.activeShopKey)
             .flatMap(UUID.init(uuidString:)).map(ShopID.init)
         return shops.first { $0.id == saved }?.id ?? shops.first?.id
     }
@@ -69,6 +77,6 @@ struct IntentContext {
             .containerURL(forSecurityApplicationGroupIdentifier: BaggedApp.appGroupID)
             ?? URL.applicationSupportDirectory
         try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
-        return container.appending(path: "bagged.sqlite")
+        return container.appending(path: AppGroup.databaseFile)
     }
 }

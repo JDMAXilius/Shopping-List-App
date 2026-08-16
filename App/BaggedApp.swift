@@ -6,8 +6,8 @@ import SwiftUI
 @main
 @MainActor
 struct BaggedApp: App {
-    // Must match the App Group entitlement on every target: app, widget, intents.
-    static let appGroupID = "group.app.bagged"
+    // Data owns the string; the entitlement on every target must match it.
+    static let appGroupID = AppGroup.identifier
 
     private let store: ListStore?
     private let prices: PriceStore?
@@ -93,12 +93,10 @@ struct BaggedApp: App {
         return value
     }
 
-    private static func databaseURL() throws -> URL {
-        let container = FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
-            ?? URL.applicationSupportDirectory
-        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
-        return container.appending(path: "bagged.sqlite")
+    // The app falls back to its own container so a build without the entitlement still runs;
+    // an extension refuses instead, because for it a second database would be a silent one.
+    static func databaseURL() throws -> URL {
+        try AppGroup.databaseURL(in: AppGroup.containerURL() ?? URL.applicationSupportDirectory)
     }
 }
 

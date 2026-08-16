@@ -1,6 +1,27 @@
 import Foundation
 import GRDB
 
+/// The strings four processes need to agree on to be looking at the same list. They were
+/// re-declared by hand in the app, the widget and the intents — rename one there and the others
+/// go on opening a different, empty database, silently and forever.
+public enum AppGroup {
+    public static let identifier = "group.app.bagged"
+    public static let databaseFile = "bagged.sqlite"
+    public static let activeShopKey = "bagged.activeShopID"
+
+    /// nil when the entitlement is missing. Callers decide what that means: the app falls back to
+    /// its own container so a simulator build still runs, an extension refuses — a second
+    /// database is worse than no database.
+    public static func containerURL() -> URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: identifier)
+    }
+
+    public static func databaseURL(in container: URL) throws -> URL {
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        return container.appending(path: databaseFile)
+    }
+}
+
 public final class AppDatabase: Sendable {
     public static let schemaVersion = 5
 
