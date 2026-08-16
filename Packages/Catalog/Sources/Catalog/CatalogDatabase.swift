@@ -21,6 +21,7 @@ private let transientDestructor = unsafeBitCast(-1, to: sqlite3_destructor_type.
 /// used single-threaded — callers create their own where needed.
 public final class CatalogDatabase {
     private let handle: OpaquePointer
+    private var categoryCache: [CatalogCategory]?
 
     public init(path: String) throws {
         var h: OpaquePointer?
@@ -82,6 +83,44 @@ public final class CatalogDatabase {
             out.append(row)
         }
         return out
+    }
+}
+
+public struct CatalogCategory: Sendable, Equatable {
+    public let id: String
+    public let name: String
+    public let emoji: String?
+    public let defaultOrder: Int
+
+    public init(id: String, name: String, emoji: String?, defaultOrder: Int) {
+        self.id = id
+        self.name = name
+        self.emoji = emoji
+        self.defaultOrder = defaultOrder
+    }
+}
+
+extension CatalogDatabase {
+    /// Every category, in default aisle order. Read once per connection, then cached —
+    /// callers group and sort by these on every render.
+    public func categories() -> [CatalogCategory] {
+        if let cached = categoryCache { return cached }
+        let sql = "SELECT id, name, emoji, default_order FROM category ORDER BY default_order, id"
+        let loaded = ((try? rows(sql)) ?? []).compactMap { row -> CatalogCategory? in
+            guard let id = row[0].textValue, let name = row[1].textValue,
+                let order = row[3].integerValue
+            else { return nil }
+            return CatalogCategory(
+                id: id, name: name, emoji: row[2].textValue, defaultOrder: Int(order))
+        }
+        categoryCache = loaded
+        return loaded
+    }
+
+    /// The category id of a catalog item; nil when no such item exists.
+    public func category(forItem itemID: Int64) -> String? {
+        let sql = "SELECT category_id FROM item WHERE id = ?"
+        return ((try? rows(sql, bind: [.integer(itemID)])) ?? []).first?.first?.textValue
     }
 }
 

@@ -3,7 +3,12 @@ import SwiftUI
 /// The row anatomy, FINAL (PRODUCT.md §2): tick · tinted glyph tile · name (truncates,
 /// never pushes the price) · `×N` UNDER the name (never a chip beside — the known
 /// truncation bug) · dotted leader · mono price right. Checked: strike, desaturate, readable.
-/// The whole row toggles (INTERACTION.md: the check-off target is far larger than 44pt).
+///
+/// Tapping, two shapes (W5-P4 fix 1). `onOpen` nil — the default — keeps the FINAL
+/// whole-row toggle: the check-off target is far larger than 44pt (INTERACTION.md §7).
+/// `onOpen` non-nil splits the row: the tick still checks off one-thumbed, the body opens
+/// the caller's sheet. That is how a promoted "tap to set what you paid" row keeps its
+/// promise without demoting check-off to a hidden long-press.
 public struct ItemRow: View {
     private let name: String
     private let quantity: Int
@@ -13,6 +18,7 @@ public struct ItemRow: View {
     private let prompt: String?
     private let isChecked: Bool
     private let onToggle: () -> Void
+    private let onOpen: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -24,7 +30,8 @@ public struct ItemRow: View {
         price: PriceDisplay,
         prompt: String? = nil,
         isChecked: Bool = false,
-        onToggle: @escaping () -> Void
+        onToggle: @escaping () -> Void,
+        onOpen: (() -> Void)? = nil
     ) {
         self.name = name
         self.quantity = quantity
@@ -34,11 +41,37 @@ public struct ItemRow: View {
         self.prompt = prompt
         self.isChecked = isChecked
         self.onToggle = onToggle
+        self.onOpen = onOpen
     }
 
     public var body: some View {
         HStack(spacing: 12) {
             tick
+            rowBody
+        }
+        .frame(minHeight: 44)
+        // One coherent VoiceOver phrase — name, quantity, price, state — not four fragments.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(ItemRowSemantics.label(
+            name: name, quantity: quantity, price: price,
+            visiblePrompt: visiblePrompt, isChecked: isChecked))
+        .accessibilityAddTraits(.isButton)
+        // Check-off stays the default activation on EVERY row: the action performed 40×
+        // a trip must never move because a row gained a second one.
+        .accessibilityAction { onToggle() }
+        // …and when there IS a second one, both are named, so neither has to be guessed.
+        .accessibilityActions {
+            if let onOpen {
+                Button("Check off", action: onToggle)
+                Button(ItemRowSemantics.openActionName(visiblePrompt: visiblePrompt), action: onOpen)
+            }
+        }
+    }
+
+    /// Everything right of the tick, and the row's second touch target. It carries its
+    /// own ≥44pt height so the body tap area is never thinner than the row around it.
+    private var rowBody: some View {
+        HStack(spacing: 12) {
             if let glyph {
                 GlyphTile(glyph)
             } else {
@@ -49,8 +82,8 @@ public struct ItemRow: View {
                 // Promoted-row anatomy (01-list, W4-C1 fix 4): when the row has no price,
                 // the persimmon prompt ("tap to set what you paid") takes the ×N slot.
                 // Persimmon body text is card-only (Palette rule) — rows sit on cards.
-                if let prompt, price == .none {
-                    Text(prompt)
+                if let visiblePrompt {
+                    Text(visiblePrompt)
                         .font(Typography.footnote)
                         .foregroundStyle(Palette.persimmon.color)
                 } else if quantity > 1 {
@@ -73,13 +106,13 @@ public struct ItemRow: View {
         }
         .frame(minHeight: 44)
         .contentShape(Rectangle())
-        // Whole-row toggle (W4-C1 fix 9): the gesture rides the contentShape above.
-        .onTapGesture { onToggle() }
-        // One coherent VoiceOver phrase — name, quantity, price, state — not four fragments.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityText)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction { onToggle() }
+        // Whole-row toggle (W4-C1 fix 9) unless the caller claimed the body. The tick is
+        // a Button, so its own taps never reach this gesture either way.
+        .onTapGesture { (onOpen ?? onToggle)() }
+    }
+
+    private var visiblePrompt: String? {
+        ItemRowSemantics.visiblePrompt(prompt: prompt, price: price)
     }
 
     /// Progressive strikethrough (W4-C1 fix 5): a rule draws 0→text-width under
@@ -125,15 +158,38 @@ public struct ItemRow: View {
         .buttonStyle(.plain)
         .accessibilityHidden(true)
     }
+}
 
-    private var accessibilityText: String {
+/// ItemRow's spoken and structural rules, pure: no SwiftUI, no harness needed to test
+/// them. The view holds the pixels; these three functions hold the promises.
+enum ItemRowSemantics {
+
+    /// The prompt only exists on a genuinely unpriced row — it occupies the `×N` slot,
+    /// so a priced row can never show both. One rule, read by the layout, the spoken
+    /// label and the action name alike.
+    static func visiblePrompt(prompt: String?, price: PriceDisplay) -> String? {
+        guard let prompt, price == PriceDisplay.none else { return nil }
+        return prompt
+    }
+
+    /// The row's ONE phrase (INTERACTION.md §7) — never four fragments.
+    static func label(
+        name: String, quantity: Int, price: PriceDisplay,
+        visiblePrompt: String?, isChecked: Bool
+    ) -> String {
         var parts = [name]
         if quantity > 1 { parts.append("quantity \(quantity)") }
         // The price phrase is PriceLabel's, verbatim (W4-C1 fix 7) — defined once.
         parts.append(price.accessibilityPhrase)
-        if let prompt, price == .none { parts.append(prompt) }
+        if let visiblePrompt { parts.append(visiblePrompt) }
         parts.append(isChecked ? "checked" : "not checked")
         return parts.joined(separator: ", ")
+    }
+
+    /// "Set price" is only true where the row is actually asking for one; elsewhere the
+    /// body tap opens the item, and the action says exactly that.
+    static func openActionName(visiblePrompt: String?) -> String {
+        visiblePrompt == nil ? "Open details" : "Set price"
     }
 }
 

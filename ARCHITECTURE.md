@@ -164,12 +164,14 @@ Packages/Core/Sources/Core/           # imports nothing, runs on CLI
   Operation.swift  LogicalClock.swift  Merge.swift  Identifiers.swift
 Packages/Core/Tests/CoreTests/
   MergeTests.swift  ConflictHarnessTests.swift  ★  LogicalClockTests.swift  MoneyTests.swift
+  IdentifiersTests.swift   # the catalog<->ItemID join key: get it wrong and the price book splits
 
 Packages/Catalog/Sources/Catalog/
   CatalogDatabase.swift  Resolver.swift  Normalizer.swift  QuantityParser.swift
   EditDistance.swift  PriceSeed.swift  Resources/catalog.db
 Packages/Catalog/Tests/CatalogTests/
-  ResolverTests.swift (the 23 cases)  QuantityParserTests.swift  NormalizerTests.swift  PriceSeedTests.swift
+  ResolverTests.swift (the 23 cases)  QuantityParserTests.swift  NormalizerTests.swift
+  PriceSeedTests.swift  EditDistanceTests.swift  CatalogDatabaseTests.swift
 
 Packages/Data/Sources/Data/
   AppDatabase.swift  Migrations.swift  Observed.swift  Repository.swift   # the ONLY SQL surface
