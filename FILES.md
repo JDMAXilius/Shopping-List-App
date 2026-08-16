@@ -86,14 +86,17 @@ Bagged/
 │   │   │   └── ShopSwitcherSheet.swift
 │   │   │
 │   │   ├── Capture/                   # the + — the engine
-│   │   │   ├── CaptureSession.swift   # per-flow @Observable
+│   │   │   ├── CaptureSession.swift   # per-flow @Observable · the ONLY writer
+│   │   │   ├── CaptureDerivation.swift     # lines, matches, money-off, the result
 │   │   │   ├── CaptureChooserSheet.swift
+│   │   │   ├── ReceiptCamera.swift         # AVFoundation, the shutter itself
 │   │   │   ├── ReceiptCameraScreen.swift
 │   │   │   ├── ReceiptReviewScreen.swift   # nothing commits unreviewed
 │   │   │   ├── LineResolverScreen.swift    # matched once, remembered forever
+│   │   │   ├── CaptureShopPicker.swift     # returns a choice; never re-points the list
 │   │   │   ├── CaptureResultScreen.swift   # "6 prices are now real"
 │   │   │   ├── EnterByHandScreen.swift     # no camera, no signal
-│   │   │   ├── BarcodeScanScreen.swift
+│   │   │   ├── BarcodeScanScreen.swift     # a key the kitchen teaches once, not a lookup
 │   │   │   └── FirstReceiptSheet.swift     # the aha, once
 │   │   │
 │   │   ├── Prices/                    # tab 2 — the differentiator

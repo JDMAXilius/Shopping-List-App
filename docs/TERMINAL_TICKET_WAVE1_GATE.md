@@ -198,3 +198,56 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
   Still open from earlier waves and unchanged: **the snapshot suite does not exist** after twelve
   DesignKit components — it remains the largest hole in the visual contract, and it can only be
   written where a simulator is.
+
+- **2026-08-16 · cloud (wave 6, closed)** — The last two capture screens, then a refutation that
+  found **two P1s**, then the fixes. Wave 6 is done.
+
+  **The barcode ruling.** The catalog has no UPC column and we are not inventing one, so a barcode
+  is **a key the kitchen teaches once** — scan it, say what it is, and the `.alias` op tells the
+  whole kitchen forever. Same machinery receipt lines use. QR was dropped from the symbology list:
+  a QR payload is a URL, never a product key.
+
+  **P1 — a coupon wrote a negative MEASURED price.** Proven by execution. A per-item discount line
+  is in-contract for the parser, resolves `match_hint: milk`, and auto-accepted; the sanity gate
+  only ever tested for prices too HIGH, so -$1.00, $0.00 and $0.05 all passed. It committed as a
+  `.receipt` observation sharing the real line's date, so the tie-break was a random UUID —
+  **about half the time your list showed milk at -$1.00 in solid ink.** Ruled: zero or less is not
+  a price, enforced structurally rather than by a screen remembering. The coupon is still shown,
+  because the receipt has to reconcile to its printed total.
+
+  **P1 — a failed scan orphaned the photo forever, and one input made it permanent.** Nothing in
+  the app ever queried `state = 'failed'`: the photo could not be read, shown or deleted, and sat
+  in the App Group container for good. The trigger was deterministic — shop names have no length
+  cap, the hint went out untruncated, and >100 chars is a 400. **A user whose shop is called
+  "Whole Foods Market — 1234 Something Blvd, Suite 200, San Francisco CA 94110" had every photo
+  they would ever take fail identically, forever.** Ruled three ways: the client truncates to the
+  limit it already knows; our fault (or a gateway's) keeps the photo and stays retryable; only a
+  photo that a new photo is the only fix for is deleted — and its JPEG goes with the row.
+
+  Also fixed: cancelling the shop picker silently reverted the shop (14 Trader Joe's prices filed
+  under Whole Foods), the receipt under review was still offered as "waiting to be read" — a tap
+  spent a second scan and wiped every hand-match — "Keep it" on a permanently-ignored line wrote
+  nothing, and `commit()` half-wrote under `try?` while the result screen still claimed "every
+  line became a price". A commit is now **one transaction**, retryable, with nothing written on
+  failure.
+
+  **Server side, mutation-tested:** `amount_minor`/`total_minor` bounded to ±$1,000,000
+  (`Number.isInteger(1e300)` is true — that number shipped as a 200, failed the client's decode and
+  **burned a free scan with no refund path**), `quantity` must be a real count, and `currency` must
+  be a 3-letter ISO code. Any non-empty string used to pass, so "eur" rendered as `eur 40.00` — and
+  worse, the 3× sanity gate requires matching currency codes, so it was **silently off for every
+  non-USD receipt**, exactly the ones most likely to be mis-read.
+
+  **TWO CONTRACT GAPS FOR WAVE 7 — read these before the price book is built:**
+  1. **There is no op that names an item.** `edit` is keyed on `ListItemID`, a LIST ROW. An item
+     created at the resolver or the barcode screen lives only in the alias table: its prices are
+     real and its name is stored nowhere. The price book would have rows it cannot name. Needs a
+     `name` op in Core, Data and the sync contract.
+  2. **There is no source for the user's currency.** `currencyCode` defaults to "USD" and is only
+     ever set by a scanned receipt, so a eurozone user typing a price stores USD — the third place
+     with no locale source. Ruling: **a kitchen shops in one currency**, taken from the device
+     locale at kitchen creation and stored on `Kitchen`; a receipt in another currency is an
+     exception to flag, not to mix. Needs a migration.
+
+  Unchanged and still the largest hole: **the snapshot suite does not exist.** Nothing in this wave
+  was compiled or run — there is no Swift toolchain here.
