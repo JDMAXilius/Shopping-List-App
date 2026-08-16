@@ -10,9 +10,23 @@ public struct Money: Hashable, Sendable, Codable {
         self.currencyCode = currencyCode
     }
 
-    // Estimates round hard to the nearest half unit — ~$4.50, never ~$4.37.
+    // Currencies whose minor unit *is* the major unit: 500 JPY is ¥500, never ¥5.00.
+    private static let zeroDecimalCodes: Set<String> = ["JPY", "KRW", "CLP", "ISK", "VND"]
+
+    // Unknown codes are assumed 2-decimal — true of every currency we ship to and of most others.
+    public static func minorUnitExponent(for currencyCode: String) -> Int {
+        zeroDecimalCodes.contains(currencyCode) ? 0 : 2
+    }
+
+    public var minorUnitExponent: Int { Money.minorUnitExponent(for: currencyCode) }
+
+    // The estimate grid is half of 100 minor units: $0.50 where minors are cents, ¥50 where they
+    // are whole yen — coarse enough in both that an estimate can't read as a looked-up price.
+    private static let estimateStep = 50
+
+    // Estimates round hard to that grid — ~$4.50, never ~$4.37.
     public static func estimate(from money: Money) -> Money {
-        let step = 50
+        let step = estimateStep
         let remainder = ((money.minorUnits % step) + step) % step
         let floor = money.minorUnits - remainder
         let rounded = remainder * 2 >= step ? floor + step : floor
@@ -22,10 +36,15 @@ public struct Money: Hashable, Sendable, Codable {
     public var display: String {
         let units = abs(minorUnits)
         let sign = minorUnits < 0 ? "-" : ""
-        return "\(sign)\(symbol)\(units / 100).\(String(format: "%02d", units % 100))"
+        let exponent = minorUnitExponent
+        guard exponent > 0 else { return "\(sign)\(symbol)\(units)" }
+        var divisor = 1
+        for _ in 0 ..< exponent { divisor *= 10 }
+        let fraction = String(format: "%0\(exponent)d", units % divisor)
+        return "\(sign)\(symbol)\(units / divisor).\(fraction)"
     }
 
-    // Always ~$X.00 / ~$X.50 — an estimate never shows false precision.
+    // Always lands on the estimate grid — an estimate never shows false precision.
     public var estimateDisplay: String {
         "~" + Money.estimate(from: self).display
     }
@@ -44,12 +63,14 @@ public struct Money: Hashable, Sendable, Codable {
         Money(minorUnits: minorUnits * count, currencyCode: currencyCode)
     }
 
+    // Unknown codes print the code rather than risk a wrong symbol: "ZZZ 12.34".
     private var symbol: String {
         switch currencyCode {
         case "USD": return "$"
         case "BRL": return "R$"
         case "EUR": return "€"
         case "GBP": return "£"
+        case "JPY": return "¥"
         default: return currencyCode + " "
         }
     }

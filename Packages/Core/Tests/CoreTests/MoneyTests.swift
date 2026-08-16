@@ -37,6 +37,79 @@ final class MoneyTests: XCTestCase {
         XCTAssertEqual(total.minorUnits, 60)
     }
 
+    func testMinorUnitExponentPerCurrencyClass() {
+        for code in ["JPY", "KRW", "CLP", "ISK", "VND"] {
+            XCTAssertEqual(Money.minorUnitExponent(for: code), 0, code)
+        }
+        for code in ["USD", "EUR", "GBP", "BRL", "CAD", "AUD", "MXN"] {
+            XCTAssertEqual(Money.minorUnitExponent(for: code), 2, code)
+        }
+        // Documented default: an unrecognised code is treated as 2-decimal.
+        XCTAssertEqual(Money.minorUnitExponent(for: "ZZZ"), 2)
+        XCTAssertEqual(Money.minorUnitExponent(for: ""), 2)
+        XCTAssertEqual(Money(minorUnits: 500, currencyCode: "JPY").minorUnitExponent, 0)
+        XCTAssertEqual(Money(minorUnits: 500, currencyCode: "BRL").minorUnitExponent, 2)
+    }
+
+    func testZeroDecimalCurrenciesDisplayWholeUnits() {
+        XCTAssertEqual(Money(minorUnits: 500, currencyCode: "JPY").display, "¥500")
+        XCTAssertEqual(Money(minorUnits: 0, currencyCode: "JPY").display, "¥0")
+        XCTAssertEqual(Money(minorUnits: 7, currencyCode: "JPY").display, "¥7")
+        XCTAssertEqual(Money(minorUnits: -500, currencyCode: "JPY").display, "-¥500")
+        XCTAssertEqual(Money(minorUnits: 12_000, currencyCode: "KRW").display, "KRW 12000")
+        XCTAssertEqual(Money(minorUnits: 3_990, currencyCode: "CLP").display, "CLP 3990")
+        XCTAssertEqual(Money(minorUnits: 1_495, currencyCode: "ISK").display, "ISK 1495")
+        XCTAssertEqual(Money(minorUnits: 25_000, currencyCode: "VND").display, "VND 25000")
+    }
+
+    func testTwoDecimalCurrenciesDisplayMinorUnitsAsCents() {
+        XCTAssertEqual(Money(minorUnits: 500, currencyCode: "BRL").display, "R$5.00")
+        XCTAssertEqual(Money(minorUnits: 449, currencyCode: "EUR").display, "€4.49")
+        XCTAssertEqual(Money(minorUnits: 5, currencyCode: "GBP").display, "£0.05")
+        XCTAssertEqual(Money(minorUnits: -449, currencyCode: "USD").display, "-$4.49")
+        XCTAssertEqual(Money(minorUnits: 1_234, currencyCode: "MXN").display, "MXN 12.34")
+    }
+
+    func testUnknownCurrencyCodeFallsBackToCodePrefix() {
+        XCTAssertEqual(Money(minorUnits: 1_234, currencyCode: "ZZZ").display, "ZZZ 12.34")
+        XCTAssertEqual(Money(minorUnits: 1_234, currencyCode: "ZZZ").estimateDisplay, "~ZZZ 12.50")
+        XCTAssertEqual(Money(minorUnits: 0, currencyCode: "").display, " 0.00")
+    }
+
+    func testEstimateRoundingIsIdenticalOnTheMinorUnitGridForBothClasses() {
+        for code in ["USD", "JPY"] {
+            func rounded(_ minor: Int) -> Int {
+                Money.estimate(from: Money(minorUnits: minor, currencyCode: code)).minorUnits
+            }
+            XCTAssertEqual(rounded(437), 450, code)
+            XCTAssertEqual(rounded(412), 400, code)
+            XCTAssertEqual(rounded(0), 0, code)
+            XCTAssertEqual(rounded(1), 0, code)          // small values collapse to zero…
+            XCTAssertEqual(rounded(24), 0, code)
+            XCTAssertEqual(rounded(25), 50, code)        // …and ties round up, always
+            XCTAssertEqual(rounded(75), 100, code)
+            XCTAssertEqual(rounded(26), 50, code)
+            XCTAssertEqual(rounded(-425), -400, code)    // ties round up for negatives too
+            XCTAssertEqual(rounded(-437), -450, code)
+            XCTAssertEqual(
+                Money.estimate(from: Money(minorUnits: 437, currencyCode: code)).currencyCode,
+                code)
+        }
+    }
+
+    func testZeroDecimalEstimatesLandOnAWholeFiftyUnitGrid() {
+        XCTAssertEqual(Money(minorUnits: 437, currencyCode: "JPY").estimateDisplay, "~¥450")
+        XCTAssertEqual(Money(minorUnits: 412, currencyCode: "JPY").estimateDisplay, "~¥400")
+        XCTAssertEqual(Money(minorUnits: 80, currencyCode: "JPY").estimateDisplay, "~¥100")
+        // An estimate must never look like a looked-up price: coarse in every currency class.
+        for minor in stride(from: 0, to: 2_000, by: 7) {
+            let money = Money(minorUnits: minor, currencyCode: "JPY")
+            let estimate = Money.estimate(from: money)
+            XCTAssertEqual(estimate.minorUnits % 50, 0, money.estimateDisplay)
+            XCTAssertTrue(money.estimateDisplay.hasPrefix("~¥"), money.estimateDisplay)
+        }
+    }
+
     func testObservationConfidenceDecaysWithAge() {
         let now = Date(timeIntervalSince1970: 100 * 86_400)
         func observation(daysAgo: Double) -> PriceObservation {
