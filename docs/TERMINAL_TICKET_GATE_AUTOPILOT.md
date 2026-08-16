@@ -494,3 +494,13 @@ scope, building its features is not.
   runs start from a fresh database.
 - What this still is NOT: a run against a live Supabase project. None exists for Bagged (see
   the T7 handoff). The gateway/PostgREST layer and function env are unverified until then.
+
+**2026-08-16 · terminal · T9 regression pass — everything green.**
+- Full sweep after all fixes, on this machine: Core **52/52** · Catalog **57/57** (23/23
+  goldens) · Data **38/38** · DesignKit **81/81** · BaggedTests **125/125** (14 snapshot
+  tests / 28 refs) · BaggedUITests **4/4** (walkthrough + Prices tab + 2 regression pins) ·
+  deno **27/27** · RLS **13/13** on Postgres 17.11. TEST SUCCEEDED across the board.
+- Local Postgres stopped after the run (`pg_ctl -D ~/tools/pgdata-bagged stop`); restart with
+  the same command from the T4 entry when the loop needs it again.
+- Queue state: T0–T6, T8 done; T4 done via vanilla-PG path; T7 done except the live scan.
+  Everything still open is behind ONE blocker: **Bagged has no Supabase project** (T7 handoff).
