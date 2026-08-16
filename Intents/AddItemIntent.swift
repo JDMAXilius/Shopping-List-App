@@ -58,8 +58,10 @@ struct AddItemIntent: AppIntent {
         try context.append(ops)
         guard let row = try context.rows().first(where: { Merge.normalized($0.item.name) == key })
         else { throw IntentRefusal.couldNotWrite }
+        // A named shop is always stamped (addPlan for a new row, the edit above for a merge),
+        // so it is always safe to say — and the tests pin the rule as named → said,
+        // unnamed → quiet, not "said only when the list moved".
         return (ListItemEntity(row),
-                IntentVoice.added(row.item, merged: existing != nil,
-                                  shop: moved ? shop?.name : nil))
+                IntentVoice.added(row.item, merged: existing != nil, shop: shop?.name))
     }
 }

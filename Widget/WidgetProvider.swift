@@ -142,14 +142,14 @@ struct WidgetProvider: TimelineProvider {
         ListEntry(date: Date(), state: WidgetProvider.sample(limit: limit(context.family)))
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (ListEntry) -> Void) {
+    func getSnapshot(in context: Context, completion: @escaping @Sendable (ListEntry) -> Void) {
         // The gallery has no business reading someone's list; every other pass reads the truth.
         guard !context.isPreview else { return completion(placeholder(in: context)) }
         let family = context.family
         Task { @MainActor in completion(WidgetProvider.entry(for: family)) }
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<ListEntry>) -> Void) {
+    func getTimeline(in context: Context, completion: @escaping @Sendable (Timeline<ListEntry>) -> Void) {
         // A list changes when a person changes it, never on a clock: the app and
         // ToggleItemIntent request a reload after each write, so any refresh policy would only
         // spend this widget's budget re-rendering a list nobody touched.
