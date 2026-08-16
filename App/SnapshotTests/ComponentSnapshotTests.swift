@@ -15,6 +15,7 @@ final class ComponentSnapshotTests: XCTestCase {
     private func usd(_ minor: Int) -> Money { Money(minorUnits: minor, currencyCode: "USD") }
     private var measured: PriceDisplay { PriceDisplay(amount: usd(449), confidence: .trusted) }
     private var estimated: PriceDisplay { .estimated(usd(500)) }
+    private func one(_ price: PriceDisplay) -> PriceLine { price.line(quantity: 1) }
 
     private func verify(
         _ view: some View, height: CGFloat,
@@ -53,17 +54,20 @@ final class ComponentSnapshotTests: XCTestCase {
         }, height: 220)
     }
 
+    /// One of each, so these two figures are the ones already recorded in __Snapshots__:
+    /// W8-P5 made a total sum LINE totals, and the pixels here must not move with it.
     func testTotalBar() {
         verify(VStack(spacing: 12) {
-            TotalBar(prices: [measured, measured])          // all measured: exact total
-            TotalBar(prices: [measured, estimated, .none])  // gap + estimate: ≈ total
+            TotalBar(prices: [one(measured), one(measured)])   // all measured: exact total
+            TotalBar(prices: [one(measured), one(estimated),   // gap + estimate: ≈ total
+                              one(.none)])
         }, height: 260)
     }
 
     func testAisleHeader() {
         verify(VStack(spacing: 12) {
-            AisleHeader(title: "Produce", prices: [measured, estimated], doneCount: 0)
-            AisleHeader(title: "Produce", prices: [measured, estimated], doneCount: 2,
+            AisleHeader(title: "Produce", prices: [one(measured), one(estimated)], doneCount: 0)
+            AisleHeader(title: "Produce", prices: [one(measured), one(estimated)], doneCount: 2,
                         isCollapsed: true)
         }, height: 220)
     }

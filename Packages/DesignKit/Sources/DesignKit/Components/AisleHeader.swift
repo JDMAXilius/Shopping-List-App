@@ -4,8 +4,9 @@ import Core
 /// Aisle section header: letterspaced uppercase label + per-aisle subtotal right.
 /// Collapsed variant: `✓ PRODUCE · done (2) · ≈ $11.40` — the green tick is the only
 /// green here, and it means done. Subtotal and `≈` derive from the aisle's own
-/// `[PriceDisplay]` (W4-C1 fix 3): estimates AND unpriced gaps both make it
-/// approximate — the same honesty rule as TotalBar, never a caller flag.
+/// `[PriceLine]` (W4-C1 fix 3): estimates AND unpriced gaps both make it
+/// approximate — the same honesty rule as TotalBar, never a caller flag. Since W8-P5 the
+/// subtotal counts what the aisle actually holds: `[PriceLine]`, quantity included.
 public struct AisleHeader: View {
     private let title: String
     private let summary: PriceSummary
@@ -14,7 +15,7 @@ public struct AisleHeader: View {
 
     public init(
         title: String,
-        prices: [PriceDisplay],
+        prices: [PriceLine],
         doneCount: Int = 0,
         isCollapsed: Bool = false
     ) {

@@ -30,13 +30,16 @@ struct ListItemEntity: AppEntity {
     }
 
     /// No price yet is said by saying nothing, exactly as the row draws `—`.
+    ///
+    /// "×4 at $3.50", never "×4 · $3.50" (W8-P5 ruling 5): the separator read as four milks
+    /// costing three fifty. The price here is the price of ONE — the row's own figure,
+    /// unforked — and "at" is the word that says so in both English and arithmetic.
     private static func detail(_ row: ListRow) -> String? {
-        var parts: [String] = []
-        if let quantity = QuantityText.label(quantity: row.item.quantity, unit: row.item.unit) {
-            parts.append(quantity)
-        }
-        if row.price != .none { parts.append(row.price.accessibilityPhrase) }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        let quantity = QuantityText.label(quantity: row.item.quantity, unit: row.item.unit)
+        let price = row.price == .none ? nil : row.price.accessibilityPhrase
+        guard let quantity else { return price }
+        guard let price else { return quantity }
+        return "\(quantity) at \(price)"
     }
 }
 

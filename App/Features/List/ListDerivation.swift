@@ -4,16 +4,21 @@ import Foundation
 
 struct ListRow: Identifiable, Hashable {
     let item: ListItem
+    /// What ONE costs — what the row draws, and what a person compares between shops.
     let price: PriceDisplay
     let category: CategoryGlyph
     var id: ListItemID { item.listItemID }
+
+    /// What this row puts in the trolley. Every total in the app sums these, never `price`
+    /// (W8-P5): ×4 milk at a measured $3.50 is $14.00, and it read $3.50 until this existed.
+    var line: PriceLine { price.line(quantity: item.quantity) }
 }
 
 struct AisleSection: Identifiable {
     let category: CategoryGlyph
     let title: String
-    let rows: [ListRow]         // what renders here: checked rows sink, promoted rows rise
-    let prices: [PriceDisplay]  // the whole aisle, checked and promoted included
+    let rows: [ListRow]      // what renders here: checked rows sink, promoted rows rise
+    let prices: [PriceLine]  // the whole aisle, checked and promoted included
     let doneCount: Int
     let totalCount: Int
     var id: String { category.rawValue }
@@ -158,7 +163,7 @@ enum ListDerivation {
                     // A promoted row renders under NO PRICE YET, but its gap still belongs to
                     // this aisle's subtotal — otherwise checking it off would invent an `≈`.
                     rows: group.filter { !$0.item.checked && !promoted.contains($0.id) },
-                    prices: group.map(\.price),
+                    prices: group.map(\.line),
                     doneCount: group.filter(\.item.checked).count, totalCount: group.count)
             }
     }

@@ -76,7 +76,8 @@ enum IntentVoice {
     static func whatsLeft(_ rows: [ListRow], onList: Int) -> String {
         guard !rows.isEmpty else { return nothingLeft(onList) }
         let count = rows.count == 1 ? "One thing left" : "\(rows.count) things left"
-        let money = capitalizing(total(PriceSummary(rows.map(\.price))))
+        // Line totals: "what it comes to" is what the trolley will hold, not one of each.
+        let money = capitalizing(total(PriceSummary(rows.map(\.line))))
         return "\(count): \(names(rows.map(\.item.name))). \(money)"
     }
 

@@ -327,12 +327,12 @@ enum PriceDerivation {
         let thisMonth = observations.filter {
             calendar.isDate($0.date, equalTo: now, toGranularity: .month)
         }
-        let matched = PriceSummary(displays(thisMonth, asOf: now))
-        var aisles: [CategoryGlyph: [PriceDisplay]] = [:]
+        let matched = PriceSummary(lines(thisMonth, asOf: now))
+        var aisles: [CategoryGlyph: [PriceLine]] = [:]
         for observation in thisMonth {
             aisles[catalog.category(for: observation.itemID), default: []].append(
                 PriceDisplay(amount: observation.amount,
-                             confidence: observation.confidence(asOf: now)))
+                             confidence: observation.confidence(asOf: now)).line(quantity: 1))
         }
         let aisleGroups = aisles.map { category, displays in
             MonthGroup(title: catalog.name(for: category), summary: PriceSummary(displays),
@@ -471,10 +471,22 @@ enum PriceDerivation {
 
     // MARK: - Shared
 
-    static func displays(_ observations: [PriceObservation], asOf now: Date) -> [PriceDisplay] {
+    /// Private: a bare array of unit prices is the shape that used to become a total. Callers
+    /// wanting a sum ask for `lines`, which has to state a quantity.
+    private static func displays(_ observations: [PriceObservation],
+                                 asOf now: Date) -> [PriceDisplay] {
         observations.map {
             PriceDisplay(amount: $0.amount, confidence: $0.confidence(asOf: now))
         }
+    }
+
+    /// One line per observation, at quantity ONE, and the quantity is not a guess: an
+    /// observation stores the price of one and no count (`PriceObservation` has no quantity
+    /// field), so a receipt's ×4 milk is one $3.50 line here. That understates `matched`
+    /// against `paid` — which is why `matched` is never shown as the month's spend, and why
+    /// `coverageText` states the two figures side by side rather than reconciling them.
+    static func lines(_ observations: [PriceObservation], asOf now: Date) -> [PriceLine] {
+        displays(observations, asOf: now).map { $0.line(quantity: 1) }
     }
 
     static func latest(_ observations: [PriceObservation]) -> [ItemID: PriceObservation] {

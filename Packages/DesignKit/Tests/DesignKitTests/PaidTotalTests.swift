@@ -71,12 +71,12 @@ final class PaidTotalTests: XCTestCase {
     // MARK: The two summaries are not interchangeable (ruling 3)
 
     // A compile-time fact, restated where a reader will look: `PaidSummary` takes
-    // `[ReceiptTotal]` and `PriceSummary` takes `[PriceDisplay]`, and neither type can be
+    // `[ReceiptTotal]` and `PriceSummary` takes `[PriceLine]`, and neither type can be
     // made from the other. What runs here is that they disagree on the SAME money, which is
     // the whole point — 12 matched lines are not a month's spend.
     func testMatchedLinesAndMoneyPaidAreDifferentQuantities() {
         let matched = PriceSummary((0 ..< 12).map {
-            PriceDisplay(amount: usd(517 + $0), confidence: .trusted)
+            PriceDisplay(amount: usd(517 + $0), confidence: .trusted).line(quantity: 1)
         })
         let paid = PaidSummary([till(30_000)], in: "July", currencyCode: "USD")
         XCTAssertEqual(matched.total, usd(6_270))

@@ -41,31 +41,77 @@ public struct PriceDisplay: Hashable, Sendable {
         case .none: return "no price yet"
         }
     }
+
+    /// What this row puts in the trolley: the price of ONE times how many the list says.
+    /// The row goes on showing the unit price — that is what a person compares between
+    /// shops — and totals sum these (W8-P5 ruling 1).
+    ///
+    /// Scaling changes the amount and NEVER the tier: four measured items at $3.50 is
+    /// $14.00 measured. The estimate grid is applied to the unit FIRST and the line total
+    /// is never re-rounded (ruling 3), because `~$4.50` is what the row showed and half of
+    /// what was shown is $2.25 — re-rounding would say ~$2.50, and rounding after the
+    /// multiply would say $2.00. Neither is a figure anything on screen supports.
+    public func line(quantity: Double) -> PriceLine {
+        switch tier {
+        case .measured(let money):
+            return PriceLine(tier: .measured(PriceDisplay.scaled(money, by: quantity)))
+        case .estimated(let money):
+            return PriceLine(tier: .estimated(
+                PriceDisplay.scaled(Money.estimate(from: money), by: quantity)))
+        case .none:
+            return PriceLine(tier: .none)
+        }
+    }
+
+    /// Integer minor units wherever it can be: a whole count multiplies exactly, and only a
+    /// genuine fraction (1.5 lb) rounds — once, to the nearest minor unit.
+    static func scaled(_ money: Money, by quantity: Double) -> Money {
+        // Not a positive finite number is not a basket; the price of one stands rather than
+        // a total inventing or erasing money over a quantity nothing can read.
+        guard quantity.isFinite, quantity > 0 else { return money }
+        if quantity == quantity.rounded(), quantity <= 100_000 {
+            return money.multiplied(by: Int(quantity))
+        }
+        return Money(minorUnits: Int((Double(money.minorUnits) * quantity).rounded()),
+                     currencyCode: money.currencyCode)
+    }
 }
 
-/// One derived truth for any group of prices (W4-C1 fixes 2–3): sum, counts and the
-/// `≈` decision all come from the same `[PriceDisplay]` — the only initializer — so a
-/// total that disagrees with its breakdown is unrepresentable. Loose ints don't exist.
+/// One row's contribution to a total, and the ONLY thing `PriceSummary` will add up.
+/// Made solely by `PriceDisplay.line(quantity:)`, so a total built from prices of one —
+/// which is what every total in this app was until W8-P5, ×4 milk at $3.50 reading $3.50 —
+/// cannot be written. It carries no readable money: a scaled estimate must never find its
+/// way to a label that would draw it in solid ink.
+public struct PriceLine: Hashable, Sendable {
+    let tier: PriceDisplay.Tier
+}
+
+/// One derived truth for any group of rows (W4-C1 fixes 2–3): sum, counts and the `≈`
+/// decision all come from the same `[PriceLine]` — the only initializer — so a total that
+/// disagrees with its breakdown is unrepresentable. Loose ints don't exist, and neither do
+/// prices of one: a caller reaches a total only through `PriceDisplay.line(quantity:)`.
+/// The counts are counts of ROWS, which is what the breakdown says out loud.
 public struct PriceSummary: Hashable, Sendable {
     public let total: Money
     public let measuredCount: Int
     public let estimatedCount: Int
     public let unpricedCount: Int
 
-    public init(_ prices: [PriceDisplay]) {
+    public init(_ lines: [PriceLine]) {
         var minor = 0
         var currency: String?
         var measured = 0, estimated = 0, unpriced = 0
-        for price in prices {
-            switch price.tier {
+        for line in lines {
+            switch line.tier {
             case .measured(let money):
                 measured += 1
                 minor += money.minorUnits
                 currency = currency ?? money.currencyCode
             case .estimated(let money):
-                // Sum the display-rounded value — the visible ledger must add up.
+                // Already on the grid and already scaled — `line(quantity:)` rounded the UNIT.
+                // Rounding here again would make ½ × ~$4.50 read ~$2.50 instead of $2.25.
                 estimated += 1
-                minor += Money.estimate(from: money).minorUnits
+                minor += money.minorUnits
                 currency = currency ?? money.currencyCode
             case .none:
                 unpriced += 1

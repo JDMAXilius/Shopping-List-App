@@ -1,3 +1,4 @@
+import Catalog
 import Core
 import Data
 import DesignKit
@@ -5,6 +6,7 @@ import Foundation
 import XCTest
 
 /// Four honest states, one ordering rule, and a tile that never claims a price it does not hold.
+@MainActor
 final class WidgetProviderTests: XCTestCase {
     private let shopID = ShopID()
 
@@ -18,7 +20,8 @@ final class WidgetProviderTests: XCTestCase {
     private func snapshot(_ items: [ListItem], _ observations: [PriceObservation] = [],
                           shopID: ShopID? = nil, limit: Int = 3) -> WidgetList {
         WidgetSnapshot.list(items: items, observations: observations,
-                            shopID: shopID ?? self.shopID, limit: limit)
+                            shopID: shopID ?? self.shopID,
+                            catalog: ListCatalog(database: nil), limit: limit)
     }
 
     // MARK: - The four states
@@ -47,14 +50,14 @@ final class WidgetProviderTests: XCTestCase {
         try database.migrate()
         try Repository(database: database).saveKitchen(Kitchen(name: "Home"))
 
-        let state = WidgetProvider.state(WidgetStore.connect(url).0, shopID: nil, limit: 3)
+        let state = WidgetProvider.state(WidgetStore.connect(url).0, limit: 3, defaults: nil)
         guard case .list(let list) = state else { return XCTFail("a kitchen with no rows is a list") }
         XCTAssertEqual(list.total, 0)
         XCTAssertEqual(list.remaining, 0)
     }
 
     func testAVersionMismatchRendersNoRowsAtAll() {
-        guard case .needsApp = WidgetProvider.state(.needsApp, shopID: nil, limit: 3) else {
+        guard case .needsApp = WidgetProvider.state(.needsApp, limit: 3, defaults: nil) else {
             return XCTFail("a mismatch must not resolve to rows")
         }
     }
@@ -127,6 +130,48 @@ final class WidgetProviderTests: XCTestCase {
         XCTAssertTrue(summary.isApproximate, "≈ on any total that is missing money")
         XCTAssertEqual(summary.unpricedCount, 1)
         XCTAssertEqual(summary.total, Money(minorUnits: 449))
+    }
+
+    // MARK: - One breath, one basket (W8-P5 ruling 4)
+
+    /// The tile printed "2 left" beside a figure for the whole basket, checked rows included.
+    /// A count and a figure said in one breath must mean one basket, and "left" means the
+    /// unchecked ones — which is what Siri already answered.
+    func testTheFigureCountsTheSameBasketTheCountNames() {
+        let bought = ListItem(itemID: ItemID(), name: "Bananas", checked: true)
+        let toBuy = ListItem(itemID: ItemID(), name: "Oat milk")
+        let observations = [bought, toBuy].map {
+            PriceObservation(itemID: $0.itemID!, shopID: shopID, date: Date(),
+                             amount: Money(minorUnits: 500), source: .receipt)
+        }
+        let list = snapshot([bought, toBuy], observations)
+        XCTAssertEqual(list.remaining, 1)
+        XCTAssertEqual(list.summary.measuredCount, 1, "the checked row is not still to buy")
+        XCTAssertEqual(list.summary.total, Money(minorUnits: 500))
+    }
+
+    /// Checking the last thing off empties the figure as well as the count — the tile's
+    /// "That's everything." must not sit beside money still to spend.
+    func testCheckingEverythingOffLeavesNoMoneyLeftToSpend() {
+        let items = [ListItem(itemID: ItemID(), name: "Bananas", checked: true)]
+        let observation = PriceObservation(itemID: items[0].itemID!, shopID: shopID, date: Date(),
+                                           amount: Money(minorUnits: 449), source: .receipt)
+        let list = snapshot(items, [observation])
+        XCTAssertEqual(list.remaining, 0)
+        XCTAssertFalse(list.summary.hasPricedItems)
+        XCTAssertEqual(list.summary.total, Money(minorUnits: 0))
+    }
+
+    /// And the figure counts quantities, exactly as the app's total bar does: ×4 at a
+    /// measured $3.50 is $14.00 on the lock screen too.
+    func testTheTileMultipliesByTheQuantityTheListSays() {
+        let item = ListItem(itemID: ItemID(), name: "Milk", quantity: 4)
+        let observation = PriceObservation(itemID: item.itemID!, shopID: shopID, date: Date(),
+                                           amount: Money(minorUnits: 350), source: .receipt)
+        let summary = snapshot([item], [observation]).summary
+        XCTAssertEqual(summary.total, Money(minorUnits: 1_400))
+        XCTAssertFalse(summary.isApproximate, "four measured items are still measured")
+        XCTAssertEqual(summary.display, "$14.00")
     }
 
     func testTheGalleryTileCarriesNamesButNoMoneyNobodyPaid() {

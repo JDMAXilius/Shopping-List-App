@@ -2,12 +2,15 @@ import SwiftUI
 import Core
 
 /// The double-ruled total (A·Ledger's organ). Everything — sum, `≈`, breakdown —
-/// derives from one `[PriceDisplay]` (W4-C1 fix 2): a total that disagrees with its
-/// own breakdown is unrepresentable. No loose counts cross this API.
+/// derives from one `[PriceLine]` (W4-C1 fix 2, W8-P5 ruling 2): a total that disagrees
+/// with its own breakdown is unrepresentable, and so is one built from prices of ONE.
+/// No loose counts cross this API.
 public struct TotalBar: View {
     private let summary: PriceSummary
 
-    public init(prices: [PriceDisplay]) {
+    /// Still labelled `prices:` — these ARE the rows' prices, each carrying the quantity
+    /// the list says. `PriceDisplay.line(quantity:)` is the only way to make one.
+    public init(prices: [PriceLine]) {
         self.init(summary: PriceSummary(prices))
     }
 

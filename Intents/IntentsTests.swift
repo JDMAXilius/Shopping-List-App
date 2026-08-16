@@ -130,10 +130,16 @@ final class IntentsTests: XCTestCase {
         let measured = PriceDisplay(amount: Money(minorUnits: 449, currencyCode: "USD"),
                                     confidence: .trusted)
         let estimated = PriceDisplay.estimated(Money(minorUnits: 500, currencyCode: "USD"))
-        let combinations: [[PriceDisplay]] = [
-            [], [.none], [.none, .none], [measured], [measured, measured],
-            [estimated], [measured, estimated], [measured, .none],
-            [measured, estimated, .none, .none],
+        let gap = PriceDisplay.none
+        // Quantities included: the sentence must hold for a basket of fours and halves too.
+        let combinations: [[PriceLine]] = [
+            [], [gap.line(quantity: 1)], [gap.line(quantity: 3), gap.line(quantity: 1)],
+            [measured.line(quantity: 1)], [measured.line(quantity: 4), measured.line(quantity: 2)],
+            [estimated.line(quantity: 0.5)], [measured.line(quantity: 4),
+                                              estimated.line(quantity: 1)],
+            [measured.line(quantity: 2), gap.line(quantity: 1)],
+            [measured.line(quantity: 4), estimated.line(quantity: 0.5),
+             gap.line(quantity: 1), gap.line(quantity: 6)],
         ]
         for prices in combinations {
             let summary = PriceSummary(prices)
@@ -172,6 +178,64 @@ final class IntentsTests: XCTestCase {
         XCTAssertTrue(left.said.contains("2 things left"), left.said)
         XCTAssertTrue(left.said.lowercased().contains("about"), left.said)
         XCTAssertTrue(left.said.contains("no price yet"), left.said)
+    }
+
+    /// "What it comes to" is what the trolley will hold (W8-P5 ruling 1). Four milks at a
+    /// measured $3.50 comes to $14.00; Siri said $3.50 until this test existed.
+    func testWhatItComesToCountsTheQuantitiesTheListSays() throws {
+        let app = try prepare()
+        let shop = Shop(name: "Corner")
+        try app.repository.append(.shop(.upsert(shop)), kitchenID: app.kitchen.id)
+        IntentContext.databaseURL = app.url
+        _ = try AddItemIntent.add("4 milk", shop: nil)
+
+        let context = try IntentContext.current()
+        let milk = try XCTUnwrap(try context.items().first)
+        let itemID = try XCTUnwrap(milk.itemID)
+        XCTAssertEqual(milk.quantity, 4)
+        try app.repository.append(
+            .price(PriceObservation(itemID: itemID, shopID: shop.id, date: Date(),
+                                    amount: Money(minorUnits: 350, currencyCode: "USD"),
+                                    source: .manual)),
+            kitchenID: app.kitchen.id)
+
+        let said = try WhatsLeftIntent.left().said
+        XCTAssertTrue(said.contains("$14.00"), said)
+        XCTAssertFalse(said.contains("$3.50"), said)
+        // All measured, so nothing is hedged.
+        XCTAssertFalse(said.lowercased().contains("about"), said)
+    }
+
+    /// Ruling 5: `×4 · $3.50` read as four milks costing three fifty. The subtitle says
+    /// which number is which, or it does not say both.
+    func testASubtitleNeverLetsAUnitPriceReadAsALineTotal() throws {
+        let app = try prepare()
+        let shop = Shop(name: "Corner")
+        try app.repository.append(.shop(.upsert(shop)), kitchenID: app.kitchen.id)
+        IntentContext.databaseURL = app.url
+        _ = try AddItemIntent.add("4 milk", shop: nil)
+        let itemID = try XCTUnwrap(try XCTUnwrap(try IntentContext.current().items().first).itemID)
+        try app.repository.append(
+            .price(PriceObservation(itemID: itemID, shopID: shop.id, date: Date(),
+                                    amount: Money(minorUnits: 350, currencyCode: "USD"),
+                                    source: .manual)),
+            kitchenID: app.kitchen.id)
+
+        let row = try XCTUnwrap(try IntentContext.current().rows().first)
+        let detail = try XCTUnwrap(ListItemEntity(row).detail)
+        XCTAssertEqual(detail, "×4 at $3.50")
+        XCTAssertFalse(detail.contains("×4 · $3.50"), detail)
+        // The price is still DesignKit's one phrase, unforked.
+        XCTAssertTrue(detail.hasSuffix(row.price.accessibilityPhrase), detail)
+    }
+
+    /// One of something says the price plainly: there is no multiplier to be confused with.
+    func testASubtitleForOneOfSomethingIsJustThePrice() throws {
+        let app = try prepare()
+        IntentContext.databaseURL = app.url
+        _ = try AddItemIntent.add("milk", shop: nil)
+        let row = try XCTUnwrap(try IntentContext.current().rows().first)
+        XCTAssertEqual(ListItemEntity(row).detail, row.price.accessibilityPhrase)
     }
 
     func testAnEmptyListAndAFinishedListAreDifferentSentences() throws {
@@ -284,7 +348,7 @@ final class IntentsTests: XCTestCase {
             IntentVoice.removed(["milk"]), IntentVoice.removalQuestion("Milk"),
             IntentVoice.whatsLeft(rows, onList: 4), IntentVoice.whatsLeft([], onList: 4),
             IntentVoice.whatsLeft([], onList: 0),
-            IntentVoice.total(PriceSummary(rows.map(\.price))),
+            IntentVoice.total(PriceSummary(rows.map(\.line))),
         ]
         for sentence in sentences {
             XCTAssertFalse(sentence.contains("!"), sentence)

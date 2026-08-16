@@ -70,8 +70,9 @@ final class ListStore {
         return rows
     }
 
-    /// The one array TotalBar, the sub-line and every aisle subtotal derive from.
-    var prices: [PriceDisplay] { rows.map(\.price) }
+    /// The one array TotalBar, the sub-line and every aisle subtotal derive from — LINE
+    /// totals, so the trip total counts what the list says and not one of each (W8-P5).
+    var prices: [PriceLine] { rows.map(\.line) }
     var unpriced: [ListRow] { rows.filter { $0.price == .none && !$0.item.checked } }
     var completed: [ListRow] { rows.filter(\.item.checked) }
     var remainingCount: Int { rows.count - completed.count }

@@ -233,13 +233,51 @@ final class ListStoreTests: XCTestCase {
 
     // MARK: - Derived view state
 
+    /// THE number this app exists to give (W8-P5). ×4 milk at a measured $3.50 is a $14.00
+    /// trip, and it read $3.50 from wave 5 to wave 8 because every total summed the price of
+    /// one. The row goes on showing $3.50 — both quantities are true, and both are on screen.
+    func testTheTripTotalCountsWhatTheListSaysNotOneOfEach() throws {
+        let (store, _) = try makeStore()
+        store.addShop(named: "Trader Joe's")
+        store.add(text: "4 milk")
+        store.setPrice(try XCTUnwrap(store.rows.first).item, Money(minorUnits: 350))
+
+        let row = try XCTUnwrap(store.rows.first)
+        XCTAssertEqual(row.item.quantity, 4)
+        XCTAssertEqual(row.price, PriceDisplay(amount: Money(minorUnits: 350),
+                                               confidence: .trusted))
+        XCTAssertEqual(row.price.accessibilityPhrase, "$3.50")
+
+        let summary = PriceSummary(store.prices)
+        XCTAssertEqual(summary.total, Money(minorUnits: 1_400))
+        XCTAssertEqual(summary.display, "$14.00")     // measured stays measured: no `≈`
+        XCTAssertEqual(summary.measuredCount, 1)      // one ROW, whatever its quantity
+
+        // The aisle subtotal is the same claim about the same rows.
+        let aisle = try XCTUnwrap(store.aisles.first)
+        XCTAssertEqual(PriceSummary(aisle.prices).total, Money(minorUnits: 1_400))
+    }
+
+    /// A weighed row multiplies too, and checking it off does not change the trip total —
+    /// the money is in the trolley either way.
+    func testAWeighedRowMultipliesAndSurvivesACheckOff() throws {
+        let (store, _) = try makeStore()
+        store.addShop(named: "Trader Joe's")
+        store.add(text: "1.5 lb chicken breast")
+        store.setPrice(try XCTUnwrap(store.rows.first).item, Money(minorUnits: 399))
+
+        XCTAssertEqual(PriceSummary(store.prices).total, Money(minorUnits: 599))
+        store.toggle(try XCTUnwrap(store.rows.first).item)
+        XCTAssertEqual(PriceSummary(store.prices).total, Money(minorUnits: 599))
+    }
+
     func testTotalBarPricesMatchTheVisibleRows() throws {
         let (store, _) = try makeStore()
         store.add(text: "bananas")
         store.add(text: "milk")
         store.add(text: "unicorn steaks")
 
-        XCTAssertEqual(store.prices, store.rows.map(\.price))
+        XCTAssertEqual(store.prices, store.rows.map(\.line))
         let summary = PriceSummary(store.prices)
         XCTAssertEqual(summary.estimatedCount, 2)
         XCTAssertEqual(summary.unpricedCount, 1)

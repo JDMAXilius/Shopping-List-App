@@ -90,8 +90,9 @@ struct WidgetList: Hashable, Sendable {
     let rows: [WidgetRow]
     let remaining: Int
     let total: Int
-    /// Over the WHOLE list, exactly as the app's `TotalBar`: the tile's figure and the app's
-    /// figure are the same claim about the same basket.
+    /// Over the rows that are LEFT — the unchecked ones, quantity included. A count and a
+    /// figure in one breath must mean one basket (W8-P5 ruling 4): this tile says "2 left"
+    /// beside it, and Siri answering the same question prices the same two.
     let summary: PriceSummary
 
     var hidden: Int { max(0, remaining - rows.filter { !$0.isChecked }.count) }
@@ -119,14 +120,19 @@ enum WidgetSnapshot {
     static func list(items: [ListItem], observations: [PriceObservation], shopID: ShopID?,
                      catalog: ListCatalog, limit: Int) -> WidgetList {
         let lookup = PriceLookup(observations: observations, shopID: shopID, catalog: catalog)
-        let ordered = items.filter { !$0.checked } + items.filter(\.checked)
+        let left = items.filter { !$0.checked }
+        let ordered = left + items.filter(\.checked)
         return WidgetList(
             rows: ordered.prefix(limit).map {
                 WidgetRow(id: $0.listItemID, name: $0.name, isChecked: $0.checked)
             },
-            remaining: items.filter { !$0.checked }.count,
+            remaining: left.count,
             total: items.count,
-            summary: PriceSummary(items.map { lookup.display($0.itemID) }))
+            // The same rows the count names, each times its own quantity. Summing the whole
+            // list here put a figure for a finished basket beside "2 left".
+            summary: PriceSummary(left.map {
+                lookup.display($0.itemID).line(quantity: $0.quantity)
+            }))
     }
 
 }
@@ -208,7 +214,9 @@ struct WidgetProvider: TimelineProvider {
     static func sample(limit: Int) -> WidgetState {
         let names = ["Bananas", "Oat milk", "Eggs"]
         let rows = names.prefix(limit).map { WidgetRow(id: ListItemID(), name: $0, isChecked: false) }
-        return .list(WidgetList(rows: Array(rows), remaining: 5, total: 7,
-                                summary: PriceSummary(Array(repeating: PriceDisplay.none, count: 7))))
+        // Five lines, because five is what the tile says is left: the sample obeys ruling 4 too.
+        return .list(WidgetList(
+            rows: Array(rows), remaining: 5, total: 7,
+            summary: PriceSummary(Array(repeating: PriceDisplay.none.line(quantity: 1), count: 5))))
     }
 }
