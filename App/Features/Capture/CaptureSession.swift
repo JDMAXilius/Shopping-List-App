@@ -342,8 +342,8 @@ final class CaptureSession {
         // The item written is the item the screen showed, always. What this kitchen already
         // knows is resolved before the user is asked (`remembered`), never behind them here.
         if let alias = line.alias, !Merge.aliasKey(line.rawText).isEmpty {
-            try? repository.append(.alias(rawText: line.rawText, itemID: alias.itemID),
-                                   kitchenID: kitchenID)
+            _ = try? repository.append(.alias(rawText: line.rawText, itemID: alias.itemID),
+                                       kitchenID: kitchenID)
         }
         store.refresh()
         Haptics.play(.add)

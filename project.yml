@@ -1,0 +1,69 @@
+# XcodeGen spec — regenerate with: ~/tools/xcodegen/bin/xcodegen generate
+# (XcodeGen 2.46.0; binary release, no Homebrew needed)
+name: Bagged
+options:
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    PRODUCT_BUNDLE_IDENTIFIER: app.bagged
+    CODE_SIGN_STYLE: Automatic
+packages:
+  Core:
+    path: Packages/Core
+  Catalog:
+    path: Packages/Catalog
+  Data:
+    path: Packages/Data
+  DesignKit:
+    path: Packages/DesignKit
+targets:
+  Bagged:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - "**/*Tests.swift"
+    dependencies:
+      - package: Core
+      - package: Catalog
+      - package: Data
+      - package: DesignKit
+    entitlements:
+      path: App/Bagged.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.app.bagged
+    info:
+      path: App/Info.plist
+      properties:
+        UILaunchScreen: {}
+        NSCameraUsageDescription: >-
+          Bagged uses your camera to photograph a receipt or scan a barcode so
+          the items and prices on it can go straight onto your list.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+  BaggedTests:
+    type: bundle.unit-test
+    platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.bagged.tests
+    sources:
+      - path: App
+        includes:
+          - "**/*Tests.swift"
+    dependencies:
+      - target: Bagged
+schemes:
+  Bagged:
+    build:
+      targets:
+        Bagged: all
+    test:
+      targets:
+        - BaggedTests

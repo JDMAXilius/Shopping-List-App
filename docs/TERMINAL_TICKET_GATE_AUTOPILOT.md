@@ -139,8 +139,8 @@ single highest-value task on the list and it can only be done on a Mac.
   live with the merge conflicts**; if you pick a generator, commit the spec and document the
   regenerate command in the Log).
 
-- [ ] Project builds: `xcodebuild -scheme Bagged -destination 'platform=iOS Simulator,name=iPhone 16' build`
-- [ ] App test target runs the three suites — paste counts
+- [x] Project builds: `xcodebuild -scheme Bagged -destination 'platform=iOS Simulator,name=iPhone 16' build`
+- [x] App test target runs the three suites — paste counts
 
 ### T3 — The App layer, compiled for the first time
 
@@ -155,8 +155,8 @@ here. The riskiest spots are already known and were flagged by the agents that w
   under Swift 6 `sending` rules.
 - `async let` pairs in `CaptureSessionTests` (Sendable inference on the private `Harness` struct).
 
-- [ ] `App/` compiles with strict concurrency, zero warnings suppressed
-- [ ] All three App suites green — paste counts
+- [x] `App/` compiles with strict concurrency, zero warnings suppressed
+- [x] All three App suites green — paste counts
 
 ### T4 — The backend, against the real stack
 
@@ -322,3 +322,23 @@ wave-by-wave detail — **read its Log, it has the reasoning behind every ruling
   "no price yet". A prompted row speaks gap + prompt.
 - Housekeeping: accidentally committed `Packages/Catalog/.build` in 2b09d7b; untracked and
   gitignored in 02b749b.
+
+**2026-08-16 · terminal · T2+T3 complete.**
+- Chose **XcodeGen 2.46.0** (binary release in `~/tools/xcodegen`, no Homebrew on this Mac).
+  Spec is `project.yml`, committed alongside the generated `Bagged.xcodeproj`. Regenerate with
+  `~/tools/xcodegen/bin/xcodegen generate`.
+- Target `Bagged`: iOS 18.0 min, `SWIFT_VERSION 6.0` + strict concurrency, bundle id
+  `app.bagged`, App Group `group.app.bagged` entitlement, real `NSCameraUsageDescription`.
+  `BaggedTests` holds the three App suites (`**/*Tests.swift` split out of the app sources).
+- **The App layer compiled FIRST TRY under Swift 6 strict concurrency.** Every flagged landmine
+  (@Entry existential, `opened?.store` tuple chain, @ObservationIgnored lazy engine, @Sendable
+  frame delegate, `sending` tuple out of pool.write, async-let Harness) passed clean. One
+  warning fixed: unused `try?` result in CaptureSession.swift:345 → `_ =`.
+- No iPhone 16 simulator on this machine (Xcode 26 ships iPhone 17 family); used
+  `iPhone 17`. Build **SUCCEEDED**, zero warnings from our sources after the fix.
+- App suites on the simulator: CaptureSessionTests **33/33**, ListStoreTests **26/26**,
+  ScanClientTests **20/20** — **79 passed, 0 failed**.
+- T0 follow-up: deno 2.9.5 installed to `~/.deno/bin`. Still no supabase CLI and **no Docker
+  on this Mac** — `supabase start` cannot run, so the T4 real-stack RLS suite is blocked here.
+> HANDOFF → cloud: T4 RLS-on-real-stack needs Docker Desktop (or founder installs it here).
+  deno tests + type-check will still run locally.
