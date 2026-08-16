@@ -56,6 +56,16 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
       and a unit-test target that runs `App/Features/List/ListStoreTests.swift`
       (`@testable import Bagged`). This is the one wave-5 task that CANNOT be done in cloud.
       Then `swift test` the packages and run the app in the simulator against `design/app/01-list.png`
+- [ ] Wave 6: `swift test` on Core/Data (alias op, pending_scan, schema v3) and DesignKit
+      (Chip · Notice · Field · SectionLabel · UndoBar). Then `deno test supabase/functions/scan-receipt/`
+      and re-run `rls.test.sql` — the cloud run was PG16+shim, 60/60, mutation-tested
+- [ ] ⚠️ **THE SNAPSHOT SUITE STILL DOES NOT EXIST** and is now the largest hole in the visual
+      contract. FILES.md advertises `Tests/DesignKitTests/SnapshotTests`; twelve components have
+      shipped without it. Every layout claim — quantity under the name at AX5, chip words
+      wrapping instead of truncating, Field's label above the box, a long undo phrase not
+      shoving the price off-screen — is reasoned, never rendered. Contrast and semantics ARE
+      tested (pure functions, real WCAG math); geometry is not. Rank this just behind the
+      Xcode project
 - [ ] Log entry appended; pushed to main
 
 ## Log — append only
@@ -140,3 +150,23 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
   valuative green — must be ink) and a stop-square instead of + in the tab circle. PRODUCT
   outranks renders.** Wave-5 note: TotalBar/AisleHeader/PriceDisplay have the new surface —
   build against it, and Money needs the per-currency minor-unit exponent before any non-USD.
+
+- **2026-08-16 · cloud (wave 6, part 1)** — Capture's foundations. Two things the flow needed that
+  didn't exist: the **`alias` op** ('TJ ORG BABY SPNC' -> Baby spinach, matched once and remembered
+  kitchen-wide, with a nil case meaning 'ignore forever'), and **`pending_scan`**, which keeps the
+  offline promise printed on the camera screen — capture succeeds, photo stays on device, parse is
+  deferred, survives an app kill. Alias keys fold punctuation because till printers emit it.
+  `shop_id` is nullable: forcing a shop choice before the shutter is friction at the worst moment,
+  so the trip gets its shop at review.
+  **DesignKit gained five components** (SectionLabel, UndoBar, Chip, Notice, Field) collapsing
+  duplications the nine capture screens would have copied, plus ONE home for the persimmon rule
+  that all of them forward to. Two rulings worth knowing: a `sure` confidence chip is **not green**
+  (green means fact; a parse awaiting review is a guess), and the Figma-sanctioned amber
+  **#D9A03F is refused** at 2.32:1 — it could only ever have been a decorative dot. `Motion.undoDwell`
+  is 8s, derived from glance-up + read + reach, not picked.
+  **The backend stopped burning scans on its own failures**: model output is validated line by
+  line (one bad line 502s the parse AND refunds), 403 split into sign_in_required vs
+  kitchen_required so a signed-in owner isn't sent to a sign-in screen, and two bugs found in
+  self-review — an uncaught 500 that spent a scan with no refund path, and truncation reported as
+  'unreadable image' when the receipt was merely long. RLS suite 51 -> 60 checks, **mutation-tested**
+  (code broken to prove the tests fail, then restored).
