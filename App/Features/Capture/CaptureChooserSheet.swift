@@ -17,6 +17,7 @@ struct CaptureChooserSheet: View {
     let session: CaptureSession
 
     @State private var path: [CaptureRoute] = []
+    @State private var showsFirstReceipt = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -33,9 +34,20 @@ struct CaptureChooserSheet: View {
         .onChange(of: session.stage) { _, stage in
             switch stage {
             case .review: path = [.review]
-            case .committed: path = [.result]
+            case .committed:
+                path = [.result]
+                // The flow's stage changes here and nowhere else, so this is the one place that
+                // knows a receipt just became prices.
+                showsFirstReceipt = FirstReceiptSheet.shouldShow(session.result)
             case .idle where path == [.review]: path = []
             default: break
+            }
+        }
+        .sheet(isPresented: $showsFirstReceipt) {
+            if let result = session.result {
+                FirstReceiptSheet(result: result, shopName: session.shopName) {
+                    showsFirstReceipt = false
+                }
             }
         }
     }
@@ -115,13 +127,9 @@ struct CaptureChooserSheet: View {
         case .result:
             CaptureResultScreen(session: session, onDone: { dismiss() })
         case .barcode:
-            EmptyState(
-                glyph: .pantryDry,
-                message: "Reading a barcode is the next piece of capture, and it isn't built yet. Scan the receipt instead.")
+            BarcodeScanScreen(session: session, path: $path)
         case .byHand:
-            EmptyState(
-                glyph: .other,
-                message: "Typing a receipt in by hand is the next piece of capture, and it isn't built yet. Scan the receipt instead.")
+            EnterByHandScreen(session: session)
         }
     }
 }

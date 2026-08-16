@@ -225,6 +225,161 @@ final class CaptureSessionTests: XCTestCase {
 
     // MARK: - The close
 
+    // MARK: - The typed price: enter by hand, and a barcode
+
+    private func typedLine(_ amount: Int, quantity: Double = 1, itemID: ItemID = ItemID(),
+                           rawText: String = "", teaches: Bool = false) -> CaptureLine {
+        CaptureLine(rawText: rawText, amount: Money(minorUnits: amount), quantity: quantity,
+                    confidence: .sure,
+                    match: CaptureMatch(itemID: itemID, name: "Milk", estimate: nil),
+                    decision: .accept, alias: teaches ? .remember(itemID) : nil)
+    }
+
+    func testATypedPriceIsTaggedTypedAndLeavesAReviewInProgressAlone() async throws {
+        let harness = try makeHarness([try parsed(receiptJSON)])
+        await harness.session.capture(jpeg: jpeg)
+        let shopID = try XCTUnwrap(harness.store.activeShopID)
+        let itemID = ItemID.catalog(7)
+
+        XCTAssertTrue(harness.session.record(typedLine(449, itemID: itemID), shopID: shopID,
+                                             date: Date()))
+
+        let observations = try harness.repository.priceObservations()
+        XCTAssertEqual(observations.count, 1)
+        XCTAssertEqual(observations.first?.source, .typed)
+        XCTAssertEqual(observations.first?.itemID, itemID)
+        XCTAssertEqual(observations.first?.amount, Money(minorUnits: 449))
+        // The receipt upstairs is untouched: same stage, same lines, same queued photo, no
+        // receipt row, and nothing remembered that the user never matched.
+        XCTAssertEqual(harness.session.stage, .review)
+        XCTAssertEqual(harness.session.lines.count, 3)
+        XCTAssertNotNil(harness.session.scan)
+        XCTAssertTrue(try harness.repository.receipts().isEmpty)
+        XCTAssertEqual(try harness.repository.queuedScans().count, 1)
+        XCTAssertTrue(try harness.repository.aliases().isEmpty)
+    }
+
+    func testThreeOfSomethingRecordsWhatOneCost() throws {
+        let harness = try makeHarness([])
+        let shopID = try XCTUnwrap(harness.store.activeShopID)
+
+        XCTAssertTrue(harness.session.record(typedLine(1050, quantity: 3), shopID: shopID,
+                                             date: Date()))
+
+        XCTAssertEqual(try harness.repository.priceObservations().first?.amount,
+                       Money(minorUnits: 350))
+    }
+
+    func testATypedPriceIsNeverDatedIntoTheFuture() throws {
+        let harness = try makeHarness([])
+        let shopID = try XCTUnwrap(harness.store.activeShopID)
+
+        XCTAssertTrue(harness.session.record(typedLine(449), shopID: shopID,
+                                             date: Date().addingTimeInterval(10 * 86_400)))
+
+        // A future date would outrank every real observation for 90 days, so it never lands.
+        let observation = try XCTUnwrap(try harness.repository.priceObservations().first)
+        XCTAssertLessThanOrEqual(observation.date.timeIntervalSinceNow, 1)
+    }
+
+    func testABarcodeIsTaughtOnceAndEveryLaterScanJoinsThatItem() throws {
+        let harness = try makeHarness([])
+        let shopID = try XCTUnwrap(harness.store.activeShopID)
+        let code = "0071234567890"
+        let taught = ItemID.catalog(11)
+
+        XCTAssertTrue(harness.session.record(typedLine(199, itemID: taught, rawText: code,
+                                                       teaches: true),
+                                             shopID: shopID, date: Date()))
+
+        let aliases = try harness.repository.aliases()
+        let index = try XCTUnwrap(aliases.index(forKey: Merge.aliasKey(code)), "the code is taught")
+        XCTAssertEqual(aliases[index].value, taught)
+        XCTAssertEqual(harness.session.remembered(code)?.itemID, taught)
+
+        // A second scan arrives with a freshly minted id; the kitchen's answer wins, so the two
+        // prices are one item's history and no second alias is written.
+        let stray = ItemID()
+        XCTAssertTrue(harness.session.record(typedLine(209, itemID: stray, rawText: code,
+                                                       teaches: true),
+                                             shopID: shopID, date: Date()))
+
+        XCTAssertEqual(Set(try harness.repository.priceObservations().map(\.itemID)), [taught])
+        XCTAssertEqual(try harness.repository.aliases().count, 1)
+    }
+
+    func testAnUnmatchedOrEmptyTypedLineWritesNothingAtAll() throws {
+        let harness = try makeHarness([])
+        let shopID = try XCTUnwrap(harness.store.activeShopID)
+        var unmatched = typedLine(449)
+        unmatched.match = nil
+        unmatched.decision = .unresolved
+
+        XCTAssertFalse(harness.session.record(unmatched, shopID: shopID, date: Date()))
+        XCTAssertFalse(harness.session.record(typedLine(0), shopID: shopID, date: Date()))
+
+        XCTAssertTrue(try harness.repository.priceObservations().isEmpty)
+        XCTAssertTrue(try harness.repository.aliases().isEmpty)
+    }
+
+    // MARK: - The money the two typed screens share
+
+    func testMoneyIsBuiltFromMinorUnitsAndRefusesWhatIsNotAPrice() {
+        XCTAssertEqual(TypedPriceEntry.money(from: "4.49", currencyCode: "USD"),
+                       Money(minorUnits: 449))
+        // "4.4" is $4.40, not $4.04 — padded on the right, like a till.
+        XCTAssertEqual(TypedPriceEntry.money(from: "4.4", currencyCode: "USD"),
+                       Money(minorUnits: 440))
+        XCTAssertEqual(TypedPriceEntry.money(from: "4", currencyCode: "USD"),
+                       Money(minorUnits: 400))
+        XCTAssertEqual(TypedPriceEntry.money(from: ".49", currencyCode: "USD"),
+                       Money(minorUnits: 49))
+        XCTAssertEqual(TypedPriceEntry.money(from: "$4.49", currencyCode: "USD"),
+                       Money(minorUnits: 449))
+        XCTAssertEqual(TypedPriceEntry.money(from: "4,49", currencyCode: "USD"),
+                       Money(minorUnits: 449))
+        // A third decimal is not money: it is dropped, never rounded up into a price.
+        XCTAssertEqual(TypedPriceEntry.money(from: "4.499", currencyCode: "USD"),
+                       Money(minorUnits: 449))
+        // Yen has no minor unit: 500 is ¥500 and must never become ¥5.00.
+        XCTAssertEqual(TypedPriceEntry.money(from: "500", currencyCode: "JPY"),
+                       Money(minorUnits: 500, currencyCode: "JPY"))
+        XCTAssertNil(TypedPriceEntry.money(from: "", currencyCode: "USD"))
+        XCTAssertNil(TypedPriceEntry.money(from: "4a9", currencyCode: "USD"))
+        XCTAssertNil(TypedPriceEntry.money(from: "4.4.9", currencyCode: "USD"))
+        XCTAssertNil(TypedPriceEntry.money(from: "1234567890", currencyCode: "USD"))
+    }
+
+    func testTheSavedSentenceNamesThePriceOfOne() {
+        let item = CaptureMatch(itemID: ItemID(), name: "Milk", estimate: nil)
+        let one = typedLine(449, itemID: item.itemID)
+        XCTAssertEqual(TypedPriceEntry.savedSentence(item: item, line: one, shop: "Trader Joe's"),
+                       "Saved: Milk — $4.49 at Trader Joe's, typed.")
+        let three = typedLine(900, quantity: 3, itemID: item.itemID)
+        XCTAssertEqual(TypedPriceEntry.savedSentence(item: item, line: three, shop: nil),
+                       "Saved: Milk — $3.00 each, typed.")
+    }
+
+    // MARK: - The aha, once
+
+    func testTheFirstReceiptSheetIsShownOnceAndOnlyForPricesThatExist() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "bagged.tests.\(UUID().uuidString)"))
+        let priced = CaptureResult(lines: [line(amount: 100, estimate: nil)])
+        var ignored = line(amount: 100, estimate: nil)
+        ignored.decision = .ignore
+        let nothingPriced = CaptureResult(lines: [ignored])
+
+        XCTAssertFalse(FirstReceiptSheet.shouldShow(nil, defaults: defaults))
+        // A receipt that produced no price has no aha to show, and does not spend the showing.
+        XCTAssertFalse(FirstReceiptSheet.shouldShow(nothingPriced, defaults: defaults))
+        XCTAssertTrue(FirstReceiptSheet.shouldShow(priced, defaults: defaults))
+
+        FirstReceiptSheet.markShown(defaults)
+
+        XCTAssertFalse(FirstReceiptSheet.shouldShow(priced, defaults: defaults))
+        XCTAssertEqual(FirstReceiptSheet.headline(priced), "1 price is yours now")
+    }
+
     func testTheResultOnlyClaimsEveryLineWhenEveryLineIsTrue() {
         let priced = CaptureResult(lines: [line(amount: 100, estimate: nil),
                                            line(amount: 200, estimate: nil)])

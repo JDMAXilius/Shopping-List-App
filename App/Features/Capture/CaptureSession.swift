@@ -49,7 +49,7 @@ final class CaptureSession {
     /// Chosen at review: at the till the shutter fires before anyone knows the shop.
     var shopID: ShopID?
 
-    private var currencyCode = "USD"
+    private(set) var currencyCode = "USD"
     private var purchasedAt: Date?
     private var printedTotalMinor: Int?
 
@@ -237,8 +237,7 @@ final class CaptureSession {
 
     /// The correction the resolver comes back with. The alias is what makes it stick.
     func choose(itemID: ItemID, name: String, for id: CaptureLine.ID) {
-        let chosen = CaptureMatch(itemID: itemID, name: name,
-                                  estimate: catalog.estimate(for: itemID))
+        let chosen = match(itemID: itemID, name: name)
         update(id) { line in
             line.match = chosen
             line.decision = .accept
@@ -267,6 +266,21 @@ final class CaptureSession {
 
     func suggestions(for text: String) -> [ListCatalog.Match] { catalog.matches(text) }
 
+    /// The seeded estimate travels with the id, so the >3× gate has something to compare
+    /// against wherever a match is made — a receipt line, a barcode, a typed one.
+    func match(itemID: ItemID, name: String) -> CaptureMatch {
+        CaptureMatch(itemID: itemID, name: name, estimate: catalog.estimate(for: itemID))
+    }
+
+    /// What this kitchen has already said this text means — a barcode it taught once, a till
+    /// line it matched. nil is "nobody has said yet", which is not "unknown product".
+    func remembered(_ rawText: String) -> CaptureMatch? {
+        let aliases = (try? repository.aliases()) ?? [:]
+        guard let index = aliases.index(forKey: Merge.aliasKey(rawText)),
+              let itemID = aliases[index].value else { return nil }
+        return match(itemID, fallback: rawText)
+    }
+
     /// `promoteScan` first — one transaction that writes the receipt and hands the photo over —
     /// then one price op per accepted line, and the alias each user decision earned.
     @discardableResult
@@ -291,6 +305,36 @@ final class CaptureSession {
         refreshWaiting()
         store.refresh()
         stage = .committed
+        Haptics.play(.add)
+        return true
+    }
+
+    /// One line with no receipt behind it — typed, or scanned off a packet. It writes what
+    /// `commit` writes for a single line and nothing else: no receipt row, and not one touch of
+    /// `stage`, `scan` or `lines`, so a review left open upstairs survives this.
+    @discardableResult
+    func record(_ line: CaptureLine, shopID: ShopID, date: Date) -> Bool {
+        guard line.isPriced, let match = line.match, line.amount.minorUnits > 0 else { return false }
+        var itemID = match.itemID
+        var teaches = false
+        if line.alias != nil, !Merge.aliasKey(line.rawText).isEmpty {
+            // This kitchen may already have taught this exact text. Reusing the item it named
+            // is what keeps one product's prices in one history instead of two.
+            let aliases = (try? repository.aliases()) ?? [:]
+            let known = aliases.index(forKey: Merge.aliasKey(line.rawText)).flatMap { aliases[$0].value }
+            itemID = known ?? itemID
+            teaches = known == nil
+        }
+        // Never forward: a future-dated observation would outrank every real one for 90 days.
+        let observation = PriceObservation(itemID: itemID, shopID: shopID, date: min(date, Date()),
+                                           amount: line.unitAmount, source: .typed)
+        guard (try? repository.append(.price(observation), kitchenID: kitchenID)) != nil else {
+            return false
+        }
+        if teaches {
+            try? repository.append(.alias(rawText: line.rawText, itemID: itemID), kitchenID: kitchenID)
+        }
+        store.refresh()
         Haptics.play(.add)
         return true
     }
