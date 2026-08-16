@@ -125,10 +125,13 @@ ADHD load rules outrank raw density. K's compact mode + unit-price rows ships v1
 
 ### Row anatomy — FINAL
 
-Tick circle · tinted glyph tile · **name** (truncates, never pushes the price) · `×N` quantity
-as a subtitle **under** the name (never a chip on the name line — that's the known truncation
-bug) · dotted leader · mono price right-aligned. Three price renders, never confusable:
+Tick circle · tinted glyph tile · **name** (truncates, never pushes the price) · **quantity as a
+subtitle under the name** (never a chip on the name line — that's the known truncation bug) ·
+dotted leader · mono price right-aligned. Three price renders, never confusable:
 `$4.49` solid ink · `~$5.00` lighter + muted · `—` none. `≈` on any total containing an estimate.
+
+The quantity subtitle says what was actually parsed — `×2`, `1.5 lb`, `½ dozen` — not a rounded
+`×N`. A row must never display a number the database does not contain.
 
 ### Motion, haptics, sound (the full ruleset is `INTERACTION.md` — unchanged and final)
 
