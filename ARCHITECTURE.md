@@ -118,9 +118,10 @@ member    (kitchen_id fk, user_id uuid, role text check (role in ('owner','guest
 invite    (kitchen_id fk, token text unique, created_at, revoked_at timestamptz)
 op        (id uuid pk, seq bigserial, kitchen_id fk, device_id uuid, clock bigint,
            type text, payload jsonb, created_at)           -- THE sync table
-           -- seq is the pull cursor (created_at commits out of order; a timestamp
-           -- cursor loses ops). INSERT ... ON CONFLICT (id) DO NOTHING: push is
-           -- idempotent by contract — crash-before-mark re-delivery is the normal case
+           -- seq is the pull cursor, made commit-ordered per kitchen by a BEFORE INSERT
+           -- advisory-lock trigger (bare bigserial can be pulled past mid-commit — proven
+           -- op loss, W3-C1). Push goes through the push_ops RPC (ON CONFLICT DO NOTHING);
+           -- bare .insert() 409s a re-delivered batch. Re-delivery is the normal case
 entitlement (user_id pk, is_plus bool, scans_used int default 0, updated_at)
 ```
 
