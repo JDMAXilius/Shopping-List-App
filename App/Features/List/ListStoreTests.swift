@@ -207,8 +207,10 @@ final class ListStoreTests: XCTestCase {
     }
 
     func testCatalogIdentityRoundTrips() {
-        let itemID = ListCatalog.itemID(4_321)
-        XCTAssertEqual(ListCatalog.catalogID(itemID), 4_321)
-        XCTAssertNil(ListCatalog.catalogID(ItemID()))   // a minted id is nobody's catalog row
+        let itemID = ItemID.catalog(4_321)
+        XCTAssertEqual(itemID.catalogID, 4_321)
+        // Pinned: ids already on disk keep meaning, so estimates and receipts stay one price book.
+        XCTAssertEqual(itemID.rawValue.uuidString, "BA60CA7A-1060-0001-0000-0000000010E1")
+        XCTAssertNil(ItemID().catalogID)   // a minted id is nobody's catalog row
     }
 }

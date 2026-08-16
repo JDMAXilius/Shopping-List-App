@@ -141,14 +141,14 @@ struct ListScreen: View {
                     .font(Typography.sectionLabel)
                     .tracking(Typography.labelTracking)
                     .foregroundStyle(Palette.persimmon.color)
-                // The prompt promises the tap: here it opens the price, not the tick.
+                // The prompt promises the tap: the body opens the price, the tick still checks off.
                 ForEach(store.unpriced) { row in
                     ItemRow(name: row.item.name, quantity: quantity(row), glyph: row.category,
                             price: row.price, prompt: "tap to set what you paid",
                             isChecked: row.item.checked,
-                            onToggle: { sheet = .itemDetail(row.id) })
+                            onToggle: { store.toggle(row.item) },
+                            onOpen: { sheet = .itemDetail(row.id) })
                     .contextMenu {
-                        Button("Check off") { store.toggle(row.item) }
                         Button("Remove from list", role: .destructive) { store.remove(row.item) }
                     }
                 }
@@ -256,7 +256,9 @@ struct ListScreen: View {
     private var bottomStack: some View {
         VStack(spacing: 12) {
             TotalBar(prices: store.prices)
-            InputBar(text: $draft, onSubmit: submit, onMic: { sheet = .addItem })
+            // Mic stays off until speech lands (wave 6) — an affordance must not
+            // promise voice one screen before the sheet denies it.
+            InputBar(text: $draft, isMicEnabled: false, onSubmit: submit, onMic: { sheet = .addItem })
         }
         .padding(16)
         .background(Palette.card.color)

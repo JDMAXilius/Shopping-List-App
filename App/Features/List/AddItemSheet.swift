@@ -7,19 +7,14 @@ struct AddItemSheet: View {
     let store: ListStore
 
     @State private var draft = ""
-    @State private var showSpeechNote = false
+    @FocusState private var fieldFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            InputBar(text: $draft, placeholder: "I need…", onSubmit: submit,
-                     onMic: { showSpeechNote = true })
-            if showSpeechNote {
-                // The stub, and it says so: SpeechService lands with the capture work.
-                Text("Hold-to-speak isn't wired up yet. Type it for now.")
-                    .font(Typography.footnote)
-                    .foregroundStyle(Palette.muted.color)
-            }
+            // Speech lands in wave 6: the slashed, muted mic says so, so nothing has to.
+            InputBar(text: $draft, placeholder: "I need…", focus: $fieldFocused,
+                     isMicEnabled: false, onSubmit: submit, onMic: {})
             ScrollView {
                 VStack(spacing: 8) {
                     ForEach(store.suggestions(for: draft)) { suggestion in
@@ -39,6 +34,8 @@ struct AddItemSheet: View {
         .background(Palette.paper.color)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        // Open with the keyboard up: "add an item" is two taps only if this one is free.
+        .onAppear { fieldFocused = true }
     }
 
     private var typed: String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
