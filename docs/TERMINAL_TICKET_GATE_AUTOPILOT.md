@@ -196,8 +196,8 @@ only be closed where a simulator is.
   containing an estimate. A snapshot that cannot tell those apart is not testing the thing that
   matters.
 
-- [ ] Snapshot harness chosen and committed
-- [ ] 12 components × 2 type sizes, all recorded and passing
+- [x] Snapshot harness chosen and committed
+- [x] 12 components × 2 type sizes, all recorded and passing
 
 ### T6 — Run the app and look at it
 
@@ -348,3 +348,16 @@ wave-by-wave detail — **read its Log, it has the reasoning behind every ruling
 - `deno check` clean on scan-receipt, join-kitchen, revenuecat-webhook (supabase-js 2.112.3).
 - RLS suite on the real stack: **not run** — no Docker and no supabase CLI on this machine, so
   `supabase start` is impossible. Box left unchecked; handoff line above stands.
+
+**2026-08-16 · terminal · T5 complete.**
+- Harness: **pointfree swift-snapshot-testing 1.18** — test-only package dependency of
+  `BaggedTests` in project.yml, never linked into the app (the three-runtime-dependency rule
+  governs shipping code). Chosen over bare reference images for its automatic record mode,
+  diff artifacts on failure, and named-variant API.
+- `App/SnapshotTests/ComponentSnapshotTests.swift`: 12 tests, one composed image per component
+  covering variants, × default and `accessibility5` Dynamic Type = **24 references** recorded
+  on the iPhone 17 simulator, committed under `__Snapshots__`. Second run: **12 passed, 0
+  failed**.
+- Money tiers verified by eye in the recorded refs: ItemRow shows mono `$4.49` measured, grey
+  `~$5.00` estimated, `—` + persimmon prompt unpriced, strikethrough checked; TotalBar shows
+  exact `$8.98` all-measured vs `≈ $9.49 · 1 estimated · 1 no price yet` mixed.
