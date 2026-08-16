@@ -170,11 +170,28 @@ export interface ReceiptOptionals {
   purchased_at: string | null;
 }
 
+const DAY = 86_400_000;
+
+// A date the model misread is not a reason to fail a readable receipt — but it IS a reason not
+// to pass it on. A future date makes the price `trusted`, prints as "today", and outranks every
+// real observation for 90 days; a garbage one lands the trip in the wrong month. Out of range
+// reads as "not printed", which the client already handles by using the photo's own timestamp.
+// One day of slack for clock skew and time zones; ten years back for a receipt found in a drawer.
+function purchasedAt(value: unknown, now: number): string | null {
+  if (typeof value !== "string") return null;
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return null;
+  return parsed > now + DAY || parsed < now - 3650 * DAY ? null : value;
+}
+
 // The optional top-level fields are the same trap one level up: the client decodes
 // total_minor as Int? and shop_name/purchased_at as String?, so a wrong-typed value here
 // fails the entire receipt on the device just as a bad line does. Absent and null are the
 // same answer ("not printed"); present-but-wrong-typed is a malfunction, not an answer.
-export function validateOptionals(receipt: Record<string, unknown>): ReceiptOptionals | null {
+export function validateOptionals(
+  receipt: Record<string, unknown>,
+  now: number = Date.now(),
+): ReceiptOptionals | null {
   const nullableString = (v: unknown) => v === undefined || v === null || typeof v === "string";
   if (!nullableString(receipt.shop_name)) return null;
   if (!nullableString(receipt.purchased_at)) return null;
@@ -187,6 +204,6 @@ export function validateOptionals(receipt: Record<string, unknown>): ReceiptOpti
   return {
     shop_name: typeof receipt.shop_name === "string" ? receipt.shop_name : null,
     total_minor: typeof receipt.total_minor === "number" ? receipt.total_minor : null,
-    purchased_at: typeof receipt.purchased_at === "string" ? receipt.purchased_at : null,
+    purchased_at: purchasedAt(receipt.purchased_at, now),
   };
 }
