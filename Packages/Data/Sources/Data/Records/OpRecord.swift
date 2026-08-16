@@ -2,9 +2,10 @@ import Core
 import Foundation
 import GRDB
 
-enum DataError: Error {
+public enum DataError: Error {
     case malformedOp
     case malformedRow
+    case unknownScan
 }
 
 func requireUUID(_ string: String) throws -> UUID {

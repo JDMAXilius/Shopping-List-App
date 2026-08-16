@@ -109,15 +109,15 @@ public struct ListState: Equatable, Sendable {
         aisleRecords[shopID]?.value
     }
 
-    /// Keyed by normalized raw receipt text. A present key with a nil value is "ignore this line
-    /// forever"; an absent key is "never aliased" — a resolver must not collapse those two.
+    /// Keyed by `Merge.aliasKey` of the raw receipt text. A present key with a nil value is "ignore
+    /// this line forever"; an absent key is "never aliased" — a resolver must not collapse those two.
     public var aliases: [String: ItemID?] {
         aliasRecords.mapValues { $0.value }
     }
 
     /// nil = no alias for this text · .some(nil) = ignore forever · .some(.some(id)) = matched.
     public func alias(for rawText: String) -> ItemID?? {
-        aliasRecords[Merge.normalized(rawText)].map { $0.value }
+        aliasRecords[Merge.aliasKey(rawText)].map { $0.value }
     }
 
     private static func keep(_ slot: FieldSlot, in slots: inout [ListItemField: FieldSlot]) {
@@ -154,10 +154,21 @@ public enum Merge {
         return next
     }
 
-    // Dedup key for idempotent adds, a delete's sweep, and alias keys: lowercase, trimmed, collapsed.
+    // Dedup key for idempotent adds and a delete's sweep: lowercase, trimmed, collapsed.
     public static func normalized(_ name: String) -> String {
         cleaned(name).lowercased()
     }
+
+    // Alias keys come off a till printer, where one product prints TJ*ORG BABY SPNC this week and
+    // TJ ORG BABY SPNC the next: fold everything outside [a-z0-9%] to a space so it stays one key.
+    public static func aliasKey(_ rawText: String) -> String {
+        let space: Character = " "
+        let folded = String(rawText.lowercased().map { aliasKeyKept.contains($0) ? $0 : space })
+        return folded.split(separator: space).joined(separator: " ")
+    }
+
+    // % survives: "MILK 2%" and "MILK 2" are different products on the same shelf.
+    private static let aliasKeyKept = Set("abcdefghijklmnopqrstuvwxyz0123456789%")
 
     static func cleaned(_ name: String) -> String {
         name.split(whereSeparator: \.isWhitespace).joined(separator: " ")
@@ -197,8 +208,11 @@ public enum Merge {
             if let existing = state.aisleRecords[order.shopID], stamp <= existing.stamp { return }
             state.aisleRecords[order.shopID] = Stamped(value: order, stamp: stamp)
         case .alias(let rawText, let itemID):
-            // LWW per normalized raw text: correcting a bad match must beat the match it corrects.
-            let key = normalized(rawText)
+            // LWW per alias key: correcting a bad match must beat the match it corrects.
+            let key = aliasKey(rawText)
+            // An empty key would alias every blank OCR line for good, with no screen that could
+            // show or undo it. An op that cannot mean anything is dropped, never stored.
+            guard !key.isEmpty else { return }
             if let existing = state.aliasRecords[key], stamp <= existing.stamp { return }
             state.aliasRecords[key] = Stamped(value: itemID, stamp: stamp)
         }

@@ -96,6 +96,76 @@ final class ContrastTests: XCTestCase {
         }
     }
 
+    // W6-P4: the three new components resolve colour against the fill they are drawn on, not
+    // the ground they sit on. Whatever they decide to draw must clear the floor on that fill.
+
+    func testEveryChipLabelClearsSmallTextOnTheChipsOwnFill() {
+        for surface in Palette.Surface.allCases {
+            for tone in Chip.Tone.allCases {
+                XCTAssertGreaterThanOrEqual(
+                    ratio(Chip.label(tone: tone, on: surface), surface.insetFill), 4.5,
+                    "Chip \(tone) on \(surface)")
+            }
+        }
+    }
+
+    func testTheAttentionRingClearsTheNonTextFloorInsideAndOutside() {
+        // A 1pt border owes 3:1 (WCAG 1.4.11), not 4.5:1 — which is exactly why the tone can
+        // ride on it where persimmon text is refused. It touches the chip's fill on one side
+        // and the ground on the other, so both are checked: 4.64 on card, 4.23 on paper.
+        let ring = Chip.ring(tone: .attention)
+        for surface in Palette.Surface.allCases {
+            XCTAssertGreaterThanOrEqual(ratio(ring, surface.insetFill), 3.0)
+            XCTAssertGreaterThanOrEqual(ratio(ring, surface.fill), 3.0)
+        }
+    }
+
+    func testTheNeutralHairlineIsBelowTheNonTextFloorAndTheLabelIsWhyThatHolds() {
+        // Recorded, not asserted away: `line` on either fill measures ~1.2–1.3:1, and the
+        // paper/card step is ~1.10:1, so a neutral chip is NOT identified by its edge — it is
+        // identified by its ink label, which clears 4.5:1 on both fills (checked above). This
+        // is the built F treatment; darkening the hairline would restyle every chip and is a
+        // design ruling, not a component decision. Flagged in the W6-P4 report.
+        for surface in Palette.Surface.allCases {
+            XCTAssertLessThan(ratio(Chip.ring(tone: .neutral), surface.insetFill), 3.0)
+        }
+        XCTAssertLessThan(ratio(Palette.card, Palette.paper), 3.0)
+    }
+
+    func testEveryNoticeColourClearsSmallTextOnItsOwnFill() {
+        for surface in Palette.Surface.allCases {
+            for tone in Palette.Emphasis.allCases {
+                XCTAssertGreaterThanOrEqual(
+                    ratio(Notice.foreground(tone: tone, on: surface), surface.insetFill), 4.5,
+                    "Notice \(tone) on \(surface)")
+            }
+            // The border that keeps the tone visible when persimmon text is refused.
+            if let border = Notice.border(tone: .attention) {
+                XCTAssertGreaterThanOrEqual(ratio(border, surface.insetFill), 3.0)
+            }
+        }
+    }
+
+    func testFieldEntryAndItsUnitHoldOnEitherInsetFill() {
+        // The entry is ink, the trailing unit is muted — a unit nobody can read is a unit
+        // that will be typed into the name instead.
+        for surface in Palette.Surface.allCases {
+            XCTAssertGreaterThanOrEqual(ratio(Palette.ink, surface.insetFill), 4.5)
+            XCTAssertGreaterThanOrEqual(ratio(Palette.muted, surface.insetFill), 4.5)
+        }
+    }
+
+    // Why no amber token exists for `not sure` (the Figma page's recorded raw-hex deviation,
+    // #D9A03F): 2.32:1 on card and 2.11:1 on paper. It cannot carry a label, and it cannot
+    // even carry a 1pt ring at the 3:1 non-text floor — it could only ever be a decorative
+    // dot, which is the one thing a confidence marker must not be.
+    func testTheAmberConfidenceDotCouldNotHaveCarriedTheSignal() {
+        let amber = Palette.RGB(0xD9, 0xA0, 0x3F)
+        XCTAssertLessThan(ratio(amber, Palette.card), 4.5)
+        XCTAssertLessThan(ratio(amber, Palette.card), 3.0)
+        XCTAssertLessThan(ratio(amber, Palette.paper), 3.0)
+    }
+
     // Ink must survive on every aisle tint — glyph strokes and text sit on the tiles.
     func testInkOnEveryAisleTint() {
         for tint in Palette.aisleTints {

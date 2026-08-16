@@ -104,6 +104,25 @@ enum Migrations {
                 t.column("state", .text).notNull()
                     .check { ["queued", "parsing", "failed"].contains($0) }
             }
+            try db.execute(sql: "PRAGMA user_version = 2")
+        }
+        migrator.registerMigration("v3") { db in
+            // shop_id relaxes to NULL: the shop is resolved at review, not at capture — at the till
+            // you shoot the receipt, and being asked to pick a shop first is friction and offline risk.
+            try db.create(table: "pending_scan_v3") { t in
+                t.column("id", .text).primaryKey()
+                t.column("shop_id", .text)
+                t.column("captured_at", .integer).notNull()
+                t.column("photo_path", .text).notNull()
+                t.column("state", .text).notNull()
+                    .check { ["queued", "parsing", "failed"].contains($0) }
+            }
+            try db.execute(sql: """
+                INSERT INTO pending_scan_v3 (id, shop_id, captured_at, photo_path, state) \
+                SELECT id, shop_id, captured_at, photo_path, state FROM pending_scan
+                """)
+            try db.execute(sql: "DROP TABLE pending_scan")
+            try db.execute(sql: "ALTER TABLE pending_scan_v3 RENAME TO pending_scan")
             try db.execute(sql: "PRAGMA user_version = \(AppDatabase.schemaVersion)")
         }
         return migrator

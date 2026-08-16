@@ -348,6 +348,29 @@ final class ConflictHarnessTests: XCTestCase {
                        "a permanent ignore is still correctable by a later match")
     }
 
+    func testAnEmptyAliasKeyIsDroppedInEveryDeliveryOrder() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let milk = ListItem(name: "Milk", createdAt: Date(timeIntervalSince1970: 10))
+        let shared = [a.op(.add(milk))]
+        for op in shared { b.receive(op) }
+
+        let blanks = [a.op(.alias(rawText: "", itemID: ItemID())),
+                      a.op(.alias(rawText: "   ", itemID: nil)),
+                      a.op(.alias(rawText: "*** ///", itemID: ItemID()))]
+        let spinach = ItemID()
+        let real = [b.op(.alias(rawText: "TJ*ORG BABY SPNC", itemID: spinach))]
+
+        let state = assertConverges(shared: shared, device1: blanks, device2: real)
+        XCTAssertEqual(state.aliases.keys.sorted(), ["tj org baby spnc"],
+                       "an alias that would match every blank OCR line is dropped, not stored")
+        XCTAssertNil(state.alias(for: ""), "a blank line is never aliased")
+        XCTAssertNil(state.alias(for: "  -- "), "and neither is a line that is only punctuation")
+        XCTAssertEqual(state.items.map(\.name), ["Milk"], "dropping it leaves everything else alone")
+    }
+
     func testAliasForALineNeverSeenAgainIsHarmless() {
         let kitchenID = KitchenID()
         var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)

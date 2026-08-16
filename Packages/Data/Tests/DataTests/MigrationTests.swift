@@ -62,7 +62,7 @@ final class MigrationTests: XCTestCase {
                            arguments: [UUID().uuidString, "Home"])
         }
         try database.migrate()
-        XCTAssertEqual(try database.installedSchemaVersion(), 2)
+        XCTAssertEqual(try database.installedSchemaVersion(), AppDatabase.schemaVersion)
         XCTAssertTrue(try tables(database).isSuperset(of: ["alias", "pending_scan"]))
         let kitchens = try database.pool.read { db in
             try String.fetchAll(db, sql: "SELECT name FROM kitchen")
@@ -73,6 +73,48 @@ final class MigrationTests: XCTestCase {
             try Row.fetchAll(db, sql: "PRAGMA table_info(pending_scan)").map { $0["name"] as String }
         }
         XCTAssertEqual(Set(columns), ["id", "shop_id", "captured_at", "photo_path", "state"])
+    }
+
+    func testPendingScanShopRelaxesToNullInV3() throws {
+        let database = try makeDatabase()
+        try Migrations.migrator.migrate(database.pool, upTo: "v2")
+        let scanID = UUID().uuidString
+        let shopID = UUID().uuidString
+        try database.pool.write { db in
+            try db.execute(sql: """
+                INSERT INTO pending_scan (id, shop_id, captured_at, photo_path, state) \
+                VALUES (?, ?, 7, '/tmp/a.jpg', 'queued')
+                """, arguments: [scanID, shopID])
+        }
+        XCTAssertThrowsError(try insertShoplessScan(database), "shop_id is NOT NULL under v2")
+
+        try database.migrate()
+        let rows = try database.pool.read { db in
+            try Row.fetchAll(db, sql: "SELECT id, shop_id FROM pending_scan")
+        }
+        XCTAssertEqual(rows.count, 1, "the v2 → v3 upgrade preserves queued captures")
+        let row = try XCTUnwrap(rows.first)
+        XCTAssertEqual(row["id"] as String, scanID)
+        XCTAssertEqual(row["shop_id"] as String, shopID, "a scan that had a shop keeps it")
+        XCTAssertNoThrow(try insertShoplessScan(database),
+                         "a capture at the till has no shop yet — review resolves it")
+
+        // The receipt a scan eventually becomes still requires a shop: a trip happened somewhere.
+        let receiptShopNotNull = try database.pool.read { db in
+            try Row.fetchAll(db, sql: "PRAGMA table_info(receipt)")
+                .first { ($0["name"] as String) == "shop_id" }
+                .map { $0["notnull"] as Int }
+        }
+        XCTAssertEqual(receiptShopNotNull, 1)
+    }
+
+    private func insertShoplessScan(_ database: AppDatabase) throws {
+        try database.pool.write { db in
+            try db.execute(sql: """
+                INSERT INTO pending_scan (id, shop_id, captured_at, photo_path, state) \
+                VALUES (?, NULL, 8, '/tmp/b.jpg', 'queued')
+                """, arguments: [UUID().uuidString])
+        }
     }
 
     func testPendingScanStateIsConstrained() throws {

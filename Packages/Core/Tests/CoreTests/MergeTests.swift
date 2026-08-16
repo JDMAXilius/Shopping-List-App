@@ -123,6 +123,43 @@ final class MergeTests: XCTestCase {
         XCTAssertEqual(forward.aisleOrder(for: shopID), order)
     }
 
+    func testAliasKeySurvivesReceiptPunctuation() {
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 0)
+        let spinach = ItemID()
+        let milk = ItemID()
+        let bread = ItemID()
+        let state = Merge.apply([a.op(.alias(rawText: "TJ*ORG BABY SPNC", itemID: spinach)),
+                                 a.op(.alias(rawText: "MILK 2% #4021", itemID: milk)),
+                                 a.op(.alias(rawText: "BREAD/WHT", itemID: bread))], to: ListState())
+
+        XCTAssertEqual(state.aliases.count, 3)
+        for printed in ["TJ*ORG BABY SPNC", "TJ ORG BABY SPNC", "TJ-ORG  BABY SPNC."] {
+            XCTAssertEqual(state.alias(for: printed), .some(.some(spinach)),
+                           "the same product, printed differently, is one alias: \(printed)")
+        }
+        for printed in ["MILK 2% #4021", "MILK 2%  4021", "MILK 2%,4021"] {
+            XCTAssertEqual(state.alias(for: printed), .some(.some(milk)), printed)
+        }
+        for printed in ["BREAD/WHT", "BREAD WHT", "BREAD.WHT"] {
+            XCTAssertEqual(state.alias(for: printed), .some(.some(bread)), printed)
+        }
+        XCTAssertNil(state.alias(for: "MILK 2 4021"), "% is part of the product, not punctuation")
+        XCTAssertEqual(state.aliases.keys.sorted(),
+                       ["bread wht", "milk 2% 4021", "tj org baby spnc"])
+    }
+
+    // The list's idempotent add must NOT inherit the alias key's folding.
+    func testItemNameNormalizationIsUnchangedByAliasFolding() {
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 0)
+        let slashed = ListItem(name: "Bread/Wht", createdAt: Date(timeIntervalSince1970: 10))
+        let spaced = ListItem(name: "Bread Wht", createdAt: Date(timeIntervalSince1970: 20))
+        let state = Merge.apply([a.op(.add(slashed)), a.op(.add(spaced))], to: ListState())
+
+        XCTAssertEqual(state.items.map(\.name), ["Bread/Wht", "Bread Wht"],
+                       "punctuation still distinguishes two item names")
+        XCTAssertEqual(Merge.normalized("Bread/Wht"), "bread/wht")
+    }
+
     func testOpWireFormatRoundTrips() throws {
         var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 0)
         let item = ListItem(name: "Oat milk", quantity: 2, unit: "L",

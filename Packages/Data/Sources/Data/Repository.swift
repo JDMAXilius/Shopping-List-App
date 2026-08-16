@@ -37,6 +37,7 @@ public final class Repository: Sendable {
                 let canonical = try Repository.insert(op, origin: .local, into: db)
                 Repository.fold(canonical, into: &working)
                 try Repository.materializePrice(canonical, db)
+                try Repository.materializeAlias(canonical, working.state, db)
                 try Repository.rewriteProjection(working, db)
                 return (canonical, working)
             }
@@ -63,6 +64,7 @@ public final class Repository: Sendable {
                     let canonical = try Repository.insert(op, origin: .remote, into: db)
                     Repository.fold(canonical, into: &working)
                     try Repository.materializePrice(canonical, db)
+                    try Repository.materializeAlias(canonical, working.state, db)
                 }
                 try identity.save(db)
                 try Repository.rewriteProjection(working, db)
@@ -78,10 +80,12 @@ public final class Repository: Sendable {
             cache = try database.pool.write { db -> MergeCache in
                 var fresh = MergeCache()
                 try db.execute(sql: "DELETE FROM price_observation")
+                try db.execute(sql: "DELETE FROM alias")
                 for record in try OpRecord.fetchAll(db, sql: "SELECT * FROM op") {
                     let op = try OpCoding.op(from: record)
                     Repository.fold(op, into: &fresh)
                     try Repository.materializePrice(op, db)
+                    try Repository.materializeAlias(op, fresh.state, db)
                 }
                 try Repository.rewriteProjection(fresh, db)
                 return fresh
@@ -143,8 +147,8 @@ public final class Repository: Sendable {
         try database.pool.read { try Repository.fetchPriceObservations($0) }
     }
 
-    /// A key present with a nil value is "ignore this line forever"; a missing key is
-    /// "never aliased". Read with `updateValue`/`index(forKey:)`, never `?? nil`.
+    /// Keyed by `Merge.aliasKey`. A key present with a nil value is "ignore this line forever";
+    /// a missing key is "never aliased". Read with `updateValue`/`index(forKey:)`, never `?? nil`.
     public func aliases() throws -> [String: ItemID?] {
         try database.pool.read { db in
             var result: [String: ItemID?] = [:]
@@ -195,6 +199,8 @@ public final class Repository: Sendable {
         }
     }
 
+    // For receipts that never had a photo — hand-entered lines. A photo-backed receipt is made
+    // by promoteScan, which is what transfers the file's ownership.
     public func saveReceipt(_ receipt: Receipt) throws {
         try database.pool.write { try ReceiptRecord(receipt: receipt).save($0) }
     }
@@ -206,12 +212,72 @@ public final class Repository: Sendable {
         }
     }
 
+    public func deleteReceipt(_ id: UUID) throws {
+        let record = try database.pool.read { db in
+            try ReceiptRecord.fetchOne(db, key: id.uuidString)
+        }
+        guard let record else { return }
+        if let path = record.photoPath, FileManager.default.fileExists(atPath: path) {
+            try FileManager.default.removeItem(atPath: path)
+        }
+        try database.pool.write { db in
+            try db.execute(sql: "DELETE FROM receipt WHERE id = ?", arguments: [id.uuidString])
+        }
+    }
+
     // MARK: - Pending scans (device state, not household truth)
 
     // A pending scan is this phone's promise to parse a photo later: it is deliberately NOT an op,
     // so it never syncs and rebuild() never touches it. Do not "fix" that by making it one.
-    public func enqueueScan(_ scan: PendingScan) throws {
-        try database.pool.write { try PendingScanRecord(scan: scan).save($0) }
+    // Data writes the photo and Data deletes it — one layer owns the file for its whole life.
+    // shopID stays nil at the till; the trip gets its shop at review.
+    @discardableResult
+    public func enqueueScan(jpeg: Foundation.Data, shopID: ShopID? = nil,
+                            capturedAt: Date = Date()) throws -> PendingScan {
+        let id = UUID()
+        let directory = photosDirectory
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("\(id.uuidString).jpg")
+        try jpeg.write(to: url, options: .atomic)
+        let scan = PendingScan(id: id, shopID: shopID, capturedAt: capturedAt, photoPath: url.path)
+        do {
+            try database.pool.write { try PendingScanRecord(scan: scan).save($0) }
+        } catch {
+            // No row means no owner, and an unreachable file is exactly the leak we're preventing.
+            try? FileManager.default.removeItem(at: url)
+            throw error
+        }
+        return scan
+    }
+
+    /// nil when the file is gone (a restored backup, a manual purge) — the caller shows nothing
+    /// rather than a guess.
+    public func scanPhoto(_ id: UUID) throws -> Foundation.Data? {
+        let record = try database.pool.read { db in
+            try PendingScanRecord.fetchOne(db, key: id.uuidString)
+        }
+        guard let record else { return nil }
+        return FileManager.default.contents(atPath: record.photoPath)
+    }
+
+    // The photo's owner changes in one transaction: the scan drops its claim exactly when the
+    // receipt takes it, so the file is never owned twice and never orphaned. The file never moves —
+    // the receipt keeps the scan's id, so its name still names its owner.
+    @discardableResult
+    public func promoteScan(_ id: UUID, shopID: ShopID, lineCount: Int,
+                            totalMinor: Int) throws -> Receipt {
+        try database.pool.write { db -> Receipt in
+            guard let record = try PendingScanRecord.fetchOne(db, key: id.uuidString) else {
+                throw DataError.unknownScan
+            }
+            let receipt = Receipt(id: id, shopID: shopID,
+                                  capturedAt: Date(msSince1970: record.capturedAt),
+                                  lineCount: lineCount, totalMinor: totalMinor,
+                                  photoPath: record.photoPath)
+            try ReceiptRecord(receipt: receipt).insert(db)
+            try db.execute(sql: "DELETE FROM pending_scan WHERE id = ?", arguments: [id.uuidString])
+            return receipt
+        }
     }
 
     public func pendingScans() throws -> [PendingScan] {
@@ -251,6 +317,12 @@ public final class Repository: Sendable {
         try database.pool.write { db in
             try db.execute(sql: "DELETE FROM pending_scan WHERE id = ?", arguments: [id.uuidString])
         }
+    }
+
+    // Beside the database file, so photos land in the App Group container the app gave us.
+    private var photosDirectory: URL {
+        database.url.deletingLastPathComponent()
+            .appendingPathComponent("ReceiptPhotos", isDirectory: true)
     }
 
     // MARK: - Merge plumbing
@@ -299,8 +371,20 @@ public final class Repository: Sendable {
         try PriceObservationRecord(opID: op.opID, observation: observation).save(db)
     }
 
+    // Aliases only accumulate, so this upserts the one changed key: a check-off fires 40× a trip
+    // and must not rewrite years of alias rows inside its write transaction.
+    private static func materializeAlias(_ op: Op, _ state: ListState, _ db: Database) throws {
+        guard case .alias(let rawText, _) = op.kind else { return }
+        // Write what the merge decided, not what the op said: a late-arriving stale alias loses
+        // LWW, and an empty key was dropped entirely.
+        guard let resolved = state.alias(for: rawText) else { return }
+        try AliasRecord(rawText: Merge.aliasKey(rawText),
+                        itemID: resolved?.rawValue.uuidString).save(db)
+    }
+
     // Wholesale rewrite: at grocery-list scale diffing is a pessimization, and
-    // equality with rebuild() holds by construction.
+    // equality with rebuild() holds by construction. The alias table is not here — it is
+    // maintained per-op above, and rebuild() clears it before replaying.
     private static func rewriteProjection(_ cache: MergeCache, _ db: Database) throws {
         try db.execute(sql: "DELETE FROM list_item")
         for item in cache.state.items {
@@ -309,10 +393,6 @@ public final class Repository: Sendable {
         try db.execute(sql: "DELETE FROM shop")
         for shop in cache.state.shops {
             try ShopRecord(shop: shop).insert(db)
-        }
-        try db.execute(sql: "DELETE FROM alias")
-        for (rawText, itemID) in cache.state.aliases.sorted(by: { $0.key < $1.key }) {
-            try AliasRecord(rawText: rawText, itemID: itemID?.rawValue.uuidString).insert(db)
         }
         try db.execute(sql: "DELETE FROM aisle_order")
         let shopIDs = cache.aisleShopIDs.sorted { $0.rawValue.uuidString < $1.rawValue.uuidString }

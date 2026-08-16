@@ -2,12 +2,15 @@ import Foundation
 import GRDB
 
 public final class AppDatabase: Sendable {
-    public static let schemaVersion = 2
+    public static let schemaVersion = 3
 
     let pool: DatabasePool
+    // Receipt photos live beside the database, so they land in the App Group container too.
+    let url: URL
 
     // App Group path in the app, a temp path in tests. DatabasePool is WAL by construction.
     public init(url: URL) throws {
+        self.url = url
         var configuration = Configuration()
         configuration.foreignKeysEnabled = true
         // Widget/intent processes write to this same file; wait out their locks, don't throw BUSY.

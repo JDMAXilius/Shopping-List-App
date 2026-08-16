@@ -11,8 +11,16 @@ public struct Receipt: Hashable, Sendable {
     public let totalMinor: Int
     public let photoPath: String?
 
+    // A typed or hand-entered receipt has no photo; a photo-backed one can only come from
+    // Repository.promoteScan, so no caller can mint a second reference to a file Data owns.
     public init(id: UUID = UUID(), shopID: ShopID, capturedAt: Date, lineCount: Int,
-                totalMinor: Int, photoPath: String? = nil) {
+                totalMinor: Int) {
+        self.init(id: id, shopID: shopID, capturedAt: capturedAt, lineCount: lineCount,
+                  totalMinor: totalMinor, photoPath: nil)
+    }
+
+    init(id: UUID, shopID: ShopID, capturedAt: Date, lineCount: Int, totalMinor: Int,
+         photoPath: String?) {
         self.id = id
         self.shopID = shopID
         self.capturedAt = capturedAt
@@ -30,13 +38,15 @@ public struct PendingScan: Hashable, Sendable {
     }
 
     public let id: UUID
-    public let shopID: ShopID
+    /// nil until review: the shutter fires before the shop is known, and the scan response
+    /// carries a shop_name the review screen resolves against.
+    public let shopID: ShopID?
     public let capturedAt: Date
     public let photoPath: String
     public var state: State
 
-    public init(id: UUID = UUID(), shopID: ShopID, capturedAt: Date, photoPath: String,
-                state: State = .queued) {
+    init(id: UUID = UUID(), shopID: ShopID?, capturedAt: Date, photoPath: String,
+         state: State = .queued) {
         self.id = id
         self.shopID = shopID
         self.capturedAt = capturedAt
@@ -84,7 +94,7 @@ struct PendingScanRecord: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "pending_scan"
 
     var id: String
-    var shopID: String
+    var shopID: String?
     var capturedAt: Int64
     var photoPath: String
     var state: String
@@ -98,7 +108,7 @@ struct PendingScanRecord: Codable, FetchableRecord, PersistableRecord {
 
     init(scan: PendingScan) {
         id = scan.id.uuidString
-        shopID = scan.shopID.rawValue.uuidString
+        shopID = scan.shopID?.rawValue.uuidString
         capturedAt = scan.capturedAt.msSince1970
         photoPath = scan.photoPath
         state = scan.state.rawValue
@@ -106,7 +116,8 @@ struct PendingScanRecord: Codable, FetchableRecord, PersistableRecord {
 
     func scan() throws -> PendingScan {
         guard let parsed = PendingScan.State(rawValue: state) else { throw DataError.malformedRow }
-        return PendingScan(id: try requireUUID(id), shopID: ShopID(try requireUUID(shopID)),
+        return PendingScan(id: try requireUUID(id),
+                           shopID: try shopID.map { ShopID(try requireUUID($0)) },
                            capturedAt: Date(msSince1970: capturedAt), photoPath: photoPath,
                            state: parsed)
     }

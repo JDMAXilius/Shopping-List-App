@@ -1,4 +1,5 @@
 import Core
+import Foundation
 import GRDB
 import XCTest
 @testable import Data
@@ -6,10 +7,12 @@ import XCTest
 final class RepositoryTests: XCTestCase {
     private let kitchenID = KitchenID()
 
+    // A directory per stack: it stands in for the App Group container the photos live in.
     private func makeStack() throws -> (AppDatabase, Repository) {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("repository-tests-\(UUID().uuidString).sqlite")
-        let database = try AppDatabase(url: url)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("repository-tests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let database = try AppDatabase(url: directory.appendingPathComponent("bagged.sqlite"))
         try database.migrate()
         return (database, try Repository(database: database))
     }
@@ -190,14 +193,101 @@ final class RepositoryTests: XCTestCase {
                        "the alias table is exactly Core's projection")
     }
 
+    func testAliasKeyFoldsReceiptPunctuationThroughStorage() throws {
+        let (database, repository) = try makeStack()
+        let spinach = ItemID()
+        let kale = ItemID()
+        try repository.append(.alias(rawText: "TJ*ORG BABY SPNC", itemID: spinach),
+                              kitchenID: kitchenID)
+        try repository.append(.alias(rawText: "TJ-ORG  BABY SPNC.", itemID: kale),
+                              kitchenID: kitchenID)
+        try repository.append(.alias(rawText: "MILK 2% #4021", itemID: ItemID()),
+                              kitchenID: kitchenID)
+
+        let aliases = try repository.aliases()
+        XCTAssertEqual(aliases.count, 2, "the same product printed two ways is one alias row")
+        XCTAssertEqual(aliases["tj org baby spnc"], .some(.some(kale)), "the correction wins")
+        XCTAssertNotNil(aliases["milk 2% 4021"], "% survives the fold; # does not")
+        try assertRebuildEquivalent(database, repository)
+    }
+
+    func testAnEmptyAliasKeyWritesNoRow() throws {
+        let (database, repository) = try makeStack()
+        try repository.append(.alias(rawText: "   ", itemID: ItemID()), kitchenID: kitchenID)
+        try repository.append(.alias(rawText: "*** ///", itemID: nil), kitchenID: kitchenID)
+
+        XCTAssertTrue(try repository.aliases().isEmpty,
+                      "an alias that would match every blank line never reaches the projection")
+        XCTAssertEqual(try allOps(database).map(\.type), ["alias", "alias"],
+                       "the op is still in the log — it is the merge that drops it")
+        try assertRebuildEquivalent(database, repository)
+    }
+
+    // FIX 4: a check-off must not rewrite the alias table it never touched.
+    func testAliasProjectionIsIncrementalNotARewrite() throws {
+        let (database, repository) = try makeStack()
+        let item = ListItem(name: "Milk")
+        try repository.append(.add(item), kitchenID: kitchenID)
+        try repository.append(.alias(rawText: "TJ*ORG BABY SPNC", itemID: ItemID()),
+                              kitchenID: kitchenID)
+        try repository.append(.alias(rawText: "TJ BAG FEE", itemID: nil), kitchenID: kitchenID)
+
+        // Sentinel rowids: any DELETE + re-insert of the table would lose them.
+        try database.pool.write { try $0.execute(sql: "UPDATE alias SET rowid = rowid + 500") }
+        let before = try aliasRows(database)
+        XCTAssertEqual(before.count, 2)
+
+        try repository.append(.check(item.listItemID), kitchenID: kitchenID)
+        XCTAssertEqual(try aliasRows(database), before, "a check-off leaves the alias table alone")
+        try repository.append(.edit(item.listItemID, [.quantity(2)]), kitchenID: kitchenID)
+        XCTAssertEqual(try aliasRows(database), before, "and so does any other non-alias op")
+
+        try repository.append(.alias(rawText: "BREAD/WHT", itemID: ItemID()), kitchenID: kitchenID)
+        let after = try aliasRows(database)
+        XCTAssertEqual(after.count, 3)
+        XCTAssertEqual(Array(after.prefix(2)), before, "a new alias upserts one key, not the table")
+        try assertRebuildEquivalent(database, repository)
+    }
+
+    func testRemoteAliasesResolveByStampNotByArrival() throws {
+        let (database, repository) = try makeStack()
+        let spinach = ItemID()
+        let kale = ItemID()
+        let chard = ItemID()
+        try repository.append(.alias(rawText: "TJ*ORG BABY SPNC", itemID: kale),
+                              kitchenID: kitchenID)
+
+        let stale = Op(kitchenID: kitchenID, deviceID: DeviceID(), clock: 1,
+                       wallClock: Date(msSince1970: 1_000),
+                       kind: .alias(rawText: "TJ ORG BABY SPNC", itemID: spinach))
+        try repository.applyRemote([stale], cursor: 1, kitchenID: kitchenID)
+        XCTAssertEqual(try repository.aliases()["tj org baby spnc"], .some(.some(kale)),
+                       "an older alias arriving late does not overwrite the newer one")
+
+        let newer = Op(kitchenID: kitchenID, deviceID: DeviceID(), clock: 99,
+                       wallClock: Date(msSince1970: 9_000_000),
+                       kind: .alias(rawText: "TJ-ORG BABY SPNC.", itemID: chard))
+        try repository.applyRemote([newer], cursor: 2, kitchenID: kitchenID)
+        XCTAssertEqual(try repository.aliases()["tj org baby spnc"], .some(.some(chard)),
+                       "a newer one does, without a full-table rewrite")
+        XCTAssertEqual(try repository.aliases().count, 1, "all three are the same printed line")
+
+        try assertRebuildEquivalent(database, repository)
+        let state = Merge.apply(try allOps(database), to: ListState())
+        XCTAssertEqual(try repository.aliases(), state.aliases,
+                       "the incrementally-maintained alias table is exactly Core's projection")
+    }
+
     func testPendingScanLifecycleAndPhotoDeletion() throws {
-        let (_, repository) = try makeStack()
-        let photo = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pending-scan-\(UUID().uuidString).jpg")
-        XCTAssertTrue(FileManager.default.createFile(atPath: photo.path, contents: nil))
-        let scan = PendingScan(shopID: ShopID(), capturedAt: Date(msSince1970: 1_000),
-                               photoPath: photo.path)
-        try repository.enqueueScan(scan)
+        let (database, repository) = try makeStack()
+        let scan = try repository.enqueueScan(jpeg: Foundation.Data([0xFF, 0xD8, 0xFF]),
+                                              capturedAt: Date(msSince1970: 1_000))
+        XCTAssertNil(scan.shopID, "the shop is resolved at review, not at capture")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: scan.photoPath),
+                      "Data writes the photo it will later delete")
+        XCTAssertTrue(scan.photoPath.hasPrefix(database.url.deletingLastPathComponent().path),
+                      "the photo lands beside the database, inside the App Group container")
+        XCTAssertEqual(try repository.scanPhoto(scan.id), Foundation.Data([0xFF, 0xD8, 0xFF]))
 
         XCTAssertEqual(try repository.queuedScans(), [scan], "a capture is queued, not parsed")
         try repository.markScan(scan.id, .parsing)
@@ -211,16 +301,43 @@ final class RepositoryTests: XCTestCase {
 
         try repository.deleteScan(scan.id)
         XCTAssertTrue(try repository.pendingScans().isEmpty)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: photo.path),
+        XCTAssertFalse(FileManager.default.fileExists(atPath: scan.photoPath),
                        "deleting a pending scan deletes the photo it points at")
+        XCTAssertNil(try repository.scanPhoto(scan.id), "and there is nothing left to read")
         XCTAssertNoThrow(try repository.deleteScan(scan.id), "deleting twice is not an error")
+    }
+
+    // RULING 5: one file, one owner — the scan's claim ends exactly where the receipt's begins.
+    func testPromotingAScanTransfersThePhotoToTheReceipt() throws {
+        let (_, repository) = try makeStack()
+        let shopID = ShopID()
+        let scan = try repository.enqueueScan(jpeg: Foundation.Data([0xFF, 0xD8]),
+                                              capturedAt: Date(msSince1970: 3_000))
+        let receipt = try repository.promoteScan(scan.id, shopID: shopID, lineCount: 14,
+                                                 totalMinor: 8_450)
+
+        let photoPath = try XCTUnwrap(receipt.photoPath)
+        XCTAssertEqual(photoPath, scan.photoPath, "the file does not move, its owner changes")
+        XCTAssertEqual(receipt.capturedAt, scan.capturedAt, "the receipt keeps the capture time")
+        XCTAssertEqual(receipt.shopID, shopID, "the shop the review screen chose")
+        XCTAssertTrue(try repository.pendingScans().isEmpty, "the scan no longer claims the photo")
+        XCTAssertEqual(try repository.receipts(), [receipt])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: photoPath),
+                      "and the photo survived the handover")
+        XCTAssertThrowsError(try repository.promoteScan(scan.id, shopID: shopID, lineCount: 1,
+                                                        totalMinor: 1),
+                             "a scan can only be promoted once")
+
+        try repository.deleteReceipt(receipt.id)
+        XCTAssertTrue(try repository.receipts().isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: photoPath),
+                       "the receipt's owner deletes the photo when the receipt goes")
     }
 
     func testPendingScansSurviveRebuildAndNeverBecomeOps() throws {
         let (database, repository) = try makeStack()
-        let scan = PendingScan(shopID: ShopID(), capturedAt: Date(msSince1970: 2_000),
-                               photoPath: "/tmp/never-written.jpg")
-        try repository.enqueueScan(scan)
+        let scan = try repository.enqueueScan(jpeg: Foundation.Data([0x01]), shopID: ShopID(),
+                                              capturedAt: Date(msSince1970: 2_000))
         try repository.append(.add(ListItem(name: "Milk")), kitchenID: kitchenID)
 
         XCTAssertEqual(try allOps(database).map(\.type), ["add"],
@@ -269,6 +386,12 @@ final class RepositoryTests: XCTestCase {
         observed.refresh()
         XCTAssertEqual(observed.value.map(\.name), ["Milk"],
                        "refresh() re-fetches writes ValueObservation cannot see")
+    }
+
+    private func aliasRows(_ database: AppDatabase) throws -> [Row] {
+        try database.pool.read { db in
+            try Row.fetchAll(db, sql: "SELECT rowid, * FROM alias ORDER BY rowid")
+        }
     }
 
     private func rowidSnapshot(_ database: AppDatabase) throws -> [String: [Row]] {

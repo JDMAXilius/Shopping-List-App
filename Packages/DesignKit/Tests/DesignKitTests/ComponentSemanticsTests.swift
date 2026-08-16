@@ -222,4 +222,125 @@ final class ComponentSemanticsTests: XCTestCase {
         XCTAssertEqual(Palette.Surface.card.insetFill, Palette.paper)
         XCTAssertEqual(Palette.Surface.paper.insetFill, Palette.card)
     }
+
+    func testTheInsetOfASurfaceIsTheOtherOneAndItsFill() {
+        for surface in Palette.Surface.allCases {
+            XCTAssertNotEqual(surface.inset, surface)
+            XCTAssertEqual(surface.inset.inset, surface)
+            XCTAssertEqual(surface.insetFill, surface.inset.fill)
+        }
+    }
+
+    // MARK: Palette.Emphasis — the persimmon rule now has ONE home (W6-P4)
+
+    func testEveryComponentReadsTheSamePersimmonRule() {
+        // SectionLabel's statics became forwards. If they ever stop agreeing with the shared
+        // rule, three components have started drifting and this fails first.
+        for surface in Palette.Surface.allCases {
+            for tone in Palette.Emphasis.allCases {
+                XCTAssertEqual(SectionLabel.isLegible(tone: tone, on: surface),
+                               surface.allows(tone))
+                XCTAssertEqual(SectionLabel.foreground(tone: tone, surface: surface),
+                               surface.text(tone))
+            }
+        }
+    }
+
+    func testThereIsNoEmphasisThatMeansDone() {
+        // Green is a fact, not a volume knob: no emphasis resolves to it on any fill.
+        for surface in Palette.Surface.allCases {
+            for tone in Palette.Emphasis.allCases {
+                XCTAssertNotEqual(surface.text(tone), Palette.confirmed)
+            }
+        }
+    }
+
+    // MARK: Chip — tones are semantic, and none of them is green (W6-P4)
+
+    func testASureLineIsNeverMarkedDone() {
+        // The ruling: `sure` is the machine's confidence in its own parse, before review
+        // commits anything — nothing is measured and nothing is done, so it takes `.neutral`
+        // and no marker colour. Nothing in the enum can produce confirmed green either.
+        for tone in Chip.Tone.allCases {
+            XCTAssertNotEqual(Chip.ring(tone: tone), Palette.confirmed)
+            for surface in Palette.Surface.allCases {
+                XCTAssertNotEqual(Chip.label(tone: tone, on: surface), Palette.confirmed)
+            }
+        }
+    }
+
+    func testANeutralChipIsInkAndAHairlineOnEitherGround() {
+        for surface in Palette.Surface.allCases {
+            XCTAssertEqual(Chip.label(tone: .neutral, on: surface), Palette.ink)
+        }
+        XCTAssertEqual(Chip.ring(tone: .neutral), Palette.line)
+    }
+
+    func testTheAttentionRingIsWhatSurvivesWhenTheColourIsRefused() {
+        // On paper the chip is filled card, where persimmon text is legal.
+        XCTAssertEqual(Chip.label(tone: .attention, on: .paper), Palette.persimmon)
+        // Inside a card it is filled paper, where it is refused — the ring still carries it,
+        // which is why `not sure` on a review row is legible as itself and not as `sure`.
+        XCTAssertEqual(Chip.label(tone: .attention, on: .card), Palette.ink)
+        XCTAssertEqual(Chip.ring(tone: .attention), Palette.persimmon)
+        XCTAssertNotEqual(Chip.ring(tone: .attention), Chip.ring(tone: .neutral))
+    }
+
+    func testOnlyATappableChipClaimsATouchTarget() {
+        XCTAssertEqual(Chip.minimumHeight(isTappable: true), 44)
+        // A confidence marker is a tag: no button, and no 44pt box pretending there is one.
+        XCTAssertNil(Chip.minimumHeight(isTappable: false))
+    }
+
+    func testOnlyATappableChipCanShowTheChevron() {
+        XCTAssertTrue(Chip.showsDisclosure(opensPicker: true, isTappable: true))
+        // A tag that draws a disclosure chevron is advertising a tap it does not have.
+        XCTAssertFalse(Chip.showsDisclosure(opensPicker: true, isTappable: false))
+        XCTAssertFalse(Chip.showsDisclosure(opensPicker: false, isTappable: true))
+    }
+
+    // MARK: Notice — the same rule, resolved against its own fill (W6-P4)
+
+    func testANoticeIsMutedOnEitherGround() {
+        for surface in Palette.Surface.allCases {
+            XCTAssertEqual(Notice.foreground(tone: .muted, on: surface), Palette.muted)
+            XCTAssertNil(Notice.border(tone: .muted))
+        }
+    }
+
+    func testANoticeResolvesItsColourAgainstItsFillNotItsGround() {
+        // The inversion that is easy to get backwards: a notice ON paper is filled card, so
+        // persimmon is legal; a notice inside a card is filled paper, so it is refused.
+        XCTAssertEqual(Notice.foreground(tone: .attention, on: .paper), Palette.persimmon)
+        XCTAssertEqual(Notice.foreground(tone: .attention, on: .card), Palette.ink)
+        for surface in Palette.Surface.allCases {
+            XCTAssertEqual(Notice.foreground(tone: .attention, on: surface),
+                           SectionLabel.foreground(tone: .attention, surface: surface.inset))
+        }
+    }
+
+    func testAnAttentionNoticeKeepsABorderPreciselyBecauseTheColourCanBeRefused() {
+        XCTAssertEqual(Notice.border(tone: .attention), Palette.persimmon)
+    }
+
+    // MARK: Field — input, never a price renderer (W6-P4)
+
+    func testAFieldSpeaksItsVisibleLabelAndItsUnitAsOnePhrase() {
+        XCTAssertEqual(FieldSemantics.spokenLabel(label: "Price", affix: nil), "Price")
+        XCTAssertEqual(FieldSemantics.spokenLabel(label: "Quantity", affix: "lb"), "Quantity, lb")
+    }
+
+    func testABlankAffixIsNoAffix() {
+        XCTAssertNil(FieldSemantics.visibleAffix(nil))
+        XCTAssertNil(FieldSemantics.visibleAffix(""))
+        XCTAssertNil(FieldSemantics.visibleAffix("   "))
+        XCTAssertEqual(FieldSemantics.visibleAffix("  lb "), "lb")
+        XCTAssertEqual(FieldSemantics.spokenLabel(label: "Quantity", affix: "  "), "Quantity")
+    }
+
+    func testAmountEntryUsesTheTabularDigitsPricesAreAlwaysSetIn() {
+        // The typeface for numerals — not a money format. A Field formats nothing.
+        XCTAssertTrue(Field.usesTabularDigits(.decimal))
+        XCTAssertFalse(Field.usesTabularDigits(.text))
+    }
 }

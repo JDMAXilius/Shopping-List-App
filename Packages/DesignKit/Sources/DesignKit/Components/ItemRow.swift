@@ -89,12 +89,12 @@ public struct ItemRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 itemName
                 // Promoted-row anatomy (01-list, W4-C1 fix 4): when the row has no price,
-                // the persimmon prompt ("tap to set what you paid") takes the quantity slot.
-                // Persimmon body text is card-only (Palette rule) — rows sit on cards.
+                // the prompt ("tap to set what you paid") takes the quantity slot. Rows sit
+                // on cards, so the shared rule resolves it to persimmon — asked, not assumed.
                 if let visiblePrompt {
                     Text(visiblePrompt)
                         .font(Typography.footnote)
-                        .foregroundStyle(Palette.persimmon.color)
+                        .foregroundStyle(Palette.Surface.card.text(.attention).color)
                 } else if let visibleQuantity {
                     Text(visibleQuantity)
                         .font(Typography.subtitle)

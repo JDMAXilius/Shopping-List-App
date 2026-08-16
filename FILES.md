@@ -54,6 +54,8 @@ Bagged/
 │       ├── Sources/DesignKit/
 │       │   ├── Palette.swift          # paper, ink, persimmon, confirmed, aisle tints
 │       │   │                          #   + Surface: which ground a component sits on
+│       │   ├── Emphasis.swift         # muted vs attention — the persimmon-contrast rule,
+│       │   │                          #   one home for SectionLabel · Chip · Notice
 │       │   ├── Typography.swift       # system sans; prices = mono tabular
 │       │   ├── Motion.swift           # 150–250ms, spring, interruptible, Reduce Motion
 │       │   │                          #   + undoDwell: how long an undo offer stands
@@ -63,6 +65,7 @@ Bagged/
 │       │   ├── Components/            # ItemRow · PriceLabel · AisleHeader · TotalBar
 │       │   │                          #   · InputBar · TabPill · EmptyState
 │       │   │                          #   · SectionLabel · UndoBar
+│       │   │                          #   · Chip · Notice · Field (+ OptionalFocus)
 │       │   └── Resources/             # check.wav · complete.wav (generated, spec-tested)
 │       └── Tests/DesignKitTests/
 │           └── SnapshotTests          # ONE style · default + largest Dynamic Type

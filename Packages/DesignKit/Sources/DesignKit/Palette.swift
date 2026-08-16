@@ -77,11 +77,6 @@ extension Palette {
         /// The fill an inset element wears so it reads AS an element on this ground:
         /// paper inside a card, card on the paper background. Card-on-card is invisible,
         /// which is exactly the per-screen guess this property replaces.
-        public var insetFill: RGB {
-            switch self {
-            case .paper: return Palette.card
-            case .card: return Palette.paper
-            }
-        }
+        public var insetFill: RGB { inset.fill }
     }
 }
