@@ -70,15 +70,17 @@ struct ItemHistory {
     let shops: [ShopComparison]
 }
 
+/// A month's spend, one bar. Receipt totals — the same quantity as the headline, so the
+/// chart and the number on top of it cannot mean two different things.
 struct MonthBar: Identifiable {
     let label: String
-    let summary: PriceSummary
+    let paid: PaidSummary
     let isCurrent: Bool
     var id: String { label }
 }
 
-/// One slice of a month — an aisle or a shop — carrying the summary it was derived from,
-/// so its figure and its `≈` can never disagree with the month's own.
+/// One aisle's share of the lines that COULD be matched to items — not a share of spend.
+/// Carries the summary it was derived from, so its figure and its `≈` can never disagree.
 struct MonthGroup: Identifiable {
     let title: String
     let summary: PriceSummary
@@ -86,19 +88,36 @@ struct MonthGroup: Identifiable {
     var id: String { title }
 }
 
+/// What one shop rang up this month, from that shop's receipts.
+struct ShopSpend: Identifiable {
+    let title: String
+    let paid: PaidSummary
+    var id: String { title }
+}
+
 struct MonthSpend {
     let title: String
-    let summary: PriceSummary
-    let receiptCount: Int
-    /// How many of the month's prices a till printed. The rest were typed or set by hand —
-    /// still what you paid, but a weaker claim, and the screen says which is which.
-    let fromReceipts: Int
-    /// Δ against the user's own usual month, day for day. nil when there is no earlier
-    /// month to compare with — a first month has no usual.
+    /// THE number. Receipt totals: what the tills printed, including the tax, bag fees and
+    /// deposits no per-item price knows about (W7-P3 ruling 1).
+    let paid: PaidSummary
+    /// The lines we could match to items — a different quantity from `paid`, and never
+    /// presented as the month's spend. It feeds the aisle breakdown only.
+    let matched: PriceSummary
+    /// How many of those matched lines a till printed. The rest were typed or set by hand.
+    let matchedFromReceipts: Int
+    /// How the two relate, in words: what the breakdown covers of what was paid.
+    let coverageText: String
+    /// Δ against the user's own usual month, day for day, on receipt totals. nil when there
+    /// is no earlier month to compare with — a first month has no usual.
     let deltaText: String?
     let bars: [MonthBar]
     let aisles: [MonthGroup]
-    let shops: [MonthGroup]
+    let shops: [ShopSpend]
+
+    /// The Prices tab's month link reads `month.summary` (W7-P2's file, not this packet's).
+    /// It now resolves to the paid total, so the tab and this screen state one number.
+    /// Delete once that call site moves to `month.paid`.
+    var summary: PaidSummary { paid }
 }
 
 // Pure view-state assembly over the observations the store already holds: what a price
@@ -288,40 +307,78 @@ enum PriceDerivation {
 
     // MARK: - A month
 
+    /// A month's spend is the sum of its RECEIPTS — the tills' own totals, tax and fees and
+    /// unmatched lines included. The observations feed the aisle breakdown and nothing else:
+    /// they are the value of the lines we could match, which is a smaller, different number.
     static func month(observations: [PriceObservation], receipts: [Receipt],
                       shops: [ShopID: String], catalog: ListCatalog,
                       currencyCode: String, now: Date) -> MonthSpend {
         let calendar = Calendar.current
+        let title = Self.monthTitle.string(from: now)
+        let thisMonthReceipts = receipts.filter {
+            calendar.isDate($0.capturedAt, equalTo: now, toGranularity: .month)
+        }
+        let paid = PaidSummary(totals(thisMonthReceipts, currencyCode: currencyCode),
+                               in: title, currencyCode: currencyCode)
+
         let thisMonth = observations.filter {
             calendar.isDate($0.date, equalTo: now, toGranularity: .month)
         }
-        let summary = PriceSummary(displays(thisMonth, asOf: now))
+        let matched = PriceSummary(displays(thisMonth, asOf: now))
         var aisles: [CategoryGlyph: [PriceDisplay]] = [:]
-        var byShop: [ShopID: [PriceDisplay]] = [:]
         for observation in thisMonth {
-            let display = PriceDisplay(amount: observation.amount,
-                                       confidence: observation.confidence(asOf: now))
-            aisles[catalog.category(for: observation.itemID), default: []].append(display)
-            byShop[observation.shopID, default: []].append(display)
+            aisles[catalog.category(for: observation.itemID), default: []].append(
+                PriceDisplay(amount: observation.amount,
+                             confidence: observation.confidence(asOf: now)))
         }
         let aisleGroups = aisles.map { category, displays in
             MonthGroup(title: catalog.name(for: category), summary: PriceSummary(displays),
                        tint: category.tint)
         }
-        let shopGroups = byShop.map { shopID, displays in
-            MonthGroup(title: shops[shopID] ?? "A shop", summary: PriceSummary(displays), tint: nil)
+        var byShop: [ShopID: [Receipt]] = [:]
+        for receipt in thisMonthReceipts { byShop[receipt.shopID, default: []].append(receipt) }
+        let shopSpend = byShop.map { shopID, theirs in
+            ShopSpend(title: shops[shopID] ?? "A shop",
+                      paid: PaidSummary(totals(theirs, currencyCode: currencyCode),
+                                        in: title, currencyCode: currencyCode))
         }
         return MonthSpend(
-            title: Self.monthTitle.string(from: now),
-            summary: summary,
-            receiptCount: receipts.filter {
-                calendar.isDate($0.capturedAt, equalTo: now, toGranularity: .month)
-            }.count,
-            fromReceipts: thisMonth.filter { $0.source == .receipt }.count,
-            deltaText: deltaVsUsual(observations, summary: summary,
-                                    currencyCode: currencyCode, now: now),
-            bars: bars(observations, current: summary, now: now),
-            aisles: ranked(aisleGroups), shops: ranked(shopGroups))
+            title: title,
+            paid: paid,
+            matched: matched,
+            matchedFromReceipts: thisMonth.filter { $0.source == .receipt }.count,
+            coverageText: coverage(paid: paid, matched: matched),
+            deltaText: deltaVsUsual(receipts, paid: paid, currencyCode: currencyCode, now: now),
+            bars: bars(receipts, current: paid, currencyCode: currencyCode, now: now),
+            aisles: ranked(aisleGroups),
+            shops: shopSpend.filter(\.paid.hasReceipts)
+                .sorted { $0.paid.total.minorUnits > $1.paid.total.minorUnits })
+    }
+
+    /// Receipts hold a bare `totalMinor`; the kitchen's currency is what it is stated in.
+    private static func totals(_ receipts: [Receipt], currencyCode: String) -> [ReceiptTotal] {
+        receipts.map {
+            ReceiptTotal(printedOnReceipt: Money(minorUnits: $0.totalMinor,
+                                                 currencyCode: currencyCode))
+        }
+    }
+
+    /// How the breakdown relates to the money paid — stated, not left for the user to notice
+    /// that the aisle rows don't add up to the headline. They can't: tax has no aisle.
+    static func coverage(paid: PaidSummary, matched: PriceSummary) -> String {
+        guard matched.hasPricedItems else {
+            return "No prices from \(paid.period) are matched to items yet."
+        }
+        guard paid.hasReceipts else {
+            return "These prices were recorded by hand. Without a receipt none of it can be "
+                + "called what the month cost."
+        }
+        guard matched.total.minorUnits <= paid.total.minorUnits else {
+            return "\(figure(matched)) is matched to items — more than the receipts add up to, "
+                + "because some of it was recorded without a receipt."
+        }
+        return "\(figure(matched)) of the \(paid.figure) is matched to items. The rest is tax, "
+            + "deposits, fees and lines nothing could be matched to."
     }
 
     /// Biggest first, and nothing that carries no money at all.
@@ -337,54 +394,55 @@ enum PriceDerivation {
         return (summary.isApproximate ? "≈ " : "") + summary.total.display
     }
 
-    /// The last six months that hold anything, this one always last — a bar per month, each
+    /// Money paid carries no `≈`: every part of it is a till figure. What it can't include is
+    /// said in words by `PaidSummary.basis`.
+    static func figure(_ paid: PaidSummary) -> String { paid.figure }
+
+    /// The last six months that hold a receipt, this one always last — a bar per month, each
     /// carrying its own summary so no figure is computed twice.
-    private static func bars(_ observations: [PriceObservation], current: PriceSummary,
-                             now: Date) -> [MonthBar] {
+    private static func bars(_ receipts: [Receipt], current: PaidSummary,
+                             currencyCode: String, now: Date) -> [MonthBar] {
         let calendar = Calendar.current
-        var buckets: [Date: [PriceDisplay]] = [:]
-        for observation in observations {
-            guard let start = calendar.dateInterval(of: .month, for: observation.date)?.start,
+        var buckets: [Date: [Receipt]] = [:]
+        for receipt in receipts {
+            guard let start = calendar.dateInterval(of: .month, for: receipt.capturedAt)?.start,
                   let months = calendar.dateComponents([.month], from: start, to: now).month,
                   months > 0, months <= 5 else { continue }
-            buckets[start, default: []].append(
-                PriceDisplay(amount: observation.amount, confidence: observation.confidence(asOf: now)))
+            buckets[start, default: []].append(receipt)
         }
-        let earlier = buckets.keys.sorted().map {
-            MonthBar(label: Self.barLabel.string(from: $0),
-                     summary: PriceSummary(buckets[$0] ?? []), isCurrent: false)
+        let earlier = buckets.keys.sorted().map { start in
+            let label = Self.barLabel.string(from: start)
+            return MonthBar(
+                label: label,
+                paid: PaidSummary(totals(buckets[start] ?? [], currencyCode: currencyCode),
+                                  in: label, currencyCode: currencyCode),
+                isCurrent: false)
         }
-        return earlier + [MonthBar(label: Self.barLabel.string(from: now),
-                                   summary: current, isCurrent: true)]
+        return earlier + [MonthBar(label: Self.barLabel.string(from: now), paid: current,
+                                   isCurrent: true)]
     }
 
-    /// Day for day: a month three days old is compared with the first three days of the
-    /// months before it, never with their totals.
-    private static func deltaVsUsual(_ observations: [PriceObservation], summary: PriceSummary,
+    /// Day for day: a month three days into itself is compared with the first three days of
+    /// the months before it, never with their totals.
+    private static func deltaVsUsual(_ receipts: [Receipt], paid: PaidSummary,
                                      currencyCode: String, now: Date) -> String? {
-        guard summary.hasPricedItems else { return nil }
+        guard paid.hasReceipts else { return nil }
         let calendar = Calendar.current
         let today = calendar.component(.day, from: now)
-        var buckets: [Date: [PriceDisplay]] = [:]
-        for observation in observations {
-            guard calendar.component(.day, from: observation.date) <= today,
-                  let start = calendar.dateInterval(of: .month, for: observation.date)?.start,
+        var buckets: [Date: Int] = [:]
+        for receipt in receipts {
+            guard calendar.component(.day, from: receipt.capturedAt) <= today,
+                  let start = calendar.dateInterval(of: .month, for: receipt.capturedAt)?.start,
                   let months = calendar.dateComponents([.month], from: start, to: now).month,
                   months > 0, months <= 6 else { continue }
-            buckets[start, default: []].append(
-                PriceDisplay(amount: observation.amount, confidence: observation.confidence(asOf: now)))
+            buckets[start, default: 0] += receipt.totalMinor
         }
-        let priors = buckets.values.map { PriceSummary($0) }.filter(\.hasPricedItems)
-        guard !priors.isEmpty else { return nil }
-        let usual = priors.reduce(0) { $0 + $1.total.minorUnits } / priors.count
-        let change = summary.total.minorUnits - usual
-        let approximate = summary.isApproximate || priors.contains(where: \.isApproximate)
-        guard change != 0 else {
-            return "\(approximate ? "about " : "")the same as a usual month, day for day"
-        }
+        guard !buckets.isEmpty else { return nil }
+        let usual = buckets.values.reduce(0, +) / buckets.count
+        let change = paid.total.minorUnits - usual
+        guard change != 0 else { return "the same as a usual month, day for day" }
         let money = Money(minorUnits: abs(change), currencyCode: currencyCode)
-        return "\(approximate ? "about " : "")\(money.display) "
-            + "\(change > 0 ? "more" : "less") than a usual month, day for day"
+        return "\(money.display) \(change > 0 ? "more" : "less") than a usual month, day for day"
     }
 
     // MARK: - Shared
