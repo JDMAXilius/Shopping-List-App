@@ -89,11 +89,24 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
   five missing generic parents (bread/pasta/potatoes/cheese/chicken) that the catalog already had
   for `milk`; before this, `pasta` returned *pasta sauce* and `chicken` ranked *stock* above
   *breast*. 461 items · 1004 lookup terms · 220 KB. `resolve.mjs --test` still 23/23.
-  **Open finding for the Swift side:** the remaining 11 misses are ALL quantity/packaging
-  phrasings (`2 lb chicken breast`, `carton of milk`, `punnet of strawberries`, `dozen eggs`) —
-  every one resolves once the prefix is stripped, so this is a **QuantityParser vocabulary gap,
-  not a catalog gap**. Add packaging nouns (loaf/carton/punnet/tub/bag/box/jar/tin/pack of,
-  dozen, half dozen) + bare metric quantities to `Packages/Catalog/QuantityParser.swift`, and
-  run the parser BEFORE the resolver in the add-item path.
+  ~~Open finding: QuantityParser vocabulary gap~~ — **fixed, see the entry below.**
   Also new: `audit-seeds.mjs` — gate #2 tooling. Feed it `<item>\t<price>` TSV from real
   receipts; it reports median/mean error, bias, and the worst-offending seeds.
+
+- **2026-08-16 · cloud (QuantityParser fix)** — Closed the vocabulary gap. New JS reference
+  `data/catalog/quantity.mjs` (23 cases, green) is now the pinned contract; the Swift parser was
+  rewritten against it and `QuantityParserTests` regenerated from its output — **every expectation
+  in that file was produced by running the reference, not written by hand**. Adds: containers with
+  no number (`carton of milk` -> 1 carton, milk), the `of` connector, word-numbers and halves
+  (`a`, `three`, `couple of`, `half dozen`), ~30 packaging nouns (punnet/loaf/tub/carton/jar/tin/
+  head/clove/slice/roll/sachet...), and a size skip before a container (`large tub of yoghurt`).
+  Two guards keep it honest: it never consumes the whole input (bare `loaf`/`dozen`/`bag` stay
+  items), and container words inside names are untouched (`bin bags`, `tea bags`, `canned
+  tomatoes`). **Pipeline coverage on the 338-query probe: 96.4% resolver-only -> 99.7% with the
+  parser in front** (`node data/catalog/probe.mjs`, `--raw` for resolver-only). The single
+  remaining miss is `weetabix`, a brand we exclude by rule.
+  WARNING: two pre-existing Swift expectations legitimately CHANGED (verified against the
+  reference, not relaxed): `p("2")` is now `(nil, nil, "2")` — the never-consume-everything
+  guard — and `p("a dozen eggs")` is now `(1, "dozen", "eggs")`, which is the fix itself.
+  **Wiring still owed (wave 5, App/Features/List):** the add-item path must call
+  `QuantityParser.parse` and feed `.rest` to the resolver, storing quantity/unit on the item.
