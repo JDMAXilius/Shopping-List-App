@@ -629,3 +629,46 @@ Measure units are untouched: `2 lb`, `1 dozen`. Pinned by
 General principle behind 2 and 3, for the next one of these: **when a hand-composed copy and a
 DesignKit component disagree, the component wins and the copy goes.** The exception is when the
 component genuinely cannot express the need — and then the component grows, on the record.
+
+**2026-08-16 · cloud — one task that needs a real network call, which this container cannot make.**
+
+Wave 9's first packet adds a barcode → product-name lookup against Open Food Facts
+(`App/Services/ProductLookup.swift`). **The egress proxy here blocks openfoodfacts.org**, so the
+request shape is written from their published API docs and has never met a real response. Five
+things are unverified, and **one `curl` on your Mac settles all five**:
+
+```bash
+curl -sS -H 'User-Agent: Bagged/1.0 (https://bagged.app)' \
+  'https://world.openfoodfacts.org/api/v2/product/3017620422003.json?fields=product_name' | head -c 400
+```
+
+1. The path — whether v2 accepts the `.json` suffix or wants the bare path.
+2. `?fields=product_name` as v2's field-selection syntax.
+3. That `product_name` is the key **inside** `product`.
+4. That `status` is the integer 1/0 and not a string. (A string is treated as "absent" so it
+   fails safe — but `"status":"0"` would read as found, which is the one direction that lies.)
+5. That not-found is a 404 or a 200-with-`status: 0`, and not something else.
+
+If any differ, fix `ProductLookup.url(for:)` / `ProductLookup.Body` — the tests use a fake
+transport and never hit the network, so they will not catch a wrong URL. **A wrong shape fails
+silently**: no suggestion ever appears and the screen quietly behaves exactly as it did before,
+which is indistinguishable from the feature working and finding nothing.
+
+Two more while you have a real response in front of you:
+
+- **Name length.** We refuse a name over 60 characters rather than truncate it — a cut name is a
+  name nobody wrote, and the user would be confirming it. Real Open Food Facts names are often
+  longer ("Organic whole grain rolled oats with flax and chia, family pack" is 63). If most real
+  names exceed it, raise `ProductLookup.maxNameCharacters`. **Never truncate.**
+- **Language.** `product_name` comes back in whatever language the contributor used, so a
+  Portuguese packet in a US kitchen suggests "Leite meio gordo". Their API may expose
+  `product_name_en` and friends. I deliberately did NOT guess a second field name on top of five
+  unverified ones — check what the response actually offers and log it; the ruling can follow.
+
+Also unowned and yours if you want it: the `User-Agent` sends `https://bagged.app`, which
+**DECISIONS.md still lists as a domain to buy**. Open Food Facts blocks reusers whose contact does
+not resolve. And `CFBundleShortVersionString` is not set in `project.yml`, so the version falls
+back to `1.0`.
+
+Not a blocker for anything else — the feature degrades to the previous behaviour on every failure
+path, by design.
