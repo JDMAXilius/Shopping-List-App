@@ -3,3 +3,4 @@ data/catalog/catalog.db-*
 node_modules/
 .DS_Store
 .build/
+Config/Secrets.xcconfig

@@ -172,6 +172,7 @@
 		E1DF5D942C01172C914D084F /* testChip.ax5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testChip.ax5.png; sourceTree = "<group>"; };
 		E4CFAC9232BA30550FBF30F6 /* testInputBar.ax5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testInputBar.ax5.png; sourceTree = "<group>"; };
 		ECE3B886A985FACDF41561DF /* testTotalBar.default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testTotalBar.default.png; sourceTree = "<group>"; };
+		ECEB9835DE8F1AAA467AEC3C /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		ED76FF0314F4A087DAB67EBD /* CaptureDerivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureDerivation.swift; sourceTree = "<group>"; };
 		F5077265BAC04E0339A20D64 /* testPriceLabel.default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testPriceLabel.default.png; sourceTree = "<group>"; };
 		F6115E8CA43719FCC51AA56E /* testEmptyState.ax5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testEmptyState.ax5.png; sourceTree = "<group>"; };
@@ -237,6 +238,7 @@
 			isa = PBXGroup;
 			children = (
 				546A7DD22AD6A04C8A230C4B /* App */,
+				DDB30900915B91D3477EA374 /* Config */,
 				1043FD3544608053708FDCCF /* Packages */,
 				3BB9ABBDB514BDB4B712C2B3 /* Products */,
 			);
@@ -371,6 +373,14 @@
 			path = ComponentSnapshotTests;
 			sourceTree = "<group>";
 		};
+		DDB30900915B91D3477EA374 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				ECEB9835DE8F1AAA467AEC3C /* Base.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
 		EF5FEC8C6C81FB7B75D9FFDB /* Prices */ = {
 			isa = PBXGroup;
 			children = (
@@ -429,6 +439,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3F2C25CEAFB38016040F33DC /* Build configuration list for PBXNativeTarget "Bagged" */;
 			buildPhases = (
+				76282AEE2AD35971C9CFE2F2 /* Check scan config */,
 				8DE14268B6476BD5C5948EA2 /* Sources */,
 				168D7AD1B2951BD3FE9ED165 /* Resources */,
 				DA492530799193FD8D2E7B7C /* Frameworks */,
@@ -534,6 +545,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		76282AEE2AD35971C9CFE2F2 /* Check scan config */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check scan config";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# A missing key and a missing account produce the same \"signed out\" message,\n# so a misconfigured App Store build would blame the user's account. Ship\n# builds must carry the config; dev builds only warn.\nif [ -z \"${SCAN_RECEIPT_ENDPOINT}\" ] || [ -z \"${SUPABASE_ANON_KEY}\" ]; then\n  if [ \"${CONFIGURATION}\" = \"Release\" ]; then\n    echo \"error: SCAN_RECEIPT_ENDPOINT / SUPABASE_ANON_KEY missing — fill Config/Secrets.xcconfig (see the template). A Release build without them ships a scanner that blames the user's account.\"\n    exit 1\n  else\n    echo \"warning: scan config absent — this build takes the signed-out scan path (fill Config/Secrets.xcconfig to reach the function)\"\n  fi\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8DE14268B6476BD5C5948EA2 /* Sources */ = {
@@ -675,6 +708,7 @@
 		};
 		3E6AF1E2983BF644A4A485BA /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = ECEB9835DE8F1AAA467AEC3C /* Base.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/Bagged.entitlements;
@@ -725,6 +759,7 @@
 		};
 		A75B839959C4B62B11AAF01A /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = ECEB9835DE8F1AAA467AEC3C /* Base.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/Bagged.entitlements;

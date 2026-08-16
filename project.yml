@@ -29,6 +29,24 @@ targets:
   Bagged:
     type: application
     platform: iOS
+    configFiles:
+      Debug: Config/Base.xcconfig
+      Release: Config/Base.xcconfig
+    preBuildScripts:
+      - name: Check scan config
+        basedOnDependencyAnalysis: false
+        script: |
+          # A missing key and a missing account produce the same "signed out" message,
+          # so a misconfigured App Store build would blame the user's account. Ship
+          # builds must carry the config; dev builds only warn.
+          if [ -z "${SCAN_RECEIPT_ENDPOINT}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            if [ "${CONFIGURATION}" = "Release" ]; then
+              echo "error: SCAN_RECEIPT_ENDPOINT / SUPABASE_ANON_KEY missing — fill Config/Secrets.xcconfig (see the template). A Release build without them ships a scanner that blames the user's account."
+              exit 1
+            else
+              echo "warning: scan config absent — this build takes the signed-out scan path (fill Config/Secrets.xcconfig to reach the function)"
+            fi
+          fi
     sources:
       - path: App
         excludes:
@@ -50,6 +68,8 @@ targets:
         NSCameraUsageDescription: >-
           Bagged uses your camera to photograph a receipt or scan a barcode so
           the items and prices on it can go straight onto your list.
+        ScanReceiptEndpoint: $(SCAN_RECEIPT_ENDPOINT)
+        SupabaseAnonKey: $(SUPABASE_ANON_KEY)
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
   BaggedTests:

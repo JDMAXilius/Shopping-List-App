@@ -20,6 +20,10 @@
 	<string>1</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Bagged uses your camera to photograph a receipt or scan a barcode so the items and prices on it can go straight onto your list.</string>
+	<key>ScanReceiptEndpoint</key>
+	<string>$(SCAN_RECEIPT_ENDPOINT)</string>
+	<key>SupabaseAnonKey</key>
+	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
