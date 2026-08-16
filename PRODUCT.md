@@ -57,10 +57,11 @@ calm, one-person buildability) instead of spiking on one.
 ```
 paper      #F7F4EE     card    #FFFFFF     ink   #191713
 muted      #716A5F     line    #E4DFD5
-           -- muted was #8C857A; it FAILED the 4.5:1 gate on paper (3.33:1) with WCAG math,
-           -- Aug 2026. #716A5F passes (4.87:1 paper, 5.34:1 card). Figma F·Tokens must follow.
-           -- Persimmon body text: card only (4.50:1); on paper >=18pt/bold or white-on-fill.
-persimmon  #C9502C     ← the ONLY action colour
+           -- Two tokens corrected by WCAG math, Aug 2026 — Figma F·Tokens must follow:
+           -- muted was #8C857A (3.33:1 on paper, FAIL) -> #716A5F (4.87/5.34, pass).
+           -- persimmon was #C9502C (4.499:1 vs white, fails STRICT 4.5) -> #C64E2B (4.64).
+           -- Persimmon body text: card only (4.64:1); on paper >=18pt/bold or white-on-fill.
+persimmon  #C64E2B     ← the ONLY action colour
 confirmed  #1F7A4D     ← semantic only: done / verified. Never decorative.
 
 aisle tints: produce #B9CDA8 · dairy #F1DCA4 · bakery #EFC2B4

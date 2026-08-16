@@ -47,6 +47,10 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
       per its header on the REAL stack (the cloud run used a PG16 shim — 51/51 green, twice,
       with a negative control proving the suite detects the seq-gap; the real stack is the
       authoritative re-run). Deno-check the three functions
+- [ ] Wave 4: `swift test` on Packages/DesignKit (Contrast · Glyph · SoundAsset ·
+      PriceSemantics suites — all expectations machine-derived, never hand-tuned).
+      Then pick the snapshot harness (pointfree swift-snapshot-testing vs plain images —
+      Mac decision) and add the one-style x default + largest Dynamic Type suite
 - [ ] Log entry appended; pushed to main
 
 ## Log — append only
@@ -110,3 +114,24 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
   guard — and `p("a dozen eggs")` is now `(1, "dozen", "eggs")`, which is the fix itself.
   **Wiring still owed (wave 5, App/Features/List):** the add-item path must call
   `QuantityParser.parse` and feed `.rest` to the resolver, storing quantity/unit on the item.
+
+- **2026-08-16 · cloud (wave 4)** — DesignKit built (W4-P1) and refuted (W4-C1). The pre-build
+  contrast check caught **muted #8C857A failing its own gate at 3.33:1** — on the colour that
+  renders every estimated price — now #716A5F (4.87/5.34). The critic then found the two
+  canonical renders DISAGREE on the item tile (01-list: white + tint ring + item glyphs;
+  08-prices: solid tint + category glyph). **Lead ruling: solid tint is canonical**; 01-list's
+  ring treatment is superseded. Persimmon darkened #C9502C -> #C64E2B (4.499 failed strict 4.5;
+  now 4.640, rounding hack deleted from the test). Honesty made structural where the critic
+  proved it wasn't: PriceDisplay.measured is unreachable without a PriceObservation.Confidence;
+  TotalBar/AisleHeader derive sum, approx-marker and breakdown from ONE [PriceDisplay] array so
+  they cannot disagree; unpriced items make aisle subtotals approximate; the promoted-row
+  "tap to set what you paid" prompt exists as component anatomy. Progressive strikethrough
+  (attribute strike = the Reduce Motion path), checked-price opacity removed (composite was
+  3.02:1 — worse than the grey we corrected), one VoiceOver phrase defined once, Sound
+  structurally silent in .appex processes, whole-row toggle wired. Sounds are generated + parsed:
+  check 100.0ms / complete 380.0ms, both -13.0dBFS, soft attack, no DC, no clicks.
+  **Figma F·Tokens now owes TWO values: muted #716A5F, persimmon #C64E2B.**
+  **Render defects for the wave-7 packet: 10-month-spend shows a GREEN delta (PRODUCT bans
+  valuative green — must be ink) and a stop-square instead of + in the tab circle. PRODUCT
+  outranks renders.** Wave-5 note: TotalBar/AisleHeader/PriceDisplay have the new surface —
+  build against it, and Money needs the per-currency minor-unit exponent before any non-USD.
