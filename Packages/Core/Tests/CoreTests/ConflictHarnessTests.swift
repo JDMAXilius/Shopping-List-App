@@ -92,7 +92,8 @@ final class ConflictHarnessTests: XCTestCase {
         XCTAssertEqual(milk.quantity, 2)
         XCTAssertEqual(milk.note, "2%")
         XCTAssertTrue(milk.checked, "check on one device survives the collapse")
-        XCTAssertEqual(Set(milk.updatedFields.keys), Set(ListItemField.allCases), "no lost fields")
+        XCTAssertEqual(Set(milk.updatedFields.keys), [.name, .checked],
+                       "an add stamps only name and checked; seed fields are unstamped fallbacks")
     }
 
     func testCheckVersusDeleteRaceDeletesInBothOrders() {
@@ -142,8 +143,91 @@ final class ConflictHarnessTests: XCTestCase {
         XCTAssertEqual(fruit.note, "granny smith", "uncontested field is never lost")
         XCTAssertEqual(renamed.name, "Plantains")
         XCTAssertTrue(renamed.checked, "check and rename merge field by field")
-        XCTAssertEqual(Set(fruit.updatedFields.keys), Set(ListItemField.allCases))
-        XCTAssertEqual(Set(renamed.updatedFields.keys), Set(ListItemField.allCases))
+        XCTAssertEqual(Set(fruit.updatedFields.keys), [.name, .checked, .quantity, .note])
+        XCTAssertEqual(Set(renamed.updatedFields.keys), [.name, .checked])
+    }
+
+    func testReAddAfterDeleteResurrectsUnchecked() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let milk = ListItem(name: "Milk", createdAt: Date(timeIntervalSince1970: 10))
+        let add = a.op(.add(milk))
+        let check = a.op(.check(milk.listItemID))
+        b.receive(add)
+        b.receive(check)
+
+        let delete = b.op(.delete(milk.listItemID))
+        a.receive(delete)
+        let milkAgain = ListItem(name: " milk ", createdAt: Date(timeIntervalSince1970: 900))
+        let readd = a.op(.add(milkAgain))
+
+        let state = assertConverges(shared: [add, check], device1: [readd], device2: [delete])
+        assertNoDuplicateNames(state)
+        XCTAssertEqual(state.items.count, 1, "a later-stamped add of a deleted name resurrects the row")
+        guard let row = state.items.first else { return XCTFail("milk row missing") }
+        XCTAssertEqual(row.listItemID, milkAgain.listItemID, "the new add carries the identity")
+        XCTAssertEqual(row.name, "milk")
+        XCTAssertFalse(row.checked, "a re-added item arrives unchecked")
+        XCTAssertEqual(row.createdAt, Date(timeIntervalSince1970: 900))
+    }
+
+    func testRenameIntoExistingNameShowsOneRow() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let bread = ListItem(name: "Bread", createdAt: Date(timeIntervalSince1970: 10))
+        let milk = ListItem(name: "Milk", createdAt: Date(timeIntervalSince1970: 20))
+        let shared = [a.op(.add(bread)), a.op(.add(milk))]
+        for op in shared { b.receive(op) }
+
+        let note = a.op(.edit(milk.listItemID, [.note("2%")]))
+        let rename = b.op(.edit(bread.listItemID, [.name("Milk")]))
+
+        let state = assertConverges(shared: shared, device1: [note], device2: [rename])
+        assertNoDuplicateNames(state)
+        XCTAssertEqual(state.items.map { $0.name }, ["Milk"], "renaming into an existing name is one row")
+        guard let row = state.items.first else { return XCTFail("milk row missing") }
+        XCTAssertEqual(row.listItemID, bread.listItemID, "earlier createdAt keeps the identity")
+        XCTAssertEqual(row.note, "2%", "fields from both rows merge into the collapsed row")
+    }
+
+    func testRenameAwayFreesTheNameForANewAdd() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let milk = ListItem(name: "Milk", createdAt: Date(timeIntervalSince1970: 10))
+        let add = a.op(.add(milk))
+        b.receive(add)
+
+        let rename = a.op(.edit(milk.listItemID, [.name("Almond milk")]))
+        let fresh = ListItem(name: "milk", createdAt: Date(timeIntervalSince1970: 300))
+        let addFresh = b.op(.add(fresh))
+
+        let state = assertConverges(shared: [add], device1: [rename], device2: [addFresh])
+        assertNoDuplicateNames(state)
+        XCTAssertEqual(state.items.map { $0.name }, ["Almond milk", "milk"],
+                       "an add does not merge into a row renamed away from its name")
+        XCTAssertEqual(state.items.map { $0.listItemID }, [milk.listItemID, fresh.listItemID])
+    }
+
+    func testDuplicateReceiptLinesSurviveAndReplayStaysIdempotent() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        let observation = PriceObservation(itemID: ItemID(), shopID: ShopID(),
+                                           date: Date(timeIntervalSince1970: 1_000),
+                                           amount: Money(minorUnits: 379), source: .receipt)
+        let first = a.op(.price(observation))
+        let second = a.op(.price(observation))
+
+        let state = assertConverges(shared: [], device1: [first], device2: [second])
+        XCTAssertEqual(state.priceObservations, [observation, observation],
+                       "two identical receipt lines are two observations")
+        let replayed = Merge.apply([second, first, second], to: state)
+        XCTAssertEqual(replayed, state, "replaying the same ops stays at two, never four")
     }
 
     func testMixedOfflineWeekConverges() {

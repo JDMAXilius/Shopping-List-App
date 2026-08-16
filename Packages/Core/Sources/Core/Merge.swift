@@ -6,21 +6,30 @@ public struct ListState: Equatable, Sendable {
     var addRecords: [ListItemID: AddRecord] = [:]
     var fieldWrites: [ListItemID: [ListItemField: FieldSlot]] = [:]
     var deletes: [ListItemID: OpStamp] = [:]
-    var priceSet: Set<PriceObservation> = []
+    var priceRecords: [OpID: PriceObservation] = [:]
     var shopRecords: [ShopID: Stamped<Shop>] = [:]
     var aisleRecords: [ShopID: Stamped<AisleOrder>] = [:]
 
     public init() {}
 
-    // Adds collapse by normalized seed name; a tombstone on any member deletes the row.
+    // Rows resolve their own fields first (LWW), then collapse by normalized RESOLVED name.
     public var items: [ListItem] {
-        var groups: [String: [(id: ListItemID, record: AddRecord)]] = [:]
+        var groups: [String: [(id: ListItemID, record: AddRecord, slots: [ListItemField: FieldSlot])]] = [:]
         for (id, record) in addRecords {
-            groups[Merge.normalized(record.seed.name), default: []].append((id, record))
+            // A tombstone suppresses only adds stamped at or before it; a later add resurrects.
+            if let tombstone = deletes[id], record.stamp <= tombstone { continue }
+            var slots: [ListItemField: FieldSlot] = [:]
+            // An add contributes only name + unchecked; its other seed fields are unstamped fallbacks.
+            ListState.keep(FieldSlot(write: .name(record.seed.name), stamp: record.stamp), in: &slots)
+            ListState.keep(FieldSlot(write: .checked(false), stamp: record.stamp), in: &slots)
+            for slot in fieldWrites[id, default: [:]].values {
+                ListState.keep(slot, in: &slots)
+            }
+            guard case .name(let resolved)? = slots[.name]?.write else { continue }
+            groups[Merge.normalized(resolved), default: []].append((id, record, slots))
         }
         var result: [ListItem] = []
         for members in groups.values {
-            if members.contains(where: { deletes[$0.id] != nil }) { continue }
             let canonical = members.min { lhs, rhs in
                 if lhs.record.seed.createdAt != rhs.record.seed.createdAt {
                     return lhs.record.seed.createdAt < rhs.record.seed.createdAt
@@ -31,15 +40,17 @@ public struct ListState: Equatable, Sendable {
             guard let canonical else { continue }
             var slots: [ListItemField: FieldSlot] = [:]
             for member in members {
-                for write in Merge.seedWrites(member.record.seed) {
-                    ListState.keep(FieldSlot(write: write, stamp: member.record.stamp), in: &slots)
-                }
-                for slot in fieldWrites[member.id, default: [:]].values {
+                for slot in member.slots.values {
                     ListState.keep(slot, in: &slots)
                 }
             }
             let createdAt = members.map { $0.record.seed.createdAt }.min() ?? canonical.record.seed.createdAt
-            var item = ListItem(listItemID: canonical.id, name: "", createdAt: createdAt)
+            // The latest add's seed fills fields nobody has written — a fallback, never a stamped write.
+            let fallback = members.max { $0.record.stamp < $1.record.stamp }?.record.seed
+                ?? canonical.record.seed
+            var item = ListItem(listItemID: canonical.id, itemID: fallback.itemID, name: "",
+                                quantity: fallback.quantity, unit: fallback.unit, note: fallback.note,
+                                shopID: fallback.shopID, createdAt: createdAt)
             for (field, slot) in slots {
                 item.apply(slot.write)
                 item.updatedFields[field] = slot.stamp
@@ -53,19 +64,25 @@ public struct ListState: Equatable, Sendable {
     }
 
     public var priceObservations: [PriceObservation] {
-        priceSet.sorted { lhs, rhs in
-            if lhs.date != rhs.date { return lhs.date < rhs.date }
-            if lhs.itemID != rhs.itemID {
-                return lhs.itemID.rawValue.uuidString < rhs.itemID.rawValue.uuidString
+        priceRecords.sorted { lhs, rhs in
+            if lhs.value.date != rhs.value.date { return lhs.value.date < rhs.value.date }
+            if lhs.value.itemID != rhs.value.itemID {
+                return lhs.value.itemID.rawValue.uuidString < rhs.value.itemID.rawValue.uuidString
             }
-            if lhs.shopID != rhs.shopID {
-                return lhs.shopID.rawValue.uuidString < rhs.shopID.rawValue.uuidString
+            if lhs.value.shopID != rhs.value.shopID {
+                return lhs.value.shopID.rawValue.uuidString < rhs.value.shopID.rawValue.uuidString
             }
-            if lhs.amount.minorUnits != rhs.amount.minorUnits {
-                return lhs.amount.minorUnits < rhs.amount.minorUnits
+            if lhs.value.amount.minorUnits != rhs.value.amount.minorUnits {
+                return lhs.value.amount.minorUnits < rhs.value.amount.minorUnits
             }
-            return lhs.source.rawValue < rhs.source.rawValue
-        }
+            if lhs.value.amount.currencyCode != rhs.value.amount.currencyCode {
+                return lhs.value.amount.currencyCode < rhs.value.amount.currencyCode
+            }
+            if lhs.value.source.rawValue != rhs.value.source.rawValue {
+                return lhs.value.source.rawValue < rhs.value.source.rawValue
+            }
+            return lhs.key.rawValue.uuidString < rhs.key.rawValue.uuidString
+        }.map { $0.value }
     }
 
     public var shops: [Shop] {
@@ -122,11 +139,6 @@ public enum Merge {
         name.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
-    static func seedWrites(_ seed: ListItem) -> [FieldWrite] {
-        [.itemID(seed.itemID), .name(seed.name), .quantity(seed.quantity), .unit(seed.unit),
-         .note(seed.note), .checked(seed.checked), .shopID(seed.shopID)]
-    }
-
     private static func applyOne(_ op: Op, to state: inout ListState) {
         let stamp = op.stamp
         switch op.kind {
@@ -148,10 +160,12 @@ public enum Merge {
                 }
             }
         case .delete(let id):
-            if let existing = state.deletes[id], existing <= stamp { return }
+            // MAX tombstone per row: suppression compares add stamps against the latest delete.
+            if let existing = state.deletes[id], stamp <= existing { return }
             state.deletes[id] = stamp
         case .price(let observation):
-            state.priceSet.insert(observation)
+            // Keyed by OpID: replay is idempotent, distinct same-value observations both survive.
+            state.priceRecords[op.opID] = observation
         case .shop(.upsert(let shop)):
             if let existing = state.shopRecords[shop.id], stamp <= existing.stamp { return }
             state.shopRecords[shop.id] = Stamped(value: shop, stamp: stamp)

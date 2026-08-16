@@ -43,6 +43,7 @@ public struct OpStamp: Hashable, Sendable, Codable, Comparable {
         self.deviceID = deviceID
     }
 
+    // clock outranks wallClock: deliberate — causality over recency; revisit as HLC only with field evidence
     public static func < (lhs: OpStamp, rhs: OpStamp) -> Bool {
         if lhs.clock != rhs.clock { return lhs.clock < rhs.clock }
         if lhs.wallClock != rhs.wallClock { return lhs.wallClock < rhs.wallClock }

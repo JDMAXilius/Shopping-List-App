@@ -37,3 +37,12 @@ cd ../Catalog       && swift build && swift test
 
 - **2026-08-16 · cloud** — Wave 1 built by builder (W1-P1 Core) + engine-porter (W1-P2 Catalog);
   critic REFUTER pass done in cloud (see WAVES log/commits). Gate handed here.
+- **2026-08-16 · cloud (critic + fixes)** — Critic W1-C1 found 1 P1 + 3 P2 in Merge, all fixed
+  in W1-P3: re-add-after-delete now resurrects (MAX delete stamp per id, later add wins);
+  grouping keys on RESOLVED name not seed name; adds contribute only name + checked=false as
+  stamped writes (no default-clobber; other seed fields are unstamped fallbacks from the
+  latest add); price observations keyed by OpID (duplicate receipt lines both survive, replay
+  idempotent); output sort fully totalized. Accepted tradeoff documented at the OpStamp
+  comparator. Harness now 13 scenarios incl. the three breaking sequences, asserted in both
+  orders + shuffled. **Nothing has been compiled — expect mechanical fix-ups here, and treat
+  any golden or harness failure as a real bug, not a flaky test.**

@@ -56,7 +56,7 @@ final class MergeTests: XCTestCase {
         guard let merged = forward.items.first else { return XCTFail("row missing") }
         XCTAssertEqual(merged.listItemID, milkA.listItemID, "earlier createdAt keeps the identity")
         XCTAssertEqual(merged.createdAt, Date(timeIntervalSince1970: 50))
-        XCTAssertEqual(merged.quantity, 2, "fields still merge LWW")
+        XCTAssertEqual(merged.quantity, 2, "the latest add's seed fills unedited fields")
     }
 
     func testEditNeverResurrectsAnAcknowledgedDelete() {
