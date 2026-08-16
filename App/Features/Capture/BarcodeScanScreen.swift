@@ -1,17 +1,20 @@
 import AVFoundation
+import Core
 import CoreMedia
 import DesignKit
 import SwiftUI
 import UIKit
 
-/// One item, straight off the packet. A barcode here is NOT a product lookup — this app has no
-/// UPC data and does not pretend to. It is an unambiguous key the kitchen teaches once: say what
-/// the code is, and every phone in the kitchen knows it after that.
+/// One item, straight off the packet. A barcode is an unambiguous key the kitchen teaches once:
+/// say what the code is, and every phone in the kitchen knows it after that. Open Food Facts can
+/// offer the name for a code nobody here has taught — a suggestion the user confirms, never data
+/// this app keeps.
 struct BarcodeScanScreen: View {
     let session: CaptureSession
     @Binding var path: [CaptureRoute]
 
     @State private var camera = BarcodeCamera()
+    @State private var suggestion = ProductSuggestion()
     @State private var chosen: CaptureMatch?
     /// This save writes the alias that teaches the code — true until the kitchen knows it.
     @State private var teaches = false
@@ -39,13 +42,17 @@ struct BarcodeScanScreen: View {
         .task { camera.start() }
         .onDisappear { camera.stop() }
         .onChange(of: camera.code) { _, code in
-            guard let code else { return }
+            guard let code else { return suggestion.clear() }
             let known = session.remembered(code)
             // A match we cannot put a name to is not a match we may show: the digits of a code
             // are not a product name.
             chosen = known.flatMap { $0.name == code ? nil : $0 }
             unnamed = known != nil && chosen == nil
             teaches = chosen == nil
+            // Only a code this kitchen cannot name, and the moment it resolves to one — so the
+            // suggestion is already there when the question is read, and nothing waits on it.
+            guard chosen == nil else { return suggestion.clear() }
+            Task { await suggestion.ask(about: code) }
         }
     }
 
@@ -59,7 +66,9 @@ struct BarcodeScanScreen: View {
             denied
         case .granted:
             viewfinder
-            Notice("A barcode is a name your kitchen teaches once. Bagged has no product database behind it — you say what a code is the first time, and it's known from then on.",
+            Notice(suggestion.isEnabled
+                   ? "A barcode is a name your kitchen teaches once. When a code is new here, Bagged asks Open Food Facts — a free public food database — what it might be, and you confirm or change it. The digits are the only thing sent."
+                   : "A barcode is a name your kitchen teaches once. Bagged has no product database behind it — you say what a code is the first time, and it's known from then on.",
                    on: .paper)
         }
     }
@@ -69,7 +78,11 @@ struct BarcodeScanScreen: View {
             Text("One item, off the packet")
                 .font(.system(.title2, weight: .bold))
                 .foregroundStyle(Palette.ink.color)
-            Text("Bagged needs the camera to read a barcode. The reading happens on this phone — no photo is taken, and the code is never sent anywhere.")
+            // The camera ask is also where the lookup is disclosed: a code going to a third
+            // party is said plainly at the moment it becomes possible, not in a policy.
+            Text(suggestion.isEnabled
+                 ? "Bagged needs the camera to read a barcode. The reading happens on this phone and no photo is taken. If your kitchen has never seen the code, Bagged asks the public Open Food Facts database what the product is — those digits are the only thing that leaves the phone."
+                 : "Bagged needs the camera to read a barcode. The reading happens on this phone — no photo is taken, and the code is never sent anywhere.")
                 .font(Typography.body)
                 .foregroundStyle(Palette.muted.color)
             Button {
@@ -133,10 +146,36 @@ struct BarcodeScanScreen: View {
                    ? "This code was matched here before, but nothing on this phone names that item. Say what it is."
                    : "New code — what is this? Say it once and the whole kitchen knows it.",
                    on: .paper)
+            if let name = suggestion.name {
+                suggested(name)
+            }
             ItemChoice(session: session, prompt: "WHAT IS THIS?") { match, _ in
                 chosen = match
                 teaches = true
             }
+        }
+    }
+
+    /// A looked-up name is a suggestion and never a fact: it is attributed, it sits above the
+    /// chooser rather than replacing it, and only this button makes it the item.
+    private func suggested(_ name: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionLabel("OPEN FOOD FACTS SAYS")
+            Text(name)
+                .font(.system(.title2, weight: .bold))
+                .foregroundStyle(Palette.ink.color)
+            Button {
+                // Exactly what the chooser's own Create does: a name this kitchen was already
+                // taught keeps its item, so two ways in are one history.
+                chosen = session.remembered(name) ?? session.match(itemID: ItemID(), name: name)
+                teaches = true
+            } label: {
+                primaryLabel("Use this name")
+            }
+            .buttonStyle(.plain)
+            Text("From the public Open Food Facts database, not from your kitchen — nothing is saved until you say it's right. If it isn't, name it yourself below.")
+                .font(Typography.footnote)
+                .foregroundStyle(Palette.muted.color)
         }
     }
 

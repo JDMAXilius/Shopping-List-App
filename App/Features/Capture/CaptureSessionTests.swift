@@ -640,6 +640,52 @@ final class CaptureSessionTests: XCTestCase {
         XCTAssertEqual(aliases[index].value, corrected)
     }
 
+    // MARK: - A looked-up name is a suggestion, never data
+
+    /// What the barcode screen's "Use this name" button builds, exactly.
+    private func confirmed(_ name: String, in session: CaptureSession) -> CaptureMatch {
+        session.remembered(name) ?? session.match(itemID: ItemID(), name: name)
+    }
+
+    func testASuggestedNameNobodyConfirmedWritesNothingAtAll() throws {
+        let harness = try makeHarness([])
+        let ops = try harness.repository.unpushedOps().count
+
+        // The suggestion is on screen and the user walked away from it: no price was saved, so
+        // nothing about it reached the op log — which is the only write path there is.
+        _ = confirmed("Nutella hazelnut spread 400g", in: harness.session)
+
+        XCTAssertEqual(try harness.repository.unpushedOps().count, ops)
+        XCTAssertTrue(try harness.repository.itemNames().isEmpty)
+        XCTAssertTrue(try harness.repository.aliases().isEmpty)
+        XCTAssertTrue(try harness.repository.priceObservations().isEmpty)
+    }
+
+    func testConfirmingASuggestionWritesTheSameThreeOpsAsTypingItWould() throws {
+        let harness = try makeHarness([])
+        let shopID = try XCTUnwrap(harness.store.activeShopID)
+        let code = "3017620422003"
+        let name = "Hazelnut spread"
+        let match = confirmed(name, in: harness.session)
+        let line = CaptureLine(rawText: code, amount: Money(minorUnits: 249), quantity: 1,
+                               confidence: .sure, match: match, decision: .accept,
+                               alias: .remember(match.itemID))
+
+        XCTAssertTrue(harness.session.record(line, shopID: shopID, date: Date()))
+
+        // The name op carries what the user confirmed, the alias teaches the digits, the price
+        // is the user's own. Nothing else from the lookup exists anywhere.
+        XCTAssertEqual(try harness.repository.itemNames()[match.itemID], name)
+        let aliases = try harness.repository.aliases()
+        let index = try XCTUnwrap(aliases.index(forKey: Merge.aliasKey(code)))
+        XCTAssertEqual(aliases[index].value, match.itemID)
+        XCTAssertEqual(try harness.repository.priceObservations().count, 1)
+        XCTAssertEqual(try harness.repository.priceObservations().first?.source, .typed)
+        // The item is this kitchen's own row, not a catalog one: catalog.db is a read-only
+        // bundled file and a lookup can no more add to it than a typed name can.
+        XCTAssertNil(match.itemID.catalogID)
+    }
+
     func testAnUnmatchedOrEmptyTypedLineWritesNothingAtAll() throws {
         let harness = try makeHarness([])
         let shopID = try XCTUnwrap(harness.store.activeShopID)
