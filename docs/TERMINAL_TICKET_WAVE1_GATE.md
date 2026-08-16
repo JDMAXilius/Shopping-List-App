@@ -170,3 +170,31 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
   self-review — an uncaught 500 that spent a scan with no refund path, and truncation reported as
   'unreadable image' when the receipt was merely long. RLS suite 51 -> 60 checks, **mutation-tested**
   (code broken to prove the tests fail, then restored).
+
+- **2026-08-16 · cloud (wave 6, part 2)** — Capture is now **reachable**. The flow existed but the
+  `+` presented a placeholder; `RootView` now builds a `CaptureSession` before the sheet is asked
+  for (never inside a body pass — a session minted in `sheetContent` loses a half-checked review
+  mid-scroll) and releases it in `onDismiss`. The environment carries `repository`, `kitchenID`,
+  `catalog` and `scanBackend` as `@Entry` keys rather than widening `ListStore` into the DI
+  container §6 refuses. Stranded `parsing` scans — a scan the app was killed during, which nothing
+  else would ever pick up — are swept back to `queued` at launch.
+  **A remembered alias now gets its name from the catalog**, not from the list: before this, an
+  alias pointing at an item you had already bought and checked off rendered as the till printed it,
+  'TJ ORG BABY SPNC'. **Display casing was ruled once, at the `ListCatalog` boundary** — the catalog
+  stores names lowercase because that is how it matches, so the name written to the list is now the
+  name the user was shown, and the widget, the CSV and twelve components need no display rule of
+  their own. Only the first character moves, so a user's own 'TJ' or '2% milk' survives; every
+  dedupe key already goes through `Merge.normalized`, which lowercases.
+
+  **Two things for your Mac, both new:**
+  1. **Scan config comes from Info.plist** — `ScanReceiptEndpoint` and `SupabaseAnonKey`, read via
+     `Bundle.main.object(forInfoDictionaryKey:)`, **never committed**. Until the Xcode project
+     exists, every build takes the signed-out path and **no live scan has ever run end to end**.
+  2. **A missing key and a missing account currently give the same message** ("You're signed out").
+     That is true today, when neither exists. Once wave 9 lands sign-in it becomes a lie — a
+     misconfigured build will blame the user's account. **Add a build-time config check when you
+     create the Xcode target**, not a runtime one.
+
+  Still open from earlier waves and unchanged: **the snapshot suite does not exist** after twelve
+  DesignKit components — it remains the largest hole in the visual contract, and it can only be
+  written where a simulator is.
