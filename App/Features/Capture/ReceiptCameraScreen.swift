@@ -1,4 +1,5 @@
 import DesignKit
+import Foundation
 import SwiftUI
 
 /// Screen 21. The shutter always succeeds: the photo is queued the moment it is taken, and
@@ -37,6 +38,18 @@ struct ReceiptCameraScreen: View {
     // MARK: - Taking the photo
 
     @ViewBuilder private var shooting: some View {
+        #if DEBUG
+        // Walkthrough scaffolding: the simulator has no camera, so the scripted-scan
+        // launch mode gets a stand-in shutter. Compiled out of release.
+        if ScriptedScanBackend.isRequested {
+            Button("Use test photo") {
+                Task { await session.capture(jpeg: Foundation.Data([0xFF, 0xD8, 0xFF, 0xE0])) }
+            }
+            .font(.system(.body, weight: .semibold))
+            .foregroundStyle(Palette.persimmon.color)
+            .frame(minHeight: 44)
+        }
+        #endif
         switch camera.access {
         case .undecided:
             primer

@@ -77,6 +77,9 @@ struct BaggedApp: App {
     /// The endpoint and the Supabase anon key come from this build's Info.plist — never a
     /// literal here, and no key is committed. Absent is a normal build, not a crash.
     private static func makeScanBackend() -> any ScanBackend {
+        #if DEBUG
+        if ScriptedScanBackend.isRequested { return ScriptedScanBackend() }
+        #endif
         guard let endpoint = configuration("ScanReceiptEndpoint").flatMap(URL.init(string:)),
               let apiKey = configuration("SupabaseAnonKey") else { return SignedOutScanBackend() }
         // Wave 9 owns sign-in. With no session there is no token, so the client answers

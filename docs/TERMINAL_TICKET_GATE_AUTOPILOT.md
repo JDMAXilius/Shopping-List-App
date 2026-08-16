@@ -504,3 +504,20 @@ scope, building its features is not.
   the same command from the T4 entry when the loop needs it again.
 - Queue state: T0–T6, T8 done; T4 done via vanilla-PG path; T7 done except the live scan.
   Everything still open is behind ONE blocker: **Bagged has no Supabase project** (T7 handoff).
+
+**2026-08-16 · terminal · T9 continued — the receipt path rendered for the first time.**
+- The review screens could never render before (no camera in the simulator, no backend
+  anywhere), so I added DEBUG-only walkthrough scaffolding, compiled out of release:
+  `--uitest-scripted-scan` swaps in `ScriptedScanBackend` (a canned four-line receipt in the
+  test fixtures' shape) and gives the camera screen a stand-in "Use test photo" shutter.
+  Call logged here per the redesign rule: scaffolding for verification, no contract touched.
+- `ReceiptFlowUITests` walks: capture → scan a receipt → review → line resolver ("spinach"
+  matched from the catalog) → create shop → **Save 2 prices** → first-receipt sheet → result.
+  Green first run, **1/1**. Screenshots: `design/built/14–18`.
+- On-screen proofs that were only unit-level before: the coupon renders as "$1.00 off" with
+  the "money off — not a price" chip (never a price tier); the save button says
+  "Save 2 prices" — the coupon and the unmatched fee stay out of the count; the printed
+  total states "$3.98 … lines you keep add up to $1.89 of it"; the first-receipt sheet fires
+  once with real counts.
+- Parity vs `design/app/04-receipt-review.png` / `05-line-resolver.png` / `06-capture-result.png`
+  / `27-first-receipt.png`: layout, wording and chips match the renders.
