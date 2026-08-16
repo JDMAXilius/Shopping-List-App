@@ -107,6 +107,25 @@ final class ComponentSnapshotTests: XCTestCase {
         }, height: 300)
     }
 
+    func testPaidTotalLabel() {
+        let month = PaidSummary(
+            [ReceiptTotal(printedOnReceipt: usd(12_450)),
+             ReceiptTotal(printedOnReceipt: usd(9_050))],
+            in: "July", currencyCode: "USD", unread: 1)
+        let empty = PaidSummary([], in: "July", currencyCode: "USD")
+        verify(VStack(alignment: .leading, spacing: 16) {
+            PaidTotalLabel(month)                 // solid figure + its basis sentence
+            PaidTotalLabel(empty)                 // — with the no-receipts sentence
+        }, height: 400)
+    }
+
+    func testPriceLabelDisplaySize() {
+        verify(VStack(alignment: .trailing, spacing: 12) {
+            PriceLabel(measured, size: .display)
+            PriceLabel(estimated, size: .display)
+        }, height: 220)
+    }
+
     func testField() {
         verify(VStack(spacing: 12) {
             Field("Item", text: .constant("Whole milk"), placeholder: "What is it?",
