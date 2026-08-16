@@ -53,3 +53,17 @@ struct ListItemRecord: Codable, FetchableRecord, PersistableRecord {
             createdAt: Date(msSince1970: createdAt))
     }
 }
+
+// Op-derived, like list_item: a null item_id is "ignore this receipt line forever",
+// and no row at all is "this text was never aliased".
+struct AliasRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "alias"
+
+    var rawText: String
+    var itemID: String?
+
+    enum CodingKeys: String, CodingKey {
+        case rawText = "raw_text"
+        case itemID = "item_id"
+    }
+}

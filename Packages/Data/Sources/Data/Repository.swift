@@ -143,6 +143,19 @@ public final class Repository: Sendable {
         try database.pool.read { try Repository.fetchPriceObservations($0) }
     }
 
+    /// A key present with a nil value is "ignore this line forever"; a missing key is
+    /// "never aliased". Read with `updateValue`/`index(forKey:)`, never `?? nil`.
+    public func aliases() throws -> [String: ItemID?] {
+        try database.pool.read { db in
+            var result: [String: ItemID?] = [:]
+            for record in try AliasRecord.fetchAll(db, sql: "SELECT * FROM alias") {
+                result.updateValue(try record.itemID.map { ItemID(try requireUUID($0)) },
+                                   forKey: record.rawText)
+            }
+            return result
+        }
+    }
+
     @MainActor public func observedItems() throws -> Observed<[ListItem]> {
         Observed(initial: try items(), database: database) { try Repository.fetchItems($0) }
     }
@@ -190,6 +203,53 @@ public final class Repository: Sendable {
         try database.pool.read { db in
             try ReceiptRecord.fetchAll(db, sql: "SELECT * FROM receipt ORDER BY captured_at DESC, id")
                 .map { try $0.receipt() }
+        }
+    }
+
+    // MARK: - Pending scans (device state, not household truth)
+
+    // A pending scan is this phone's promise to parse a photo later: it is deliberately NOT an op,
+    // so it never syncs and rebuild() never touches it. Do not "fix" that by making it one.
+    public func enqueueScan(_ scan: PendingScan) throws {
+        try database.pool.write { try PendingScanRecord(scan: scan).save($0) }
+    }
+
+    public func pendingScans() throws -> [PendingScan] {
+        try database.pool.read { db in
+            try PendingScanRecord.fetchAll(db, sql: """
+                SELECT * FROM pending_scan ORDER BY captured_at, id
+                """).map { try $0.scan() }
+        }
+    }
+
+    public func queuedScans() throws -> [PendingScan] {
+        try database.pool.read { db in
+            try PendingScanRecord.fetchAll(db, sql: """
+                SELECT * FROM pending_scan WHERE state = 'queued' ORDER BY captured_at, id
+                """).map { try $0.scan() }
+        }
+    }
+
+    // Also the way a scan left `parsing` by a killed app is put back in the queue.
+    public func markScan(_ id: UUID, _ state: PendingScan.State) throws {
+        try database.pool.write { db in
+            try db.execute(sql: "UPDATE pending_scan SET state = ? WHERE id = ?",
+                           arguments: [state.rawValue, id.uuidString])
+        }
+    }
+
+    public func deleteScan(_ id: UUID) throws {
+        let record = try database.pool.read { db in
+            try PendingScanRecord.fetchOne(db, key: id.uuidString)
+        }
+        guard let record else { return }
+        // Photo first: a leaked receipt image outlives the user's intent, while a row left behind
+        // by a failed file delete is visible and retryable.
+        if FileManager.default.fileExists(atPath: record.photoPath) {
+            try FileManager.default.removeItem(atPath: record.photoPath)
+        }
+        try database.pool.write { db in
+            try db.execute(sql: "DELETE FROM pending_scan WHERE id = ?", arguments: [id.uuidString])
         }
     }
 
@@ -249,6 +309,10 @@ public final class Repository: Sendable {
         try db.execute(sql: "DELETE FROM shop")
         for shop in cache.state.shops {
             try ShopRecord(shop: shop).insert(db)
+        }
+        try db.execute(sql: "DELETE FROM alias")
+        for (rawText, itemID) in cache.state.aliases.sorted(by: { $0.key < $1.key }) {
+            try AliasRecord(rawText: rawText, itemID: itemID?.rawValue.uuidString).insert(db)
         }
         try db.execute(sql: "DELETE FROM aisle_order")
         let shopIDs = cache.aisleShopIDs.sorted { $0.rawValue.uuidString < $1.rawValue.uuidString }

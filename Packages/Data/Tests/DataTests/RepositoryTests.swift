@@ -16,7 +16,7 @@ final class RepositoryTests: XCTestCase {
 
     private func snapshot(_ database: AppDatabase) throws -> [String: [Row]] {
         let orders = ["list_item": "id", "shop": "id", "aisle_order": "shop_id, position",
-                      "price_observation": "op_id"]
+                      "price_observation": "op_id", "alias": "raw_text"]
         return try database.pool.read { db in
             var tables: [String: [Row]] = [:]
             for (table, order) in orders {
@@ -65,6 +65,9 @@ final class RepositoryTests: XCTestCase {
             try repository.append(.price(observation), kitchenID: kitchenID),
             try repository.append(.shop(.upsert(shop)), kitchenID: kitchenID),
             try repository.append(.shop(.aisleOrder(order)), kitchenID: kitchenID),
+            try repository.append(.alias(rawText: "TJ ORG BABY SPNC", itemID: observation.itemID),
+                                  kitchenID: kitchenID),
+            try repository.append(.alias(rawText: "TJ BAG FEE", itemID: nil), kitchenID: kitchenID),
             try repository.append(.delete(item.listItemID), kitchenID: kitchenID),
         ]
         XCTAssertEqual(try repository.unpushedOps(), appended,
@@ -162,6 +165,71 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(items, state.items.map(stripped),
                        "the materialized list is exactly Core's projection")
         try assertRebuildEquivalent(database, repository)
+    }
+
+    func testAliasCorrectionAndIgnoreSurviveRebuild() throws {
+        let (database, repository) = try makeStack()
+        let spinach = ItemID()
+        let kale = ItemID()
+        try repository.append(.alias(rawText: "TJ ORG BABY SPNC", itemID: spinach),
+                              kitchenID: kitchenID)
+        try repository.append(.alias(rawText: " tj org  baby spnc ", itemID: kale),
+                              kitchenID: kitchenID)
+        try repository.append(.alias(rawText: "TJ BAG FEE", itemID: nil), kitchenID: kitchenID)
+
+        let aliases = try repository.aliases()
+        XCTAssertEqual(aliases.count, 2, "case and spacing variants are one alias")
+        XCTAssertEqual(aliases["tj org baby spnc"], .some(.some(kale)), "the correction wins")
+        let ignored: ItemID?? = .some(nil)
+        XCTAssertEqual(aliases["tj bag fee"], ignored, "aliased-to-nil is ignore forever")
+        XCTAssertNil(aliases["sfy 2% milk gal"], "a never-aliased line has no row")
+
+        try assertRebuildEquivalent(database, repository)
+        let state = Merge.apply(try allOps(database), to: ListState())
+        XCTAssertEqual(try repository.aliases(), state.aliases,
+                       "the alias table is exactly Core's projection")
+    }
+
+    func testPendingScanLifecycleAndPhotoDeletion() throws {
+        let (_, repository) = try makeStack()
+        let photo = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pending-scan-\(UUID().uuidString).jpg")
+        XCTAssertTrue(FileManager.default.createFile(atPath: photo.path, contents: nil))
+        let scan = PendingScan(shopID: ShopID(), capturedAt: Date(msSince1970: 1_000),
+                               photoPath: photo.path)
+        try repository.enqueueScan(scan)
+
+        XCTAssertEqual(try repository.queuedScans(), [scan], "a capture is queued, not parsed")
+        try repository.markScan(scan.id, .parsing)
+        XCTAssertTrue(try repository.queuedScans().isEmpty, "a parsing scan is off the queue")
+        XCTAssertEqual(try repository.pendingScans().map(\.state), [.parsing])
+        try repository.markScan(scan.id, .failed)
+        XCTAssertEqual(try repository.pendingScans().map(\.state), [.failed])
+        try repository.markScan(scan.id, .queued)
+        XCTAssertEqual(try repository.queuedScans().map(\.id), [scan.id],
+                       "a scan the app was killed mid-parse goes back in the queue")
+
+        try repository.deleteScan(scan.id)
+        XCTAssertTrue(try repository.pendingScans().isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: photo.path),
+                       "deleting a pending scan deletes the photo it points at")
+        XCTAssertNoThrow(try repository.deleteScan(scan.id), "deleting twice is not an error")
+    }
+
+    func testPendingScansSurviveRebuildAndNeverBecomeOps() throws {
+        let (database, repository) = try makeStack()
+        let scan = PendingScan(shopID: ShopID(), capturedAt: Date(msSince1970: 2_000),
+                               photoPath: "/tmp/never-written.jpg")
+        try repository.enqueueScan(scan)
+        try repository.append(.add(ListItem(name: "Milk")), kitchenID: kitchenID)
+
+        XCTAssertEqual(try allOps(database).map(\.type), ["add"],
+                       "a pending scan is device state: enqueueing one writes no op")
+        XCTAssertEqual(try repository.unpushedOps().count, 1, "so there is nothing extra to push")
+
+        try repository.rebuild()
+        XCTAssertEqual(try repository.queuedScans(), [scan],
+                       "rebuild() replays ops only — it must not touch pending scans")
     }
 
     func testDuplicatePullAdvancesCursorWithoutChurn() throws {

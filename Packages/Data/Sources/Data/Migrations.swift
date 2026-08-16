@@ -86,6 +86,24 @@ enum Migrations {
                 """)
             try db.execute(sql: "CREATE INDEX op_unpushed ON op(pushed_at) WHERE pushed_at IS NULL")
             // The widget reads this pragma cheaply, without touching the migrator.
+            try db.execute(sql: "PRAGMA user_version = 1")
+        }
+        migrator.registerMigration("v2") { db in
+            // Projection of ListState.aliases: no row = never aliased, null item_id = ignore forever.
+            try db.create(table: "alias") { t in
+                t.column("raw_text", .text).primaryKey()
+                t.column("item_id", .text)
+            }
+            // Device state, never an op: a queued parse is this phone's promise, not household
+            // truth, and the photo it points at stays on the phone — this table never syncs.
+            try db.create(table: "pending_scan") { t in
+                t.column("id", .text).primaryKey()
+                t.column("shop_id", .text).notNull()
+                t.column("captured_at", .integer).notNull()
+                t.column("photo_path", .text).notNull()
+                t.column("state", .text).notNull()
+                    .check { ["queued", "parsing", "failed"].contains($0) }
+            }
             try db.execute(sql: "PRAGMA user_version = \(AppDatabase.schemaVersion)")
         }
         return migrator

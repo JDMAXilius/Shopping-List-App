@@ -9,6 +9,7 @@ public struct ListState: Equatable, Sendable {
     var priceRecords: [OpID: PriceObservation] = [:]
     var shopRecords: [ShopID: Stamped<Shop>] = [:]
     var aisleRecords: [ShopID: Stamped<AisleOrder>] = [:]
+    var aliasRecords: [String: Stamped<ItemID?>] = [:]
 
     public init() {}
 
@@ -108,6 +109,17 @@ public struct ListState: Equatable, Sendable {
         aisleRecords[shopID]?.value
     }
 
+    /// Keyed by normalized raw receipt text. A present key with a nil value is "ignore this line
+    /// forever"; an absent key is "never aliased" — a resolver must not collapse those two.
+    public var aliases: [String: ItemID?] {
+        aliasRecords.mapValues { $0.value }
+    }
+
+    /// nil = no alias for this text · .some(nil) = ignore forever · .some(.some(id)) = matched.
+    public func alias(for rawText: String) -> ItemID?? {
+        aliasRecords[Merge.normalized(rawText)].map { $0.value }
+    }
+
     private static func keep(_ slot: FieldSlot, in slots: inout [ListItemField: FieldSlot]) {
         if let existing = slots[slot.write.field], slot.stamp <= existing.stamp { return }
         slots[slot.write.field] = slot
@@ -142,7 +154,7 @@ public enum Merge {
         return next
     }
 
-    // Dedup key for idempotent adds and for a delete's sweep: lowercase, trimmed, collapsed.
+    // Dedup key for idempotent adds, a delete's sweep, and alias keys: lowercase, trimmed, collapsed.
     public static func normalized(_ name: String) -> String {
         cleaned(name).lowercased()
     }
@@ -184,6 +196,11 @@ public enum Merge {
         case .shop(.aisleOrder(let order)):
             if let existing = state.aisleRecords[order.shopID], stamp <= existing.stamp { return }
             state.aisleRecords[order.shopID] = Stamped(value: order, stamp: stamp)
+        case .alias(let rawText, let itemID):
+            // LWW per normalized raw text: correcting a bad match must beat the match it corrects.
+            let key = normalized(rawText)
+            if let existing = state.aliasRecords[key], stamp <= existing.stamp { return }
+            state.aliasRecords[key] = Stamped(value: itemID, stamp: stamp)
         }
     }
 

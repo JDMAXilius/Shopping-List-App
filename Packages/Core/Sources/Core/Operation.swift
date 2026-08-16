@@ -60,6 +60,9 @@ public struct Op: Hashable, Sendable {
         case delete(ListItemID)
         case price(PriceObservation)
         case shop(ShopChange)
+        // A receipt line matched once, remembered by the whole kitchen; nil itemID means
+        // "ignore this line forever", which is not the same as never having aliased it.
+        case alias(rawText: String, itemID: ItemID?)
     }
 
     public let opID: OpID
@@ -92,6 +95,7 @@ public struct Op: Hashable, Sendable {
         case .delete: return "delete"
         case .price: return "price"
         case .shop: return "shop"
+        case .alias: return "alias"
         }
     }
 }
@@ -111,6 +115,34 @@ extension Op: Codable {
     private struct EditPayload: Codable {
         let id: ListItemID
         let fields: [FieldWrite]
+    }
+
+    private struct AliasPayload: Codable {
+        let rawText: String
+        let itemID: ItemID?
+
+        enum CodingKeys: String, CodingKey {
+            case rawText = "raw_text"
+            case itemID = "item_id"
+        }
+
+        init(rawText: String, itemID: ItemID?) {
+            self.rawText = rawText
+            self.itemID = itemID
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            rawText = try container.decode(String.self, forKey: .rawText)
+            itemID = try container.decodeIfPresent(ItemID.self, forKey: .itemID)
+        }
+
+        // item_id is written even when nil: on the wire "ignore forever" is an explicit null.
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(rawText, forKey: .rawText)
+            try container.encode(itemID, forKey: .itemID)
+        }
     }
 
     public init(from decoder: Decoder) throws {
@@ -137,6 +169,9 @@ extension Op: Codable {
             kind = .price(try container.decode(PriceObservation.self, forKey: .payload))
         case "shop":
             kind = .shop(try container.decode(ShopChange.self, forKey: .payload))
+        case "alias":
+            let payload = try container.decode(AliasPayload.self, forKey: .payload)
+            kind = .alias(rawText: payload.rawText, itemID: payload.itemID)
         default:
             throw DecodingError.dataCorruptedError(
                 forKey: .type, in: container, debugDescription: "unknown op type: \(type)")
@@ -162,6 +197,8 @@ extension Op: Codable {
             try container.encode(observation, forKey: .payload)
         case .shop(let change):
             try container.encode(change, forKey: .payload)
+        case .alias(let rawText, let itemID):
+            try container.encode(AliasPayload(rawText: rawText, itemID: itemID), forKey: .payload)
         }
     }
 }

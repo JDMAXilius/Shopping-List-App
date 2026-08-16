@@ -2,7 +2,7 @@ import Foundation
 import GRDB
 
 public final class AppDatabase: Sendable {
-    public static let schemaVersion = 1
+    public static let schemaVersion = 2
 
     let pool: DatabasePool
 

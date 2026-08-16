@@ -295,6 +295,78 @@ final class ConflictHarnessTests: XCTestCase {
         XCTAssertEqual(replayed, state, "replaying the same ops stays at two, never four")
     }
 
+    func testAliasCorrectionWinsInEveryDeliveryOrder() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let spinach = ItemID()
+        let kale = ItemID()
+        let match = a.op(.alias(rawText: "TJ ORG BABY SPNC", itemID: spinach))
+        b.receive(match)
+        let correction = b.op(.alias(rawText: "  tj org  baby   spnc ", itemID: kale))
+
+        let state = assertConverges(shared: [], device1: [match], device2: [correction])
+        XCTAssertEqual(state.aliases.count, 1, "case and spacing variants are one alias")
+        XCTAssertEqual(state.alias(for: "TJ ORG BABY SPNC"), .some(.some(kale)),
+                       "the later stamp wins: a correction beats the match it corrects")
+        XCTAssertEqual(state.aliases["tj org baby spnc"], .some(.some(kale)),
+                       "the map is keyed by normalized raw text")
+    }
+
+    func testAliasToNilIsIgnoreForeverAndNotAbsence() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let spinach = ItemID()
+        let match = a.op(.alias(rawText: "TJ ORG BABY SPNC", itemID: spinach))
+        b.receive(match)
+        let ignore = b.op(.alias(rawText: "tj org baby spnc", itemID: nil))
+
+        let state = assertConverges(shared: [], device1: [match], device2: [ignore])
+        let ignored: ItemID?? = .some(nil)
+        XCTAssertEqual(state.alias(for: "TJ ORG BABY SPNC"), ignored,
+                       "aliased-to-nil means ignore this line forever")
+        XCTAssertTrue(state.aliases.keys.contains("tj org baby spnc"))
+        XCTAssertNil(state.alias(for: "SFY 2% MILK GAL"),
+                     "a line nobody aliased has no entry — absence is not 'ignore'")
+    }
+
+    func testIgnoreCanBeUndoneByALaterMatch() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let spinach = ItemID()
+        let ignore = a.op(.alias(rawText: "TJ ORG BABY SPNC", itemID: nil))
+        b.receive(ignore)
+        let match = b.op(.alias(rawText: "TJ ORG BABY SPNC", itemID: spinach))
+
+        let state = assertConverges(shared: [], device1: [ignore], device2: [match])
+        XCTAssertEqual(state.alias(for: "tj org baby spnc"), .some(.some(spinach)),
+                       "a permanent ignore is still correctable by a later match")
+    }
+
+    func testAliasForALineNeverSeenAgainIsHarmless() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let milk = ListItem(name: "Milk", createdAt: Date(timeIntervalSince1970: 10))
+        let shared = [a.op(.add(milk))]
+        for op in shared { b.receive(op) }
+
+        let stray = a.op(.alias(rawText: "WGMNS SPCLTY 4711", itemID: ItemID()))
+        let bOps = [b.op(.check(milk.listItemID))]
+
+        let state = assertConverges(shared: shared, device1: [stray], device2: bOps)
+        let withoutAlias = Merge.apply(shared + bOps, to: ListState())
+        XCTAssertEqual(state.items, withoutAlias.items,
+                       "an alias for a line no receipt repeats touches nothing else")
+        XCTAssertEqual(state.aliases.count, 1, "it is still remembered, costing one map entry")
+    }
+
     func testMixedOfflineWeekConverges() {
         let kitchenID = KitchenID()
         var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
