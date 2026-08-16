@@ -5,7 +5,7 @@ import SwiftUI
 import WidgetKit
 
 /// design/app/28-widget.png, in DesignKit's tokens only. The tile carries exactly one money
-/// figure — the whole-list total — because the render has no per-row prices.
+/// figure — what the rows still to buy come to, the same basket the count names.
 struct ListWidgetView: View {
     @Environment(\.widgetFamily) private var family
     let entry: ListEntry

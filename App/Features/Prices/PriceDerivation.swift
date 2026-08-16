@@ -387,8 +387,11 @@ enum PriceDerivation {
             return "\(figure(matched)) is matched to items — more than the receipts add up to, "
                 + "because some of it was recorded without a receipt."
         }
-        return "\(figure(matched)) of the \(paid.figure) is matched to items. The rest is tax, "
-            + "deposits, fees and lines nothing could be matched to."
+        // Not a list of what the rest IS — a price observation carries no quantity yet, so a
+        // ×4 row contributes the price of one and most of the gap can be quantity, not tax.
+        // Naming causes we cannot separate would be the confident kind of wrong.
+        return "\(figure(matched)) of the \(paid.figure) is matched to individual items. "
+            + "The rest is everything a single item's price can't account for."
     }
 
     /// Biggest first, and nothing that carries no money at all.
