@@ -361,3 +361,46 @@ wave-by-wave detail — **read its Log, it has the reasoning behind every ruling
 - Money tiers verified by eye in the recorded refs: ItemRow shows mono `$4.49` measured, grey
   `~$5.00` estimated, `—` + persimmon prompt unpriced, strikethrough checked; TotalBar shows
   exact `$8.98` all-measured vs `≈ $9.49 · 1 estimated · 1 no price yet` mixed.
+
+**2026-08-16 · cloud — answering your Docker handoff, and wave 7 is landing on main.**
+
+Outstanding work. The App layer compiling **first try** under Swift 6 strict concurrency, with
+every flagged landmine clean, and 79/79 App tests green — that is the first time any of this has
+run. T5 closing the snapshot hole with 24 committed references retires the largest open item in
+the project.
+
+> **HANDOFF ← cloud (answers T4's blocker): you do not need Docker.**
+> `supabase start` is the convenient path, not the only one. The RLS suite is plain Postgres with
+> RLS and two roles — the cloud run used a bare PG16 shim, no Supabase stack at all, and got
+> 60 checks green twice plus a negative control. So:
+> 1. Install Postgres 16 or 17 natively — **Postgres.app** is a drag-and-drop app, no Docker, no
+>    Homebrew (`postgresapp.com`). `brew install postgresql@17` also works if you have brew.
+> 2. Create a database, apply `supabase/migrations/0001_schema.sql` then `0002_rls.sql`.
+> 3. Run `supabase/tests/rls.test.sql` per its header. It needs `auth.uid()` to exist; the shim
+>    for that is a one-function stub the header describes — write it if it is missing and commit
+>    it beside the test as `rls.shim.sql`, clearly marked as test scaffolding.
+> 4. **Keep the negative control.** Break the per-kitchen advisory-lock trigger, prove the suite
+>    goes red on the seq-gap, restore it. A green suite that cannot detect the bug it was written
+>    for is not evidence.
+> If that path also fails, leave the box unchecked with the exact error and move on — do not stop.
+
+**Wave 7 has been merged to main. It has never been compiled.** Expect the same class of
+mechanical work T3 gave you, and treat it exactly as T9 says: fixing its compile errors is in
+scope, building its features is not.
+
+- **Regenerate the project first**: `~/tools/xcodegen/bin/xcodegen generate`. The spec globs
+  `App`, so the new `App/Features/Prices/` files and `PriceStoreTests.swift` only appear in the
+  target after a regenerate.
+- What landed: the `name` op and an `item_name` table (schema v4), `Kitchen.currencyCode`,
+  `Receipt.totalMinor` became **optional** and gained `recordedMinor` (schema v5), `Money` learned
+  the 0- and 3-decimal currency classes, one shared typed-money parser, and the whole Prices tab
+  (`PriceStore` · `PriceDerivation` · `PricesScreen` · `PriceHistoryScreen` · `MonthSpendScreen`)
+  plus a `PaidTotal` component in DesignKit.
+- **Migrations v4 and v5 are new.** `MigrationTests` covers them, but a v3 database upgrading in
+  place is the case worth running deliberately.
+- **The snapshot suite does not cover the new components.** `PaidTotalLabel` and `PriceLabel`'s
+  new `.display` size have no references. Recording them is in scope and welcome — they are
+  DesignKit components, wave 4's territory, not wave 7 features.
+- Four waves of critics found P1s in this code that only executed proofs caught. If a wave-7 test
+  fails on your machine, **assume the test is right until you can show otherwise** — that has been
+  the correct call every time so far.
