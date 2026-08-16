@@ -34,7 +34,10 @@ glyph set, the price seeds. Open Food Facts is a runtime barcode lookup only, wi
 - **No speculative generality.** Two protocols exist in the whole app (`SyncTransport`,
   `ScanBackend`) because both need a fake in tests. Nothing else gets a protocol, a generic, or
   a configuration point until a second concrete use exists
-- **A store over ~200 lines means logic is in the wrong layer** — move it to a package
+- **A store holds coordination, never logic.** The test is not a line count: if something in a
+  store could be tested without SwiftUI, it belongs in a package. `ListStore` sits at ~240 lines
+  of pure coordination — its derivation, catalog access and merge rules are already extracted —
+  and that is fine; 120 lines with a parsing rule buried in it would not be
 - **No dead code, no `// TODO` older than a week, no commented-out blocks.** Delete; git remembers
 - Value types and `let` by default; force-unwraps never; `guard` early-exit shape
 - Files named for the one thing they contain; if the name needs "And", split it
