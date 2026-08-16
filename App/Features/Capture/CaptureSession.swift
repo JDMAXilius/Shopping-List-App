@@ -315,24 +315,18 @@ final class CaptureSession {
     @discardableResult
     func record(_ line: CaptureLine, shopID: ShopID, date: Date) -> Bool {
         guard line.isPriced, let match = line.match, line.amount.minorUnits > 0 else { return false }
-        var itemID = match.itemID
-        var teaches = false
-        if line.alias != nil, !Merge.aliasKey(line.rawText).isEmpty {
-            // This kitchen may already have taught this exact text. Reusing the item it named
-            // is what keeps one product's prices in one history instead of two.
-            let aliases = (try? repository.aliases()) ?? [:]
-            let known = aliases.index(forKey: Merge.aliasKey(line.rawText)).flatMap { aliases[$0].value }
-            itemID = known ?? itemID
-            teaches = known == nil
-        }
         // Never forward: a future-dated observation would outrank every real one for 90 days.
-        let observation = PriceObservation(itemID: itemID, shopID: shopID, date: min(date, Date()),
-                                           amount: line.unitAmount, source: .typed)
+        let observation = PriceObservation(itemID: match.itemID, shopID: shopID,
+                                           date: min(date, Date()), amount: line.unitAmount,
+                                           source: .typed)
         guard (try? repository.append(.price(observation), kitchenID: kitchenID)) != nil else {
             return false
         }
-        if teaches {
-            try? repository.append(.alias(rawText: line.rawText, itemID: itemID), kitchenID: kitchenID)
+        // The item written is the item the screen showed, always. What this kitchen already
+        // knows is resolved before the user is asked (`remembered`), never behind them here.
+        if let alias = line.alias, !Merge.aliasKey(line.rawText).isEmpty {
+            try? repository.append(.alias(rawText: line.rawText, itemID: alias.itemID),
+                                   kitchenID: kitchenID)
         }
         store.refresh()
         Haptics.play(.add)

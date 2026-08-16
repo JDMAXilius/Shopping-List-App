@@ -122,8 +122,8 @@ struct ItemChoice: View {
         VStack(alignment: .leading, spacing: 8) {
             SectionLabel("OR MAKE IT A NEW ITEM")
             Button {
-                // If the kitchen was already taught this name, its item is the one that gets the
-                // price — otherwise the name on screen and the item written apart could differ.
+                // A name this kitchen was already taught keeps its item, so two typings of the
+                // same thing are one history — and the name shown is the item that gets priced.
                 onChoose(session.remembered(trimmed)
                     ?? session.match(itemID: ItemID(), name: trimmed), true)
             } label: {

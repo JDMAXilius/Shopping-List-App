@@ -282,7 +282,7 @@ final class CaptureSessionTests: XCTestCase {
         XCTAssertLessThanOrEqual(observation.date.timeIntervalSinceNow, 1)
     }
 
-    func testABarcodeIsTaughtOnceAndEveryLaterScanJoinsThatItem() throws {
+    func testABarcodeIsTaughtOnceAndTheNextScanKnowsItWithoutAsking() throws {
         let harness = try makeHarness([])
         let shopID = try XCTUnwrap(harness.store.activeShopID)
         let code = "0071234567890"
@@ -295,17 +295,38 @@ final class CaptureSessionTests: XCTestCase {
         let aliases = try harness.repository.aliases()
         let index = try XCTUnwrap(aliases.index(forKey: Merge.aliasKey(code)), "the code is taught")
         XCTAssertEqual(aliases[index].value, taught)
-        XCTAssertEqual(harness.session.remembered(code)?.itemID, taught)
 
-        // A second scan arrives with a freshly minted id; the kitchen's answer wins, so the two
-        // prices are one item's history and no second alias is written.
-        let stray = ItemID()
-        XCTAssertTrue(harness.session.record(typedLine(209, itemID: stray, rawText: code,
-                                                       teaches: true),
-                                             shopID: shopID, date: Date()))
+        // The next scan asks the kitchen, not the user — and prices the item it names, so the
+        // two observations are one item's history.
+        let known = try XCTUnwrap(harness.session.remembered(code))
+        XCTAssertEqual(known.itemID, taught)
+        XCTAssertTrue(harness.session.record(typedLine(209, itemID: known.itemID), shopID: shopID,
+                                             date: Date()))
 
         XCTAssertEqual(Set(try harness.repository.priceObservations().map(\.itemID)), [taught])
         XCTAssertEqual(try harness.repository.aliases().count, 1)
+    }
+
+    func testTheItemWrittenIsTheItemTheScreenShowed() throws {
+        let harness = try makeHarness([])
+        let shopID = try XCTUnwrap(harness.store.activeShopID)
+        let taught = ItemID.catalog(11)
+        XCTAssertTrue(harness.session.record(typedLine(199, itemID: taught, rawText: "oat milk",
+                                                       teaches: true),
+                                             shopID: shopID, date: Date()))
+
+        // The user answers the same text with a different item: the price follows what they were
+        // looking at, and the alias follows the correction. Nothing is redirected behind them.
+        let corrected = ItemID.catalog(12)
+        XCTAssertTrue(harness.session.record(typedLine(209, itemID: corrected, rawText: "oat milk",
+                                                       teaches: true),
+                                             shopID: shopID, date: Date()))
+
+        let observations = try harness.repository.priceObservations()
+        XCTAssertEqual(Set(observations.map(\.itemID)), [taught, corrected])
+        let aliases = try harness.repository.aliases()
+        let index = try XCTUnwrap(aliases.index(forKey: Merge.aliasKey("oat milk")))
+        XCTAssertEqual(aliases[index].value, corrected)
     }
 
     func testAnUnmatchedOrEmptyTypedLineWritesNothingAtAll() throws {
