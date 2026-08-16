@@ -17,6 +17,9 @@ struct RootView: View {
     /// Lives as long as the capture sheet does (ARCHITECTURE §3), and is built before the sheet
     /// is asked for — a session minted in a body pass would lose a half-checked review.
     @State private var capture: CaptureSession?
+    /// The pill's real height: at accessibility sizes it more than doubles, and a fixed
+    /// page inset left it sitting on the input bar. Measured, never assumed.
+    @State private var pillHeight: CGFloat = 64
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -24,6 +27,9 @@ struct RootView: View {
             content
             TabPill(selection: $tab, onAdd: { presentCapture() })
                 .padding(.bottom, 8)
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) {
+                    pillHeight = $0
+                }
         }
         .sheet(item: $sheet) { presented in
             sheetContent(presented)
@@ -71,18 +77,18 @@ struct RootView: View {
                 // TabView hosts pages edge-to-edge and swallows both safeAreaPadding
                 // and safeAreaInset (design/app/01-list.png puts the pill BELOW the
                 // card, never over it).
-                .padding(.bottom, 72)
+                .padding(.bottom, pillHeight)
                 .tag(DesignKit.Tab.list)
                 pricesRoot
                     .toolbar(.hidden, for: .tabBar)
-                    .safeAreaPadding(.bottom, 72)
+                    .padding(.bottom, pillHeight)
                     .tag(DesignKit.Tab.prices)
                 // Wave 9 replaces this root with its own screens.
                 EmptyState(
                     glyph: .household,
                     message: "Your kitchen, sharing and settings live here.")
                     .toolbar(.hidden, for: .tabBar)
-                    .safeAreaPadding(.bottom, 72)
+                    .padding(.bottom, pillHeight)
                     .tag(DesignKit.Tab.you)
             }
         } else {

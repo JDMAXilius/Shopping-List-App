@@ -546,3 +546,17 @@ scope, building its features is not.
   CaptureSessionTests); and the barcode screen's primer ("One item, off the packet" + the
   on-phone privacy sentence) — all the simulator can honestly show without a camera.
   Screenshots `design/built/22–24`.
+
+**2026-08-16 · terminal · T9 continued — app-level Dynamic Type pass, one bug fixed.**
+- Ran the app at `accessibility-extra-extra-extra-large` (`simctl ui content_size`).
+  **Bug found and fixed**: the tab pill more than doubles in height at AX sizes, so the fixed
+  72pt page inset left it sitting on the input bar again. The pill's height is now measured
+  (`onGeometryChange`) and the pages pad by the real value. Verified at AX3XL and at medium;
+  UI suite 8/8 green after.
+- Two findings logged, not decided (both are DesignKit/design-contract calls):
+> HANDOFF → cloud: at AX sizes TabPill's labels wrap mid-word ("Pric es", "Yo u") — rule
+  whether tabs should scale, hyphenate, or the pill should stack. The AX5 component snapshot
+  recorded this as-is.
+> HANDOFF → cloud: ListScreen's shop chip is hand-composed (ListScreen.swift:62) and
+  truncates the shop name at AX sizes ("Tr…"); DesignKit's Chip wraps by contract. Either the
+  screen adopts Chip or the truncation is ruled acceptable.
