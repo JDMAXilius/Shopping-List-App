@@ -19,7 +19,7 @@ final class RepositoryTests: XCTestCase {
 
     private func snapshot(_ database: AppDatabase) throws -> [String: [Row]] {
         let orders = ["list_item": "id", "shop": "id", "aisle_order": "shop_id, position",
-                      "price_observation": "op_id", "alias": "raw_text"]
+                      "price_observation": "op_id", "alias": "raw_text", "item_name": "item_id"]
         return try database.pool.read { db in
             var tables: [String: [Row]] = [:]
             for (table, order) in orders {
@@ -71,6 +71,8 @@ final class RepositoryTests: XCTestCase {
             try repository.append(.alias(rawText: "TJ ORG BABY SPNC", itemID: observation.itemID),
                                   kitchenID: kitchenID),
             try repository.append(.alias(rawText: "TJ BAG FEE", itemID: nil), kitchenID: kitchenID),
+            try repository.append(.name(observation.itemID, "Ginger kombucha"),
+                                  kitchenID: kitchenID),
             try repository.append(.delete(item.listItemID), kitchenID: kitchenID),
         ]
         XCTAssertEqual(try repository.unpushedOps(), appended,
@@ -78,7 +80,139 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(try repository.shops(), [shop])
         XCTAssertEqual(try repository.aisleOrder(for: shop.id), order)
         XCTAssertEqual(try repository.priceObservations().count, 1)
+        XCTAssertEqual(try repository.itemNames(), [observation.itemID: "Ginger kombucha"])
         try assertRebuildEquivalent(database, repository)
+    }
+
+    func testItemNamesSurviveRebuildAndAreExactlyCoresProjection() throws {
+        let (database, repository) = try makeStack()
+        let kombucha = ItemID()
+        let kefir = ItemID()
+        // The receipt-resolver shape: a minted id gets an alias, a price and a name together.
+        try repository.append(.name(kombucha, " Ginger  kombucha "), kitchenID: kitchenID)
+        try repository.append(.alias(rawText: "TJ GNGR KMB", itemID: kombucha),
+                              kitchenID: kitchenID)
+        try repository.append(.price(PriceObservation(itemID: kombucha, shopID: ShopID(),
+                                                      date: Date(msSince1970: 1_000),
+                                                      amount: Money(minorUnits: 399),
+                                                      source: .receipt)),
+                              kitchenID: kitchenID)
+        try repository.append(.name(kefir, "Kefir"), kitchenID: kitchenID)
+        try repository.append(.name(kombucha, "   "), kitchenID: kitchenID)
+
+        XCTAssertEqual(try repository.itemNames(),
+                       [kombucha: "Ginger kombucha", kefir: "Kefir"],
+                       "names are cleaned, and a blank never erases the one the kitchen has")
+        try assertRebuildEquivalent(database, repository)
+        let state = Merge.apply(try allOps(database), to: ListState())
+        XCTAssertEqual(try repository.itemNames(), state.itemNames,
+                       "the item_name table is exactly Core's projection")
+    }
+
+    func testANameArrivingLateDoesNotOverwriteTheNewerOne() throws {
+        let (database, repository) = try makeStack()
+        let itemID = ItemID()
+        try repository.append(.name(itemID, "Ginger kombucha"), kitchenID: kitchenID)
+
+        let stale = Op(kitchenID: kitchenID, deviceID: DeviceID(), clock: 1,
+                       wallClock: Date(msSince1970: 1_000), kind: .name(itemID, "Kombucha"))
+        try repository.applyRemote([stale], cursor: 1, kitchenID: kitchenID)
+        XCTAssertEqual(try repository.itemNames()[itemID], "Ginger kombucha",
+                       "an older name arriving late loses LWW, in the table as well as in Core")
+
+        let newer = Op(kitchenID: kitchenID, deviceID: DeviceID(), clock: 99,
+                       wallClock: Date(msSince1970: 9_000_000),
+                       kind: .name(itemID, "Ginger kombucha 1L"))
+        try repository.applyRemote([newer], cursor: 2, kitchenID: kitchenID)
+        XCTAssertEqual(try repository.itemNames()[itemID], "Ginger kombucha 1L")
+        XCTAssertEqual(try repository.itemNames().count, 1, "one item, one name")
+        try assertRebuildEquivalent(database, repository)
+    }
+
+    // FIX 4's shape again: naming one item must not rewrite the table.
+    func testNameProjectionIsIncrementalNotARewrite() throws {
+        let (database, repository) = try makeStack()
+        try repository.append(.name(ItemID(), "Kombucha"), kitchenID: kitchenID)
+        try repository.append(.name(ItemID(), "Kefir"), kitchenID: kitchenID)
+        try database.pool.write { try $0.execute(sql: "UPDATE item_name SET rowid = rowid + 500") }
+        let before = try nameRows(database)
+        XCTAssertEqual(before.count, 2)
+
+        try repository.append(.add(ListItem(name: "Milk")), kitchenID: kitchenID)
+        XCTAssertEqual(try nameRows(database), before, "an unrelated op leaves item_name alone")
+
+        try repository.append(.name(ItemID(), "Labneh"), kitchenID: kitchenID)
+        let after = try nameRows(database)
+        XCTAssertEqual(after.count, 3)
+        XCTAssertEqual(Array(after.prefix(2)), before, "a new name upserts one key, not the table")
+        try assertRebuildEquivalent(database, repository)
+    }
+
+    // A kitchen shops in one currency: the price book must never take another one locally.
+    func testAPriceInAnotherCurrencyIsRefusedLocallyAndAcceptedFromAPeer() throws {
+        let (database, repository) = try makeStack()
+        let kitchen = Kitchen(id: kitchenID, name: "Cocina", currencyCode: "MXN")
+        try repository.saveKitchen(kitchen)
+        XCTAssertEqual(try repository.kitchens().first?.currencyCode, "MXN")
+
+        let foreign = PriceObservation(itemID: ItemID(), shopID: ShopID(), date: Date(),
+                                       amount: Money(minorUnits: 350, currencyCode: "USD"),
+                                       source: .typed)
+        XCTAssertThrowsError(try repository.append(.price(foreign), kitchenID: kitchenID)) { error in
+            guard let dataError = error as? DataError,
+                  case .currencyMismatch(let kitchenCode, let written) = dataError else {
+                return XCTFail("expected a currency mismatch, got \(error)")
+            }
+            XCTAssertEqual(kitchenCode, "MXN")
+            XCTAssertEqual(written, "USD")
+        }
+        XCTAssertTrue(try repository.priceObservations().isEmpty,
+                      "a refused price writes no op and no row — the total stays in one currency")
+
+        let native = PriceObservation(itemID: ItemID(), shopID: ShopID(), date: Date(),
+                                      amount: Money(minorUnits: 4_500, currencyCode: "MXN"),
+                                      source: .typed)
+        XCTAssertNoThrow(try repository.append(.price(native), kitchenID: kitchenID))
+
+        // A peer's op is already truth: refusing it here would break convergence, not protect it.
+        let remote = Op(kitchenID: kitchenID, deviceID: DeviceID(), clock: 99,
+                        wallClock: Date(msSince1970: 9_000_000), kind: .price(foreign))
+        try repository.applyRemote([remote], cursor: 1, kitchenID: kitchenID)
+        XCTAssertEqual(try repository.priceObservations().count, 2,
+                       "the log is the truth; it is the local write path that guards it")
+        try assertRebuildEquivalent(database, repository)
+    }
+
+    func testAWholeReceiptIsRefusedIfOneLineIsInAnotherCurrency() throws {
+        let (database, repository) = try makeStack()
+        try repository.saveKitchen(Kitchen(id: kitchenID, name: "Cocina", currencyCode: "MXN"))
+        let scan = try repository.enqueueScan(jpeg: Foundation.Data([0xFF, 0xD8, 0xFF]))
+        let itemID = ItemID()
+        let shopID = ShopID()
+        let ops: [Op.Kind] = [
+            .name(itemID, "Kombucha"),
+            .price(PriceObservation(itemID: itemID, shopID: shopID, date: Date(),
+                                    amount: Money(minorUnits: 4_500, currencyCode: "MXN"),
+                                    source: .receipt)),
+            .price(PriceObservation(itemID: ItemID(), shopID: shopID, date: Date(),
+                                    amount: Money(minorUnits: 350, currencyCode: "USD"),
+                                    source: .receipt)),
+        ]
+        XCTAssertThrowsError(try repository.commitScan(scan.id, shopID: shopID, lineCount: 2,
+                                                       totalMinor: 4_850, ops: ops,
+                                                       kitchenID: kitchenID))
+        XCTAssertTrue(try repository.priceObservations().isEmpty)
+        XCTAssertTrue(try repository.itemNames().isEmpty,
+                      "all of it or none of it: the good lines roll back with the bad one")
+        XCTAssertEqual(try repository.pendingScans().map(\.id), [scan.id],
+                       "and the photo is still there to retry")
+        try assertRebuildEquivalent(database, repository)
+    }
+
+    private func nameRows(_ database: AppDatabase) throws -> [Row] {
+        try database.pool.read { db in
+            try Row.fetchAll(db, sql: "SELECT rowid, * FROM item_name ORDER BY rowid")
+        }
     }
 
     func testReAddAfterDeleteResurrects() throws {

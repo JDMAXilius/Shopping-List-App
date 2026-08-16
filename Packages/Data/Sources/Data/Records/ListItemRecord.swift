@@ -67,3 +67,17 @@ struct AliasRecord: Codable, FetchableRecord, PersistableRecord {
         case itemID = "item_id"
     }
 }
+
+// Op-derived too: the name the kitchen taught an item, which outlives every list row that
+// ever pointed at it.
+struct ItemNameRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "item_name"
+
+    var itemID: String
+    var name: String
+
+    enum CodingKeys: String, CodingKey {
+        case itemID = "item_id"
+        case name
+    }
+}

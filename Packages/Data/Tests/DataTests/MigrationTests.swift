@@ -17,7 +17,7 @@ final class MigrationTests: XCTestCase {
         }
         for expected in ["op", "list_item", "kitchen", "member", "shop", "aisle_order",
                          "price_observation", "receipt", "sync_state", "device",
-                         "alias", "pending_scan"] {
+                         "alias", "pending_scan", "item_name"] {
             XCTAssertTrue(tables.contains(expected), "missing table \(expected)")
         }
         let indexes = try database.pool.read { db in
@@ -115,6 +115,38 @@ final class MigrationTests: XCTestCase {
                 VALUES (?, NULL, 8, '/tmp/b.jpg', 'queued')
                 """, arguments: [UUID().uuidString])
         }
+    }
+
+    func testItemNameAndKitchenCurrencyArriveInV4() throws {
+        let database = try makeDatabase()
+        try Migrations.migrator.migrate(database.pool, upTo: "v3")
+        XCTAssertFalse(try tables(database).contains("item_name"), "item_name is a v4 table")
+        XCTAssertEqual(try database.installedSchemaVersion(), 3,
+                       "a database stopped at v3 must not claim to be v4")
+
+        let kitchenID = UUID().uuidString
+        try database.pool.write { db in
+            try db.execute(sql: "INSERT INTO kitchen (id, name) VALUES (?, ?)",
+                           arguments: [kitchenID, "Home"])
+        }
+        try database.migrate()
+        XCTAssertEqual(try database.installedSchemaVersion(), AppDatabase.schemaVersion)
+        XCTAssertTrue(try tables(database).contains("item_name"))
+
+        let rows = try database.pool.read { db in
+            try Row.fetchAll(db, sql: "SELECT id, name, currency_code FROM kitchen")
+        }
+        let row = try XCTUnwrap(rows.first)
+        XCTAssertEqual(rows.count, 1, "the v3 → v4 upgrade preserves the kitchen")
+        XCTAssertEqual(row["name"] as String, "Home")
+        XCTAssertEqual(row["currency_code"] as String, "USD",
+                       "an existing kitchen's prices were minted as USD — the column says so, "
+                       + "rather than relabelling them from today's locale")
+
+        let columns = try database.pool.read { db in
+            try Row.fetchAll(db, sql: "PRAGMA table_info(item_name)").map { $0["name"] as String }
+        }
+        XCTAssertEqual(Set(columns), ["item_id", "name"])
     }
 
     func testPendingScanStateIsConstrained() throws {

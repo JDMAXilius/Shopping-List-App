@@ -27,14 +27,19 @@ struct CaptureMatch: Hashable, Sendable {
     let name: String
     /// The seeded estimate for this item, or nil when the catalog has no seed for it.
     let estimate: Money?
+    /// The name this match must teach the kitchen when it is priced — set only for an item
+    /// minted here, which nothing else in the world names. nil for anything already named.
+    var teaches: String? = nil
 }
 
 extension CaptureMatch {
-    /// A remembered alias carries an id and no name, so the catalog names it; `fallback` — the
-    /// list's name for it, else the till text — is left for a user-created item, which has none.
+    /// A remembered alias carries an id and no name, so the one name order resolves it.
     @MainActor
-    init(remembered itemID: ItemID, fallback: String, catalog: ListCatalog) {
-        self.init(itemID: itemID, name: catalog.item(for: itemID)?.name ?? fallback,
+    init(remembered itemID: ItemID, kitchenNames: [ItemID: String], listName: String?,
+         fallback: String, catalog: ListCatalog) {
+        self.init(itemID: itemID,
+                  name: catalog.displayName(for: itemID, kitchenNames: kitchenNames,
+                                            listName: listName, fallback: fallback),
                   estimate: catalog.estimate(for: itemID))
     }
 }

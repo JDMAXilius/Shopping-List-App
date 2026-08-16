@@ -7,14 +7,21 @@ struct KitchenRecord: Codable, FetchableRecord, PersistableRecord {
 
     var id: String
     var name: String
+    var currencyCode: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, name
+        case currencyCode = "currency_code"
+    }
 
     init(kitchen: Kitchen) {
         id = kitchen.id.rawValue.uuidString
         name = kitchen.name
+        currencyCode = kitchen.currencyCode
     }
 
     func kitchen() throws -> Kitchen {
-        Kitchen(id: KitchenID(try requireUUID(id)), name: name)
+        Kitchen(id: KitchenID(try requireUUID(id)), name: name, currencyCode: currencyCode)
     }
 }
 

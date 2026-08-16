@@ -63,6 +63,10 @@ public struct Op: Hashable, Sendable {
         // A receipt line matched once, remembered by the whole kitchen; nil itemID means
         // "ignore this line forever", which is not the same as never having aliased it.
         case alias(rawText: String, itemID: ItemID?)
+        // What the kitchen calls an ITEM — the only durable name for one no catalog knows.
+        // `edit(_, [.name])` renames one LIST ROW, which is a different fact: the row is
+        // crossed off and gone, the item and its prices outlive it.
+        case name(ItemID, String)
     }
 
     public let opID: OpID
@@ -96,6 +100,7 @@ public struct Op: Hashable, Sendable {
         case .price: return "price"
         case .shop: return "shop"
         case .alias: return "alias"
+        case .name: return "name"
         }
     }
 }
@@ -145,6 +150,16 @@ extension Op: Codable {
         }
     }
 
+    private struct NamePayload: Codable {
+        let itemID: ItemID
+        let name: String
+
+        enum CodingKeys: String, CodingKey {
+            case itemID = "item_id"
+            case name
+        }
+    }
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         opID = try container.decode(OpID.self, forKey: .opID)
@@ -172,6 +187,9 @@ extension Op: Codable {
         case "alias":
             let payload = try container.decode(AliasPayload.self, forKey: .payload)
             kind = .alias(rawText: payload.rawText, itemID: payload.itemID)
+        case "name":
+            let payload = try container.decode(NamePayload.self, forKey: .payload)
+            kind = .name(payload.itemID, payload.name)
         default:
             throw DecodingError.dataCorruptedError(
                 forKey: .type, in: container, debugDescription: "unknown op type: \(type)")
@@ -199,6 +217,8 @@ extension Op: Codable {
             try container.encode(change, forKey: .payload)
         case .alias(let rawText, let itemID):
             try container.encode(AliasPayload(rawText: rawText, itemID: itemID), forKey: .payload)
+        case .name(let itemID, let name):
+            try container.encode(NamePayload(itemID: itemID, name: name), forKey: .payload)
         }
     }
 }

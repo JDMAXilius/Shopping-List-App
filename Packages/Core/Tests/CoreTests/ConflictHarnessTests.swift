@@ -314,6 +314,49 @@ final class ConflictHarnessTests: XCTestCase {
                        "the map is keyed by normalized raw text")
     }
 
+    // Two people naming the same barcode is a race, not an error: the later stamp wins, and it
+    // wins in every delivery order or the two phones show different names for one item.
+    func testTwoDevicesNamingTheSameItemConvergeOnTheLaterStamp() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let itemID = ItemID()
+        let barcode = "0123456789012"
+        let mine = [a.op(.name(itemID, "Kombucha")),
+                    a.op(.alias(rawText: barcode, itemID: itemID))]
+        for op in mine { b.receive(op) }
+        let theirs = [b.op(.name(itemID, "Ginger kombucha"))]
+
+        let state = assertConverges(shared: [], device1: mine, device2: theirs)
+        XCTAssertEqual(state.itemName(for: itemID), "Ginger kombucha",
+                       "the later stamp wins the contested name")
+        XCTAssertEqual(state.alias(for: barcode), .some(.some(itemID)),
+                       "and the barcode still points at the item that now has a name")
+
+        // The loser arriving last must not win by arrival — that is the bug LWW exists to stop.
+        let lateStale = Merge.apply(mine, to: Merge.apply(theirs, to: ListState()))
+        XCTAssertEqual(lateStale.itemName(for: itemID), "Ginger kombucha")
+    }
+
+    func testAnItemKeepsItsNameWhenEveryRowThatHeldItIsDeleted() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let itemID = ItemID()
+        let row = ListItem(itemID: itemID, name: "Kombucha",
+                           createdAt: Date(timeIntervalSince1970: 10))
+        let shared = [a.op(.add(row)), a.op(.name(itemID, "Ginger kombucha"))]
+        for op in shared { b.receive(op) }
+
+        let state = assertConverges(shared: shared, device1: [a.op(.delete(row.listItemID))],
+                                    device2: [b.op(.alias(rawText: "GNGR KMBCHA", itemID: itemID))])
+        XCTAssertTrue(state.items.isEmpty, "the row is off the list")
+        XCTAssertEqual(state.itemName(for: itemID), "Ginger kombucha",
+                       "the item outlives the row: its prices are still in the book")
+    }
+
     func testAliasToNilIsIgnoreForeverAndNotAbsence() {
         let kitchenID = KitchenID()
         var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
