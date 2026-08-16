@@ -23,8 +23,8 @@ final class PriceSeedTests: XCTestCase {
             try db.priceSeed(itemID: 2),  // whole milk
             PriceSeed(itemID: 2, baseAmount: 3.5, currency: "USD", baseUnit: "L", compiledYear: 2026))
         XCTAssertEqual(
-            try db.priceSeed(itemID: 369),  // toilet paper
-            PriceSeed(itemID: 369, baseAmount: 13, currency: "USD", baseUnit: "pack", compiledYear: 2026))
+            try db.priceSeed(itemID: 405),  // toilet paper
+            PriceSeed(itemID: 405, baseAmount: 13, currency: "USD", baseUnit: "pack", compiledYear: 2026))
         XCTAssertNil(try db.priceSeed(itemID: 999_999))
     }
 
@@ -46,7 +46,7 @@ final class PriceSeedTests: XCTestCase {
         // whole milk 3.5 × 0.92 = 3.22 → 3.0
         XCTAssertEqual(try PriceEstimate.estimate(db: db, itemID: 2, regionKey: "uk"), 3.0)
         // toilet paper 13 × 1.18 = 15.34 → 15.5
-        XCTAssertEqual(try PriceEstimate.estimate(db: db, itemID: 369, regionKey: "ca"), 15.5)
+        XCTAssertEqual(try PriceEstimate.estimate(db: db, itemID: 405, regionKey: "ca"), 15.5)
         XCTAssertNil(try PriceEstimate.estimate(db: db, itemID: 999_999, regionKey: "us-west"))
         XCTAssertNil(try PriceEstimate.estimate(db: db, itemID: 2, regionKey: "mars"))
     }

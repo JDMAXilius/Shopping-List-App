@@ -1,0 +1,47 @@
+{
+  "": {
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/master.swiftdeps"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/CatalogDatabaseTests.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/CatalogDatabaseTests.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/CatalogDatabaseTests.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/CatalogDatabaseTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/CatalogDatabaseTests.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/CatalogDatabaseTests.dia"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/EditDistanceTests.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/EditDistanceTests.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/EditDistanceTests.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/EditDistanceTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/EditDistanceTests.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/EditDistanceTests.dia"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/NormalizerTests.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/NormalizerTests.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/NormalizerTests.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/NormalizerTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/NormalizerTests.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/NormalizerTests.dia"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/PriceSeedTests.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/PriceSeedTests.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/PriceSeedTests.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/PriceSeedTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/PriceSeedTests.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/PriceSeedTests.dia"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/QuantityParserTests.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/QuantityParserTests.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/QuantityParserTests.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/QuantityParserTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/QuantityParserTests.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/QuantityParserTests.dia"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/ResolverTests.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/ResolverTests.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/ResolverTests.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/ResolverTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/ResolverTests.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/ResolverTests.dia"
+  }
+}

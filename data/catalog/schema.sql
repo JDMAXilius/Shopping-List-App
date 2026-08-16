@@ -7,7 +7,9 @@
 -- User-generated data (their own items, their aisle order, their prices)
 -- lives in separate tables and always outranks this catalog.
 
-PRAGMA journal_mode = WAL;
+-- DELETE journal: the db ships read-only inside the app bundle; WAL needs a
+-- writable -shm next to the file and fails to open there.
+PRAGMA journal_mode = DELETE;
 
 CREATE TABLE catalog_meta (
   key   TEXT PRIMARY KEY,

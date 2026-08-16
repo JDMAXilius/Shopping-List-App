@@ -1,0 +1,54 @@
+{
+  "": {
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/master.swiftdeps"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/CatalogDatabase.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/CatalogDatabase.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/CatalogDatabase.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/CatalogDatabase~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/CatalogDatabase.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/CatalogDatabase.dia"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/EditDistance.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/EditDistance.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/EditDistance.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/EditDistance~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/EditDistance.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/EditDistance.dia"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/Normalizer.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Normalizer.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Normalizer.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Normalizer~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Normalizer.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Normalizer.dia"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/PriceSeed.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/PriceSeed.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/PriceSeed.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/PriceSeed~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/PriceSeed.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/PriceSeed.dia"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/QuantityParser.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/QuantityParser.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/QuantityParser.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/QuantityParser~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/QuantityParser.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/QuantityParser.dia"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/Resolver.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Resolver.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Resolver.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Resolver~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Resolver.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Resolver.dia"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/DerivedSources/resource_bundle_accessor.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/resource_bundle_accessor.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/resource_bundle_accessor.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/resource_bundle_accessor~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/resource_bundle_accessor.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/resource_bundle_accessor.dia"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/master.swiftdeps"
+  },
+  "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.derived/runner.swift": {
+    "dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/runner.d",
+    "object": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/runner.swift.o",
+    "swiftmodule": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/runner~partial.swiftmodule",
+    "swift-dependencies": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/runner.swiftdeps",
+    "diagnostics": "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/runner.dia"
+  }
+}

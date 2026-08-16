@@ -1,0 +1,878 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.xctest/Contents/MacOS/CatalogPackageTests",
+      "packagePath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog",
+      "productName" : "CatalogPackageTests"
+    }
+  ],
+  "copyCommands" : {
+    "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog_Catalog.bundle/catalog.db" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/Resources/catalog.db"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog_Catalog.bundle/catalog.db"
+        }
+      ]
+    }
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.Catalog-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/sources",
+      "importPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/CatalogDatabase.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/EditDistance.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/Normalizer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/PriceSeed.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/QuantityParser.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/Resolver.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/DerivedSources/resource_bundle_accessor.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<Catalog-arm64-apple-macosx26.0-debug.module-resources>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "Catalog",
+      "moduleOutputPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules/Catalog.swiftmodule",
+      "objects" : [
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/CatalogDatabase.swift.o",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/EditDistance.swift.o",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Normalizer.swift.o",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/PriceSeed.swift.o",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/QuantityParser.swift.o",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Resolver.swift.o",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/resource_bundle_accessor.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_AVAILABLE",
+        "-Xcc",
+        "-fmodule-map-file=/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/CSQLite/module.modulemap",
+        "-module-cache-path",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/include/Catalog-Swift.h",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "catalog"
+      ],
+      "outputFileMapPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/CatalogDatabase.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/EditDistance.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Normalizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/PriceSeed.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/QuantityParser.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Resolver.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/resource_bundle_accessor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules/Catalog.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/CatalogDatabase.swift",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/EditDistance.swift",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/Normalizer.swift",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/PriceSeed.swift",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/QuantityParser.swift",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/Resolver.swift",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/DerivedSources/resource_bundle_accessor.swift"
+      ],
+      "tempsPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.CatalogPackageTests-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/sources",
+      "importPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules/CatalogTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CatalogPackageTests",
+      "moduleOutputPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules/CatalogPackageTests.swiftmodule",
+      "objects" : [
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-Xcc",
+        "-fmodule-map-file=/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/CSQLite/module.modulemap",
+        "-module-cache-path",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/include/CatalogPackageTests-Swift.h",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "catalog"
+      ],
+      "outputFileMapPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules/CatalogPackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.CatalogTests-arm64-apple-macosx26.0-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/sources",
+      "importPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/CatalogDatabaseTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/EditDistanceTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/NormalizerTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/PriceSeedTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/QuantityParserTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/ResolverTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules/Catalog.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CatalogTests",
+      "moduleOutputPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules/CatalogTests.swiftmodule",
+      "objects" : [
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/CatalogDatabaseTests.swift.o",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/EditDistanceTests.swift.o",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/NormalizerTests.swift.o",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/PriceSeedTests.swift.o",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/QuantityParserTests.swift.o",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/ResolverTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j10",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-Xcc",
+        "-fmodule-map-file=/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/CSQLite/module.modulemap",
+        "-module-cache-path",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "catalog"
+      ],
+      "outputFileMapPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/CatalogDatabaseTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/EditDistanceTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/NormalizerTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/PriceSeedTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/QuantityParserTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/ResolverTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules/CatalogTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/CatalogDatabaseTests.swift",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/EditDistanceTests.swift",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/NormalizerTests.swift",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/PriceSeedTests.swift",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/QuantityParserTests.swift",
+        "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/ResolverTests.swift"
+      ],
+      "tempsPath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "Catalog" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "Catalog",
+      "-package-name",
+      "catalog",
+      "-c",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/CatalogDatabase.swift",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/EditDistance.swift",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/Normalizer.swift",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/PriceSeed.swift",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/QuantityParser.swift",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/Resolver.swift",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/DerivedSources/resource_bundle_accessor.swift",
+      "-I",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_AVAILABLE",
+      "-Xcc",
+      "-fmodule-map-file=/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/CSQLite/module.modulemap",
+      "-module-cache-path",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/include/Catalog-Swift.h",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "catalog",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "CatalogPackageTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CatalogPackageTests",
+      "-package-name",
+      "catalog",
+      "-c",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.derived/runner.swift",
+      "-I",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-Xcc",
+      "-fmodule-map-file=/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/CSQLite/module.modulemap",
+      "-module-cache-path",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/include/CatalogPackageTests-Swift.h",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "catalog",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "CatalogTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CatalogTests",
+      "-package-name",
+      "catalog",
+      "-c",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/CatalogDatabaseTests.swift",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/EditDistanceTests.swift",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/NormalizerTests.swift",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/PriceSeedTests.swift",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/QuantityParserTests.swift",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/ResolverTests.swift",
+      "-I",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j10",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-Xcc",
+      "-fmodule-map-file=/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/CSQLite/module.modulemap",
+      "-module-cache-path",
+      "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "catalog",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "Catalog" : [
+      "CSQLite"
+    ],
+    "CatalogPackageTests" : [
+      "CatalogTests",
+      "Catalog",
+      "CSQLite"
+    ],
+    "CatalogTests" : [
+      "Catalog",
+      "CSQLite"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+    "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.derived/runner.swift" : {
+      "inputs" : [
+
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/CatalogDatabase.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/EditDistance.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/Normalizer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/PriceSeed.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/QuantityParser.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Sources/Catalog/Resolver.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/DerivedSources/resource_bundle_accessor.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/sources"
+    },
+    "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/sources"
+    },
+    "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/CatalogDatabase.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/EditDistance.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Normalizer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/PriceSeed.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/QuantityParser.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/Resolver.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/Catalog.build/resource_bundle_accessor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/CatalogDatabaseTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/EditDistanceTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/NormalizerTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/PriceSeedTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/QuantityParserTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/ResolverTests.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogPackageTests.product/Objects.LinkFileList"
+    },
+    "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/CatalogDatabaseTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/EditDistanceTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/NormalizerTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/PriceSeedTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/QuantityParserTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/Tests/CatalogTests/ResolverTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/CatalogTests.build/sources"
+    },
+    "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/juan/Projects/Shopping-List-App/Packages/Catalog/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}
