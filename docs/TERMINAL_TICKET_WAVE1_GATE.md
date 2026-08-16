@@ -251,3 +251,11 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
 
   Unchanged and still the largest hole: **the snapshot suite does not exist.** Nothing in this wave
   was compiled or run — there is no Swift toolchain here.
+
+---
+
+> **2026-08-16 — SUPERSEDED AS THE THING TO EXECUTE by `TERMINAL_TICKET_GATE_AUTOPILOT.md`.**
+> That ticket is the runnable queue for Waves 1–6 and the unattended operating mode. **This file
+> stays open and stays required reading** — it holds the reasoning behind every ruling, every P1
+> the critics found, and the wave-by-wave detail the autopilot ticket only summarises. Read this
+> Log before fixing anything; it will usually tell you *why* the code is the way it is.

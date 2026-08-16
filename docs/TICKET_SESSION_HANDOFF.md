@@ -5,7 +5,22 @@ files themselves hold the detail.
 
 ## Open
 
-*(nothing — board is clear)*
+### TERMINAL_TICKET_GATE_AUTOPILOT — opened 2026-08-16 by cloud · **terminal, unattended**
+
+**The terminal owns the entire gate for Waves 1–6. The cloud session continues Waves 7–9 on its
+own branch and does NOT touch the gate.**
+
+Everything in Waves 1–6 — four Swift packages, ~30 App files, twelve DesignKit components, the
+whole capture flow, three Edge Functions — was written in a container with **no Swift toolchain**
+and has **never been compiled**. The Mac is the first machine that can run any of it. There is
+also no Xcode project yet, which is why nothing under `App/` has ever seen a compiler.
+
+Run it as a continuous loop, not a task list: work the queue, never stop to ask, move past
+blockers and come back, and when the queue is done, live in the regression loop (T9) re-running
+everything against whatever cloud has pushed to main since.
+
+Supersedes `TERMINAL_TICKET_WAVE1_GATE` **as the thing to execute** — that ticket stays as the
+accumulated wave-by-wave reasoning, and its Log is required reading.
 
 ## Done
 
