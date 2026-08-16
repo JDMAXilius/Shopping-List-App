@@ -1,5 +1,5 @@
 {
-  "originHash" : "d90cbdcc0b52eeb98c6e50457d37569e5187302a4fc69733438e7c2fb47c72dc",
+  "originHash" : "bea88ec9da5d24062664b1d5bb57dddee7385a9f521d98e3df2a2cafaa86a5ba",
   "pins" : [
     {
       "identity" : "grdb.swift",
@@ -8,6 +8,42 @@
       "state" : {
         "revision" : "b83108d10f42680d78f23fe4d4d80fc88dab3212",
         "version" : "7.11.1"
+      }
+    },
+    {
+      "identity" : "swift-custom-dump",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pointfreeco/swift-custom-dump",
+      "state" : {
+        "revision" : "e9c34fd54ece006b491a0e6d23fe9a6024b9a828",
+        "version" : "1.7.0"
+      }
+    },
+    {
+      "identity" : "swift-snapshot-testing",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pointfreeco/swift-snapshot-testing",
+      "state" : {
+        "revision" : "59a99c458de4d2dee580529b61b4f78dca7b7fa6",
+        "version" : "1.19.4"
+      }
+    },
+    {
+      "identity" : "swift-syntax",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-syntax",
+      "state" : {
+        "revision" : "79e4b74a295b6eb74a8b585e3a39d29e70c1dbd1",
+        "version" : "603.0.2"
+      }
+    },
+    {
+      "identity" : "xctest-dynamic-overlay",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pointfreeco/xctest-dynamic-overlay",
+      "state" : {
+        "revision" : "8f6abcf4c8950e2679d5b2fee4ca284fd7c34886",
+        "version" : "1.11.0"
       }
     }
   ],
