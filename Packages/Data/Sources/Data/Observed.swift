@@ -8,10 +8,14 @@ public final class Observed<Value: Sendable> {
 
     // Releasing the cancellable (on deinit) stops the observation.
     @ObservationIgnored private var cancellable: AnyDatabaseCancellable?
+    @ObservationIgnored private let database: AppDatabase
+    @ObservationIgnored private let fetch: @Sendable (Database) throws -> Value
 
     public init(initial: Value, database: AppDatabase,
                 fetch: @escaping @Sendable (Database) throws -> Value) {
         value = initial
+        self.database = database
+        self.fetch = fetch
         cancellable = ValueObservation
             .tracking(fetch)
             .start(
@@ -22,5 +26,11 @@ public final class Observed<Value: Sendable> {
                 onChange: { [weak self] newValue in
                     MainActor.assumeIsolated { self?.value = newValue }
                 })
+    }
+
+    // ValueObservation sees only this pool's writes; the app must refresh on
+    // scenePhase.active / a Darwin notification (wiring is app-layer, wave 8).
+    public func refresh() {
+        if let fresh = try? database.pool.read(fetch) { value = fresh }
     }
 }

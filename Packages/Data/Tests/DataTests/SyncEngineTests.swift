@@ -1,6 +1,17 @@
 import Core
+import Synchronization
 import XCTest
 @testable import Data
+
+// Mutable fake clock so backoff windows are crossed by advancing time, never by sleeping.
+final class FakeClock: Sendable {
+    private let storage = Mutex(Date(timeIntervalSinceReferenceDate: 0))
+
+    var now: Date { storage.withLock { $0 } }
+    func advance(by interval: TimeInterval) {
+        storage.withLock { $0.addTimeInterval(interval) }
+    }
+}
 
 final class SyncEngineTests: XCTestCase {
     private let kitchenID = KitchenID()
@@ -42,8 +53,9 @@ final class SyncEngineTests: XCTestCase {
         let transport = FakeTransport()
         let (_, repository) = try makeStack()
         try repository.append(.add(ListItem(name: "Eggs")), kitchenID: kitchenID)
+        let clock = FakeClock()
         let engine = SyncEngine(repository: repository, transport: transport,
-                                kitchenID: kitchenID, baseBackoff: 0.25, maxBackoff: 1)
+                                kitchenID: kitchenID, now: { clock.now })
 
         await transport.setPushError(TransportFailure())
         await engine.kick()
@@ -53,17 +65,57 @@ final class SyncEngineTests: XCTestCase {
         XCTAssertTrue(afterFailure.isEmpty)
 
         await transport.setPushError(nil)
+        clock.advance(by: 0.5)
         await engine.kick()
         let insideBackoff = await transport.storedOps
-        XCTAssertTrue(insideBackoff.isEmpty, "kick inside the backoff window is a no-op")
+        XCTAssertTrue(insideBackoff.isEmpty, "kick inside the 1s backoff window is a no-op")
 
-        try await Task.sleep(for: .milliseconds(400))
+        clock.advance(by: 0.6)
         await engine.kick()
         let recovered = await transport.storedOps
         XCTAssertEqual(recovered.count, 1, "the drain resumes once the window passes")
         let recoveredStatus = await engine.status
         XCTAssertEqual(recoveredStatus, .synced)
         XCTAssertTrue(try repository.unpushedOps().isEmpty)
+    }
+
+    func testRepeatedFailuresReachStuck() async throws {
+        let transport = FakeTransport()
+        let (_, repository) = try makeStack()
+        try repository.append(.add(ListItem(name: "Flour")), kitchenID: kitchenID)
+        let clock = FakeClock()
+        let engine = SyncEngine(repository: repository, transport: transport,
+                                kitchenID: kitchenID, stuckAfter: 5, now: { clock.now })
+
+        await transport.setPushError(TransportFailure())
+        for attempt in 1...5 {
+            await engine.kick()
+            let status = await engine.status
+            XCTAssertEqual(status, attempt < 5 ? .offline : .stuck)
+            clock.advance(by: 61)
+        }
+    }
+
+    func testRedeliveryAfterCrashBeforeMarkPushed() async throws {
+        let transport = FakeTransport()
+        let (database, repository) = try makeStack()
+        try repository.append(.add(ListItem(name: "Yogurt")), kitchenID: kitchenID)
+        let engine = SyncEngine(repository: repository, transport: transport, kitchenID: kitchenID)
+        await engine.kick()
+        XCTAssertTrue(try repository.unpushedOps().isEmpty)
+
+        // Crash between the push landing and markPushed: pushed_at was never written.
+        try database.pool.write { db in
+            try db.execute(sql: "UPDATE op SET pushed_at = NULL")
+        }
+        XCTAssertEqual(try repository.unpushedOps().count, 1)
+
+        await engine.kick()
+        let stored = await transport.storedOps
+        XCTAssertEqual(stored.count, 1, "idempotent push: re-delivery stores no duplicate")
+        XCTAssertTrue(try repository.unpushedOps().isEmpty, "the op is marked pushed again")
+        let status = await engine.status
+        XCTAssertEqual(status, .synced)
     }
 
     func testCursorPersistsAcrossEngineRestart() async throws {

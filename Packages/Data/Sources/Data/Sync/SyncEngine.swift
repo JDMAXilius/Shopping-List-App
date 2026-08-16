@@ -14,6 +14,7 @@ public actor SyncEngine {
     private let baseBackoff: TimeInterval
     private let maxBackoff: TimeInterval
     private let stuckAfter: Int
+    private let now: @Sendable () -> Date
 
     public private(set) var status: SyncStatus = .synced
     private var failureCount = 0
@@ -21,17 +22,21 @@ public actor SyncEngine {
     private var inFlight = false
 
     public init(repository: Repository, transport: any SyncTransport, kitchenID: KitchenID,
-                baseBackoff: TimeInterval = 1, maxBackoff: TimeInterval = 60, stuckAfter: Int = 5) {
+                baseBackoff: TimeInterval = 1, maxBackoff: TimeInterval = 60, stuckAfter: Int = 5,
+                now: @escaping @Sendable () -> Date = Date.init) {
         self.repository = repository
         self.transport = transport
         self.kitchenID = kitchenID
         self.baseBackoff = baseBackoff
         self.maxBackoff = maxBackoff
         self.stuckAfter = stuckAfter
+        self.now = now
     }
 
+    // Out-of-process writers (widget/intent) must run a one-shot kick or signal the app
+    // before returning; ops are never lost, only delayed — wave 8 owns that wiring.
     public func kick() async {
-        guard !inFlight, Date() >= nextAttempt else { return }
+        guard !inFlight, now() >= nextAttempt else { return }
         inFlight = true
         defer { inFlight = false }
         status = .syncing
@@ -45,7 +50,7 @@ public actor SyncEngine {
             failureCount += 1
             // 1s·2^n capped at 60s; until the window passes, kick() is a no-op.
             let delay = min(baseBackoff * pow(2, Double(failureCount - 1)), maxBackoff)
-            nextAttempt = Date().addingTimeInterval(delay)
+            nextAttempt = now().addingTimeInterval(delay)
             status = failureCount >= stuckAfter ? .stuck : .offline
         }
     }

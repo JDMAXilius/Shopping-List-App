@@ -50,21 +50,23 @@ public final class Repository: Sendable {
         try cache.withLock { cache in
             let snapshot = cache
             cache = try database.pool.write { db -> MergeCache in
+                let fresh = try ops.filter { try !Repository.exists($0.opID, db) }
+                // Nothing new: advance only the cursor so ValueObservation stays quiet.
+                guard !fresh.isEmpty else {
+                    try Repository.saveCursor(cursor, kitchenID, db)
+                    return snapshot
+                }
                 var working = try Repository.current(snapshot, db)
                 var identity = try DeviceIdentity.load(db)
-                for op in ops {
+                for op in fresh {
                     identity.clock.merge(remote: op.clock)
-                    guard try !Repository.exists(op.opID, db) else { continue }
                     let canonical = try Repository.insert(op, origin: .remote, into: db)
                     Repository.fold(canonical, into: &working)
                     try Repository.materializePrice(canonical, db)
                 }
                 try identity.save(db)
                 try Repository.rewriteProjection(working, db)
-                if let cursor, let kitchenID {
-                    try SyncStateRecord(kitchenID: kitchenID.rawValue.uuidString,
-                                        cursor: cursor).save(db)
-                }
+                try Repository.saveCursor(cursor, kitchenID, db)
                 return working
             }
         }
@@ -220,6 +222,11 @@ public final class Repository: Sendable {
         try record.insert(db)
         // Reading back through the stored form keeps applied state identical to replayed state.
         return try OpCoding.op(from: record)
+    }
+
+    private static func saveCursor(_ cursor: Int64?, _ kitchenID: KitchenID?, _ db: Database) throws {
+        guard let cursor, let kitchenID else { return }
+        try SyncStateRecord(kitchenID: kitchenID.rawValue.uuidString, cursor: cursor).save(db)
     }
 
     private static func exists(_ opID: OpID, _ db: Database) throws -> Bool {

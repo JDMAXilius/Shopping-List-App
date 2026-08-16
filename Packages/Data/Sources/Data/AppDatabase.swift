@@ -10,6 +10,8 @@ public final class AppDatabase: Sendable {
     public init(url: URL) throws {
         var configuration = Configuration()
         configuration.foreignKeysEnabled = true
+        // Widget/intent processes write to this same file; wait out their locks, don't throw BUSY.
+        configuration.busyMode = .timeout(5)
         pool = try DatabasePool(path: url.path, configuration: configuration)
     }
 

@@ -127,4 +127,54 @@ final class RepositoryTests: XCTestCase {
                        "the materialized list is exactly Core's projection")
         try assertRebuildEquivalent(database, repository)
     }
+
+    func testDuplicatePullAdvancesCursorWithoutChurn() throws {
+        let (_, remote) = try makeStack()
+        let (database, repository) = try makeStack()
+        try remote.append(.add(ListItem(name: "Milk")), kitchenID: kitchenID)
+        let ops = try remote.unpushedOps()
+        try repository.applyRemote(ops, cursor: 1, kitchenID: kitchenID)
+
+        // A sentinel rowid: any projection rewrite would recreate the row without it.
+        try database.pool.write { try $0.execute(sql: "UPDATE list_item SET rowid = 100") }
+        let before = try rowidSnapshot(database)
+
+        try repository.applyRemote(ops, cursor: 2, kitchenID: kitchenID)
+        XCTAssertEqual(try rowidSnapshot(database), before,
+                       "a duplicate-only pull leaves projection rows untouched")
+        try repository.applyRemote([], cursor: 3, kitchenID: kitchenID)
+        XCTAssertEqual(try rowidSnapshot(database), before,
+                       "an empty pull leaves projection rows untouched")
+        XCTAssertEqual(try repository.syncCursor(kitchenID: kitchenID), 3)
+        XCTAssertEqual(try repository.items().map(\.name), ["Milk"])
+    }
+
+    @MainActor
+    func testObservedRefreshSeesOtherPoolWrites() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("observed-tests-\(UUID().uuidString).sqlite")
+        let databaseA = try AppDatabase(url: url)
+        try databaseA.migrate()
+        let observed = try Repository(database: databaseA).observedItems()
+        XCTAssertTrue(observed.value.isEmpty)
+
+        // A second pool on the same file stands in for the widget process.
+        let repoB = try Repository(database: try AppDatabase(url: url))
+        try repoB.append(.add(ListItem(name: "Milk")), kitchenID: kitchenID)
+
+        observed.refresh()
+        XCTAssertEqual(observed.value.map(\.name), ["Milk"],
+                       "refresh() re-fetches writes ValueObservation cannot see")
+    }
+
+    private func rowidSnapshot(_ database: AppDatabase) throws -> [String: [Row]] {
+        try database.pool.read { db in
+            var tables: [String: [Row]] = [:]
+            for table in ["list_item", "shop", "aisle_order", "price_observation"] {
+                tables[table] = try Row.fetchAll(db,
+                                                 sql: "SELECT rowid, * FROM \(table) ORDER BY rowid")
+            }
+            return tables
+        }
+    }
 }
