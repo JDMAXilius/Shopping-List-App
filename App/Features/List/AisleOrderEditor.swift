@@ -31,7 +31,9 @@ struct AisleOrderEditor: View {
         .task {
             // Editing a shop's walk order is editing the shop you're shopping.
             if store.activeShopID != shopID { store.switchShop(shopID) }
-            order = store.aisles
+            // Today's aisles first, then every other one: what gets saved is the WHOLE
+            // walk order, so an empty-today aisle never drops out of it.
+            order = store.editableAisles
         }
     }
 
@@ -65,7 +67,8 @@ struct AisleOrderEditor: View {
                 .font(Typography.body)
                 .foregroundStyle(Palette.ink.color)
             Spacer(minLength: 12)
-            Text("\(aisle.totalCount) item\(aisle.totalCount == 1 ? "" : "s")")
+            Text(aisle.totalCount == 0
+                 ? "none today" : "\(aisle.totalCount) item\(aisle.totalCount == 1 ? "" : "s")")
                 .font(Typography.footnote)
                 .foregroundStyle(Palette.muted.color)
         }

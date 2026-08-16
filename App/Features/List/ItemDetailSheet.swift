@@ -35,8 +35,8 @@ struct ItemDetailSheet: View {
                     .foregroundStyle(Palette.ink.color)
             }
             quantityField(row)
-            unitField(row)
-            noteField(row)
+            unitField
+            noteField
             priceSection(row)
             Spacer(minLength: 0)
             Button("Remove from list", role: .destructive) {
@@ -55,6 +55,8 @@ struct ItemDetailSheet: View {
             note = row.item.note ?? ""
             unit = row.item.unit ?? ""
         }
+        // A swipe down is how this sheet is meant to close, so it must not be how edits die.
+        .onDisappear(perform: commit)
     }
 
     private func quantityField(_ row: ListRow) -> some View {
@@ -64,7 +66,9 @@ struct ItemDetailSheet: View {
                 .foregroundStyle(Palette.muted.color)
             Spacer(minLength: 12)
             stepButton("minus", row: row, delta: -1)
-            Text(quantityLabel(row.item.quantity))
+            // The row's own words: "×3", "1.5 lb", "½ dozen" — never a bare number the
+            // list then renders differently.
+            Text(QuantityText.label(quantity: row.item.quantity, unit: row.item.unit) ?? "1")
                 .font(Typography.price)
                 .foregroundStyle(Palette.ink.color)
                 .frame(minWidth: 40)
@@ -88,7 +92,7 @@ struct ItemDetailSheet: View {
         .accessibilityLabel(delta > 0 ? "Increase quantity" : "Decrease quantity")
     }
 
-    private func unitField(_ row: ListRow) -> some View {
+    private var unitField: some View {
         HStack {
             Text("Unit")
                 .font(Typography.body)
@@ -98,14 +102,12 @@ struct ItemDetailSheet: View {
                 .font(Typography.body)
                 .foregroundStyle(Palette.ink.color)
                 .multilineTextAlignment(.trailing)
-                .onSubmit {
-                    store.edit(row.item, [.unit(unit.isEmpty ? nil : unit)])
-                }
+                .onSubmit(commit)
         }
         .frame(minHeight: 44)
     }
 
-    private func noteField(_ row: ListRow) -> some View {
+    private var noteField: some View {
         TextField("Add a note", text: $note)
             .font(Typography.body)
             .foregroundStyle(Palette.ink.color)
@@ -113,9 +115,7 @@ struct ItemDetailSheet: View {
             .frame(minHeight: 48)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Palette.paper.color))
-            .onSubmit {
-                store.edit(row.item, [.note(note.isEmpty ? nil : note)])
-            }
+            .onSubmit(commit)
     }
 
     private func priceSection(_ row: ListRow) -> some View {
@@ -143,6 +143,7 @@ struct ItemDetailSheet: View {
             }
             Button {
                 guard let amount = ItemDetailSheet.money(from: priceText) else { return }
+                commit()
                 store.setPrice(row.item, amount)
                 dismiss()
             } label: {
@@ -158,8 +159,24 @@ struct ItemDetailSheet: View {
         }
     }
 
-    private func quantityLabel(_ quantity: Double) -> String {
-        quantity == quantity.rounded() ? String(Int(quantity)) : String(format: "%.2g", quantity)
+    /// Everything typed and not yet stored, written once — on submit, on dismiss, and
+    /// before any action that closes the sheet.
+    private func commit() {
+        guard let row = store.rows.first(where: { $0.id == listItemID }) else { return }
+        let writes = ItemDetailSheet.edits(unit: unit, note: note, item: row.item)
+        guard !writes.isEmpty else { return }
+        store.edit(row.item, writes)
+    }
+
+    /// Only fields that actually differ from what is stored — an empty field means nil,
+    /// never an empty string that reads as an edit next time.
+    static func edits(unit: String, note: String, item: ListItem) -> [FieldWrite] {
+        var writes: [FieldWrite] = []
+        let unitValue = unit.trimmingCharacters(in: .whitespacesAndNewlines)
+        let noteValue = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        if unitValue != (item.unit ?? "") { writes.append(.unit(unitValue.isEmpty ? nil : unitValue)) }
+        if noteValue != (item.note ?? "") { writes.append(.note(noteValue.isEmpty ? nil : noteValue)) }
+        return writes
     }
 
     // Strict: digits and one separator. A price we can't read is not a price we save.

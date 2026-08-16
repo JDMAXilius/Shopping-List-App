@@ -191,7 +191,7 @@ Packages/DesignKit/Tests/DesignKitTests/
 App/
   BaggedApp.swift  RootView.swift  Route.swift  Sheet.swift  Environment+.swift
 App/Features/List/
-  ListScreen.swift  ListStore.swift  AddItemSheet.swift  ItemDetailSheet.swift
+  ListScreen.swift  ListStore.swift  ListDerivation.swift  ListCatalog.swift  ItemDetailSheet.swift
   AisleOrderEditor.swift  ShopSwitcherSheet.swift
 App/Features/Capture/
   CaptureSession.swift  CaptureChooserSheet.swift  ReceiptCameraScreen.swift

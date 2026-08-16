@@ -41,3 +41,11 @@ struct BaggedApp: App {
         return container.appending(path: "bagged.sqlite")
     }
 }
+
+extension UserDefaults {
+    // The active shop and add-history live beside the database: the widget and intents
+    // (wave 8) can only see the App Group, never this process's own sandbox.
+    @MainActor static func appGroup() -> UserDefaults {
+        UserDefaults(suiteName: BaggedApp.appGroupID) ?? .standard
+    }
+}

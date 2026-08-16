@@ -30,8 +30,9 @@ struct ListScreen: View {
             Sound.prepare()
         }
         .onChange(of: store.isComplete) { _, complete in
-            // The arrival moment: one haptic, one tone, one line. Nothing new appears.
-            guard complete else { return }
+            // The arrival moment: one haptic, one tone, one line. Nothing new appears —
+            // and it only arrives by checking the last row off, never by deleting it.
+            guard complete, store.consumeCheckOff() else { return }
             Haptics.play(.listComplete)
             Sound.play(.complete)
         }
@@ -92,13 +93,13 @@ struct ListScreen: View {
     // MARK: - The list
 
     private var listCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        LazyVStack(alignment: .leading, spacing: 16) {
             if store.rows.isEmpty {
                 emptyList
             } else {
                 if store.isComplete { arrivalLine }
                 unpricedSection
-                ForEach(store.aisles) { aisle in
+                ForEach(visibleAisles) { aisle in
                     aisleSection(aisle)
                 }
                 aisleOrderLink
@@ -156,6 +157,10 @@ struct ListScreen: View {
         }
     }
 
+    // An aisle whose every row is promoted has nothing to draw; its money still counts,
+    // in the total and in its own subtotal once it does draw.
+    private var visibleAisles: [AisleSection] { store.aisles.filter { !$0.isEmpty } }
+
     private func aisleSection(_ aisle: AisleSection) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             AisleHeader(title: aisle.title, prices: aisle.prices,
@@ -173,7 +178,7 @@ struct ListScreen: View {
     }
 
     @ViewBuilder private var aisleOrderLink: some View {
-        if store.aisles.count > 1, let shop = store.activeShop {
+        if visibleAisles.count > 1, let shop = store.activeShop {
             NavigationLink(value: Route.aisleOrder(shop.id)) {
                 HStack {
                     sectionLabel("AISLE ORDER · \(shop.name.uppercased())")
@@ -240,11 +245,16 @@ struct ListScreen: View {
                 }
                 .buttonStyle(.plain)
                 if showCompleted {
-                    // Checked items sink, they never vanish.
+                    // Checked items sink, they never vanish — and they keep an aisle row's
+                    // affordances exactly: pricing one must not cost an uncheck first.
                     ForEach(done) { row in
                         ItemRow(name: row.item.name, quantity: quantity(row), glyph: row.category,
                                 price: row.price, isChecked: true,
                                 onToggle: { store.toggle(row.item) })
+                        .contextMenu {
+                            Button("Set what you paid") { sheet = .itemDetail(row.id) }
+                            Button("Remove from list", role: .destructive) { store.remove(row.item) }
+                        }
                     }
                 }
             }
@@ -255,10 +265,11 @@ struct ListScreen: View {
 
     private var bottomStack: some View {
         VStack(spacing: 12) {
+            suggestionResults
             TotalBar(prices: store.prices)
             // Mic stays off until speech lands (wave 6) — an affordance must not
             // promise voice one screen before the sheet denies it.
-            InputBar(text: $draft, isMicEnabled: false, onSubmit: submit, onMic: { sheet = .addItem })
+            InputBar(text: $draft, isMicEnabled: false, onSubmit: submit, onMic: {})
         }
         .padding(16)
         .background(Palette.card.color)
@@ -266,9 +277,75 @@ struct ListScreen: View {
         .padding(.horizontal, 8)
     }
 
+    /// Autocomplete where the typing happens: yours, then the household's, then the catalog,
+    /// each with what you last paid — plus the escape hatch that adds exactly what you typed.
+    @ViewBuilder private var suggestionResults: some View {
+        if !typed.isEmpty {
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(store.suggestions(for: typed)) { suggestion in
+                        suggestionRow(suggestion)
+                    }
+                    asTypedRow
+                }
+            }
+            .frame(maxHeight: 220)
+        }
+    }
+
+    private func suggestionRow(_ suggestion: ItemSuggestion) -> some View {
+        Button { add(suggestion.name) } label: {
+            HStack(spacing: 12) {
+                GlyphTile(suggestion.category)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(suggestion.name)
+                        .font(Typography.itemName)
+                        .foregroundStyle(Palette.ink.color)
+                        .lineLimit(1)
+                    if let detail = suggestion.detail {
+                        Text(detail)
+                            .font(Typography.footnote)
+                            .foregroundStyle(Palette.muted.color)
+                    }
+                }
+                Spacer(minLength: 12)
+                PriceLabel(suggestion.price)
+            }
+            .padding(12)
+            .frame(minHeight: 56)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Add \(suggestion.name), \(suggestion.price.accessibilityPhrase)")
+    }
+
+    private var asTypedRow: some View {
+        Button { add(typed) } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(.body, weight: .semibold))
+                Text("Add “\(typed)” as typed")
+                    .font(.system(.body, weight: .semibold))
+            }
+            // Persimmon body text needs the card behind it to hold 4.5:1.
+            .foregroundStyle(Palette.persimmon.color)
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var typed: String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
+
     private func submit() {
-        store.add(text: draft)
-        draft = ""
+        guard !typed.isEmpty else { return }
+        add(typed)
+    }
+
+    // The draft only clears once the write has actually landed.
+    private func add(_ text: String) {
+        if store.add(text: text) { draft = "" }
     }
 
     // MARK: - Shared bits
@@ -287,6 +364,6 @@ struct ListScreen: View {
     }
 
     private func quantity(_ row: ListRow) -> Int {
-        max(1, Int(row.item.quantity.rounded()))
+        QuantityText.rowCount(quantity: row.item.quantity, unit: row.item.unit)
     }
 }

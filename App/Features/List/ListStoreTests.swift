@@ -57,6 +57,33 @@ final class ListStoreTests: XCTestCase {
         XCTAssertEqual(store.unpriced.map(\.id), [row.id])
     }
 
+    func testReAddingWhatIsOnTheListMakesItMoreNotASecondRow() throws {
+        let (store, _) = try makeStore()
+        store.add(text: "3 milk")
+        store.toggle(try XCTUnwrap(store.rows.first).item)
+        XCTAssertTrue(try XCTUnwrap(store.rows.first).item.checked)
+
+        store.add(text: "milk")
+        XCTAssertEqual(store.rows.count, 1)
+        XCTAssertEqual(try XCTUnwrap(store.rows.first).item.quantity, 4)
+        // Needing more of it puts it back on the active list; it never resets to ×1.
+        XCTAssertFalse(try XCTUnwrap(store.rows.first).item.checked)
+
+        store.undo()
+        XCTAssertEqual(try XCTUnwrap(store.rows.first).item.quantity, 3)
+        XCTAssertTrue(try XCTUnwrap(store.rows.first).item.checked)
+    }
+
+    func testTwoAddsOfTheSameNameLeaveInOneRemove() throws {
+        let (store, _) = try makeStore()
+        store.add(text: "bread")
+        store.add(text: "bread")
+        XCTAssertEqual(store.rows.count, 1)
+
+        store.remove(try XCTUnwrap(store.rows.first).item)
+        XCTAssertTrue(store.rows.isEmpty)
+    }
+
     func testBareContainerWordStaysTheItem() throws {
         let (store, _) = try makeStore()
         store.add(text: "dozen")
@@ -157,8 +184,45 @@ final class ListStoreTests: XCTestCase {
             + store.completed.map(\.id)
         XCTAssertEqual(Set(shown), Set(store.rows.map(\.id)))
         XCTAssertEqual(shown.count, store.rows.count)
-        XCTAssertEqual(store.aisles.flatMap(\.prices).count + store.unpriced.count,
-                       store.prices.count)
+        // Every row's price sits in exactly one aisle subtotal — promoted rows included,
+        // or an aisle's `≈` would come and go with a check-off.
+        XCTAssertEqual(store.aisles.flatMap(\.prices).count, store.prices.count)
+    }
+
+    func testAnAisleSubtotalKeepsTheGapItsPromotedRowLeaves() throws {
+        let catalog = ListCatalog(database: nil)
+        let priced = ListRow(item: ListItem(name: "milk"),
+                             price: .estimated(Money(minorUnits: 300)), category: .dairy)
+        let gap = ListRow(item: ListItem(name: "oat milk"), price: .none, category: .dairy)
+        let aisle = try XCTUnwrap(ListDerivation.aisles([priced, gap], order: [], catalog: catalog,
+                                                        promoted: [gap.id]).first)
+        XCTAssertEqual(aisle.rows.map(\.id), [priced.id])   // the gap renders under NO PRICE YET
+        XCTAssertEqual(aisle.prices.count, 2)
+        XCTAssertTrue(PriceSummary(aisle.prices).isApproximate)
+
+        var checked = gap.item
+        checked.checked = true
+        let after = try XCTUnwrap(ListDerivation.aisles(
+            [priced, ListRow(item: checked, price: .none, category: .dairy)],
+            order: [], catalog: catalog, promoted: []).first)
+        // Checking an unpriced row off moves no money and must not move the `≈` either.
+        XCTAssertEqual(PriceSummary(after.prices).total, PriceSummary(aisle.prices).total)
+        XCTAssertTrue(PriceSummary(after.prices).isApproximate)
+    }
+
+    func testTheEditorSavesAWalkOrderCoveringEveryAisle() throws {
+        let (store, _) = try makeStore()
+        store.addShop(named: "Trader Joe's")
+        store.add(text: "milk")
+        store.add(text: "bananas")
+
+        let editable = store.editableAisles
+        XCTAssertEqual(Array(editable.map(\.category).prefix(2)), [.produce, .dairy])
+        XCTAssertEqual(Set(editable.map(\.category)), Set(CategoryGlyph.allCases))
+
+        store.reorderAisles(editable.map { CategoryID($0.category.rawValue) })
+        // A partial order would wipe every aisle that happens to be empty today.
+        XCTAssertEqual(store.aisleOrder.count, CategoryGlyph.allCases.count)
     }
 
     func testCheckedRowsSinkButKeepTheirAisleSubtotal() throws {
@@ -196,6 +260,62 @@ final class ListStoreTests: XCTestCase {
         // Another shop's receipt is not this trip's price: back to the estimate, never a lie.
         XCTAssertNotEqual(try XCTUnwrap(store.rows.first).price,
                           PriceDisplay(amount: Money(minorUnits: 479), confidence: .trusted))
+    }
+
+    func testTheArrivalMomentBelongsToACheckOffNeverADelete() throws {
+        let (store, _) = try makeStore()
+        store.add(text: "bananas")
+        store.add(text: "milk")
+        store.toggle(try XCTUnwrap(store.rows.first).item)
+        XCTAssertTrue(store.consumeCheckOff())
+        XCTAssertFalse(store.consumeCheckOff())          // one shot, then it is spent
+
+        store.toggle(try XCTUnwrap(store.rows.first).item)
+        XCTAssertFalse(store.consumeCheckOff())          // unchecking is not an arrival
+
+        store.toggle(try XCTUnwrap(store.rows.first).item)
+        store.remove(try XCTUnwrap(store.rows.last).item)
+        // The list is complete because a row left, not because it was bought.
+        XCTAssertTrue(store.isComplete)
+        XCTAssertFalse(store.consumeCheckOff())
+    }
+
+    func testTheSwitcherCountsOnlyPricesTheRowStillCallsMeasured() throws {
+        let (store, repository) = try makeStore()
+        store.addShop(named: "Trader Joe's")
+        store.add(text: "milk")
+        let shopID = try XCTUnwrap(store.activeShopID)
+        let itemID = try XCTUnwrap(store.rows.first?.item.itemID)
+        try repository.append(
+            .price(PriceObservation(itemID: itemID, shopID: shopID,
+                                    date: Date().addingTimeInterval(-120 * 86_400),
+                                    amount: Money(minorUnits: 479), source: .manual)),
+            kitchenID: kitchenID)
+        store.refresh()
+
+        // Past 90 days the row renders `~estimate`, so the sub-line must not claim "priced".
+        XCTAssertEqual(try XCTUnwrap(store.rows.first).price,
+                       PriceDisplay.estimated(Money(minorUnits: 479)))
+        XCTAssertEqual(store.measuredCount(at: shopID), 0)
+    }
+
+    func testOneQuantityStringForEverySurface() {
+        XCTAssertNil(QuantityText.label(quantity: 1, unit: nil))
+        XCTAssertEqual(QuantityText.label(quantity: 2, unit: nil), "×2")
+        XCTAssertEqual(QuantityText.label(quantity: 1.5, unit: "lb"), "1.5 lb")
+        XCTAssertEqual(QuantityText.label(quantity: 0.5, unit: "dozen"), "½ dozen")
+        // The row's Int slot never rounds a lie into place: 1.5 lb is not "×2".
+        XCTAssertEqual(QuantityText.rowCount(quantity: 1.5, unit: "lb"), 1)
+        XCTAssertEqual(QuantityText.rowCount(quantity: 0.5, unit: nil), 1)
+        XCTAssertEqual(QuantityText.rowCount(quantity: 3, unit: nil), 3)
+    }
+
+    func testDetailSheetCommitsOnlyWhatChanged() {
+        let item = ListItem(name: "milk", unit: "l")
+        XCTAssertTrue(ItemDetailSheet.edits(unit: "l", note: "", item: item).isEmpty)
+        XCTAssertEqual(ItemDetailSheet.edits(unit: "l", note: "the cold one", item: item),
+                       [.note("the cold one")])
+        XCTAssertEqual(ItemDetailSheet.edits(unit: "", note: "", item: item), [.unit(nil)])
     }
 
     func testMoneyEntryRejectsWhatItCannotRead() {

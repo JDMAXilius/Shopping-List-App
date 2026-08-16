@@ -14,7 +14,9 @@ struct RootView: View {
             Palette.paper.color.ignoresSafeArea()
             content
                 .safeAreaPadding(.bottom, 72)
-            TabPill(selection: $tab, onAdd: { sheet = .capture })
+            // Nothing to capture into without a database: a blank sheet over the honest
+            // failure message would be the second lie.
+            TabPill(selection: $tab, onAdd: { if listStore != nil { sheet = .capture } })
                 .padding(.bottom, 8)
         }
         .sheet(item: $sheet) { presented in
@@ -28,23 +30,28 @@ struct RootView: View {
 
     @ViewBuilder private var content: some View {
         if let listStore {
-            switch tab {
-            case .list:
+            // A real TabView (ARCHITECTURE §6), system bar hidden because TabPill is the bar:
+            // switching tabs must keep each root alive, draft, scroll position and all.
+            TabView(selection: $tab) {
                 NavigationStack(path: $listPath) {
                     ListScreen(store: listStore, sheet: $sheet)
                         .navigationDestination(for: Route.self) { route in
                             destination(route, store: listStore)
                         }
                 }
-            case .prices:
+                .toolbar(.hidden, for: .tabBar)
+                .tag(DesignKit.Tab.list)
                 // Waves 7 and 9 replace these two roots with their own screens.
                 EmptyState(
                     glyph: .other,
                     message: "Your price book fills in as you record what you paid.")
-            case .you:
+                    .toolbar(.hidden, for: .tabBar)
+                    .tag(DesignKit.Tab.prices)
                 EmptyState(
                     glyph: .household,
                     message: "Your kitchen, sharing and settings live here.")
+                    .toolbar(.hidden, for: .tabBar)
+                    .tag(DesignKit.Tab.you)
             }
         } else {
             EmptyState(
@@ -66,8 +73,6 @@ struct RootView: View {
     @ViewBuilder private func sheetContent(_ presented: Sheet) -> some View {
         if let listStore {
             switch presented {
-            case .addItem:
-                AddItemSheet(store: listStore)
             case .itemDetail(let id):
                 ItemDetailSheet(store: listStore, listItemID: id)
             case .shopSwitcher, .firstShop:

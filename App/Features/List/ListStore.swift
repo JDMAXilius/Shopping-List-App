@@ -18,6 +18,10 @@ final class ListStore {
     private let observedPrices: Observed<[PriceObservation]>
     private var undoStack: [Op.Kind] = []
     private var deviceHistory: [String]
+    // Set by a check-off, cleared by every other write: the arrival tone is never a
+    // reward for deleting the last row.
+    @ObservationIgnored private var checkedOff = false
+    @ObservationIgnored private var rowCache: (key: RowKey, rows: [ListRow])?
 
     private(set) var activeShopID: ShopID?
     private(set) var aisleOrder: [CategoryID] = []
@@ -25,7 +29,7 @@ final class ListStore {
     var syncStatus: SyncStatus = .synced
 
     init(repository: Repository, kitchenID: KitchenID, catalog: ListCatalog,
-         defaults: UserDefaults = .standard) throws {
+         defaults: UserDefaults = .appGroup()) throws {
         self.repository = repository
         self.kitchenID = kitchenID
         self.catalog = catalog
@@ -46,11 +50,16 @@ final class ListStore {
     var activeShop: Shop? { shops.first { $0.id == activeShopID } }
 
     var rows: [ListRow] {
+        let key = RowKey(items: observedItems.value, observations: observedPrices.value,
+                         shopID: activeShopID)
+        if let cached = rowCache, cached.key == key { return cached.rows }
         let lookup = priceLookup
-        return observedItems.value.map {
+        let rows = key.items.map {
             ListRow(item: $0, price: lookup.display($0.itemID),
                     category: catalog.category(for: $0.itemID))
         }
+        rowCache = (key, rows)
+        return rows
     }
 
     /// The one array TotalBar, the sub-line and every aisle subtotal derive from.
@@ -61,17 +70,19 @@ final class ListStore {
     var isComplete: Bool { !rows.isEmpty && completed.count == rows.count }
 
     var aisles: [AisleSection] {
-        let promoted = Set(unpriced.map(\.id))
-        return ListDerivation.aisles(rows.filter { !promoted.contains($0.id) },
-                                     order: aisleOrder, catalog: catalog)
+        ListDerivation.aisles(rows, order: aisleOrder, catalog: catalog,
+                              promoted: Set(unpriced.map(\.id)))
+    }
+
+    /// Every aisle, today's first — the walk order the editor saves must be total.
+    var editableAisles: [AisleSection] {
+        ListDerivation.allAisles(present: aisles, order: aisleOrder, catalog: catalog)
     }
 
     /// How many rows carry a measured price at that shop — the switcher's honest sub-line.
     func measuredCount(at shopID: ShopID) -> Int {
         let lookup = PriceLookup(observations: observedPrices.value, shopID: shopID, catalog: catalog)
-        return observedItems.value.filter { item in
-            item.itemID.flatMap { lookup.measured($0) } != nil
-        }.count
+        return observedItems.value.filter { lookup.isMeasured($0.itemID) }.count
     }
 
     func hasAisleOrder(_ shopID: ShopID) -> Bool {
@@ -91,32 +102,45 @@ final class ListStore {
 
     // MARK: - Actions
 
-    func add(text: String) {
+    @discardableResult
+    func add(text: String) -> Bool {
         let parsed = QuantityParser.parse(text)
         let name = parsed.rest.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
-        let match = catalog.resolve(name)
-        // A miss is a perfectly good row: no item id, no price, category `other`.
-        let item = ListItem(itemID: match?.itemID, name: name, quantity: parsed.quantity ?? 1,
-                            unit: parsed.unit ?? match?.unit, shopID: activeShopID)
-        append(.add(item), undo: .delete(item.listItemID))
+        guard !name.isEmpty else { return false }
+        let plan = ListDerivation.addPlan(name: name, quantity: parsed.quantity, unit: parsed.unit,
+                                          items: observedItems.value, match: catalog.resolve(name),
+                                          shopID: activeShopID)
+        guard let first = plan.ops.first, append(first, undo: plan.undo) else { return false }
+        for kind in plan.ops.dropFirst() { append(kind, undo: nil) }
         remember(name)
         Haptics.play(.add)
+        return true
     }
 
     func toggle(_ item: ListItem) {
         let id = item.listItemID
-        append(item.checked ? .uncheck(id) : .check(id),
-               undo: item.checked ? .check(id) : .uncheck(id))
+        guard append(item.checked ? .uncheck(id) : .check(id),
+                     undo: item.checked ? .check(id) : .uncheck(id))
+        else { return }
+        checkedOff = !item.checked
         Haptics.play(item.checked ? .uncheck : .checkOff)
         if !item.checked { Sound.play(.check) }
+    }
+
+    /// True once per check-off, and only then: ListScreen's arrival moment reads it.
+    func consumeCheckOff() -> Bool {
+        defer { checkedOff = false }
+        return checkedOff
     }
 
     /// The measured-price moment. Observations accumulate — there is no inverse op to undo.
     func setPrice(_ item: ListItem, _ amount: Money) {
         guard let shopID = activeShopID else { return }
         let itemID = item.itemID ?? ItemID()
-        if item.itemID == nil { append(.edit(item.listItemID, [.itemID(itemID)]), undo: nil) }
+        if item.itemID == nil {
+            // A price whose identity never landed would belong to nobody.
+            guard append(.edit(item.listItemID, [.itemID(itemID)]), undo: nil) else { return }
+        }
         append(.price(PriceObservation(itemID: itemID, shopID: shopID, date: Date(),
                                        amount: amount, source: .manual)), undo: nil)
     }
@@ -126,14 +150,16 @@ final class ListStore {
     }
 
     func remove(_ item: ListItem) {
-        append(.delete(item.listItemID), undo: .add(item))
+        guard append(.delete(item.listItemID), undo: .add(item)) else { return }
         Haptics.play(.delete)
     }
 
     func undo() {
         guard let inverse = undoStack.popLast() else { return }
-        try? repository.append(inverse, kitchenID: kitchenID)
-        refresh()
+        guard append(inverse, undo: nil) else {
+            undoStack.append(inverse)
+            return
+        }
         Haptics.play(.undo)
     }
 
@@ -146,13 +172,15 @@ final class ListStore {
     func addShop(named name: String) {
         let shop = Shop(name: name.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !shop.name.isEmpty else { return }
-        append(.shop(.upsert(shop)), undo: nil)
+        guard append(.shop(.upsert(shop)), undo: nil) else { return }
         switchShop(shop.id)
     }
 
     func reorderAisles(_ ordered: [CategoryID]) {
         guard let shopID = activeShopID else { return }
-        append(.shop(.aisleOrder(AisleOrder(shopID: shopID, ordered: ordered))), undo: nil)
+        // The order the screen shows is the order that reached the database, or neither.
+        guard append(.shop(.aisleOrder(AisleOrder(shopID: shopID, ordered: ordered))), undo: nil)
+        else { return }
         aisleOrder = ordered
     }
 
@@ -174,12 +202,15 @@ final class ListStore {
         aisleOrder = activeShopID.flatMap { try? repository.aisleOrder(for: $0) }?.ordered ?? []
     }
 
-    private func append(_ kind: Op.Kind, undo inverse: Op.Kind?) {
-        guard (try? repository.append(kind, kitchenID: kitchenID)) != nil else { return }
+    @discardableResult
+    private func append(_ kind: Op.Kind, undo inverse: Op.Kind?) -> Bool {
+        checkedOff = false
+        guard (try? repository.append(kind, kitchenID: kitchenID)) != nil else { return false }
         refresh()
-        guard let inverse else { return }
+        guard let inverse else { return true }
         undoStack.append(inverse)
         if undoStack.count > 20 { undoStack.removeFirst() }
+        return true
     }
 
     private func remember(_ name: String) {
@@ -187,4 +218,11 @@ final class ListStore {
         deviceHistory = Array(([name] + deviceHistory).prefix(50))
         defaults.set(deviceHistory, forKey: ListStore.historyKey)
     }
+}
+
+// What the rows were built from: unchanged inputs mean the built rows still stand.
+private struct RowKey: Equatable {
+    let items: [ListItem]
+    let observations: [PriceObservation]
+    let shopID: ShopID?
 }
