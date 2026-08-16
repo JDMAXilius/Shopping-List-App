@@ -24,6 +24,10 @@ public enum Haptics {
     /// respected automatically by UIKit; this is ours on top.
     public static var isEnabled = true
 
+    // Structural, matching Sound: a widget or an intent process has no haptic engine, so a
+    // check-off from the lock screen is deliberately silent rather than silent by accident.
+    private static var isAppExtension: Bool { Bundle.main.bundlePath.hasSuffix(".appex") }
+
     #if canImport(UIKit)
     // One generator per type, kept warm across a trip.
     private static let impactLight = UIImpactFeedbackGenerator(style: .light)
@@ -43,7 +47,7 @@ public enum Haptics {
     /// One haptic per user action, never stacked; nothing the user didn't cause —
     /// a remote sync must never buzz someone's pocket.
     public static func play(_ event: HapticEvent) {
-        guard isEnabled else { return }
+        guard isEnabled, !isAppExtension else { return }
         #if canImport(UIKit)
         switch event {
         case .checkOff, .undo, .dragPickup:

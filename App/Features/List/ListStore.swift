@@ -3,6 +3,7 @@ import Core
 import Data
 import DesignKit
 import Foundation
+import WidgetKit
 
 @Observable @MainActor
 final class ListStore {
@@ -245,6 +246,9 @@ final class ListStore {
         pendingUndo = nil
         guard (try? repository.append(kinds, kitchenID: kitchenID)) != nil else { return false }
         refresh()
+        // The widget's timeline policy is `.never` — a list changes when a person changes it,
+        // not on a clock. Without this the lock screen keeps showing items you checked off here.
+        WidgetCenter.shared.reloadAllTimelines()
         return true
     }
 

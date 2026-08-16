@@ -91,19 +91,30 @@ struct ListWidgetView: View {
             .lineLimit(1)
     }
 
-    /// `TotalBar.swift:32`'s expression, restated: `≈` is never caller-supplied, it comes from
-    /// the summary. With nothing priced at all the figure is `—` — PriceLabel's own, never a
-    /// hand-drawn dash and never a $0.00 that would claim a free basket.
+    /// If the qualifier doesn't fit, the figure doesn't go. The lock screen has one header line
+    /// and no room for "5 no price yet" — and `≈ $12.40` alone, for a basket that will cost
+    /// thirty, is read at a glance by someone who will not open the app to check. So this family
+    /// shows the count and no money. The small tile has the room, so it shows both.
     @ViewBuilder private func total(_ summary: PriceSummary) -> some View {
-        if summary.hasPricedItems {
-            Text((summary.isApproximate ? "≈ " : "") + summary.total.display)
-                .font(family == .systemSmall ? Typography.total : Typography.priceSmall)
-                .foregroundStyle(Palette.ink.color)
-                .lineLimit(1)
-                .accessibilityLabel(
-                    "\(summary.isApproximate ? "about " : "")\(summary.total.display) total")
-        } else {
+        if !summary.hasPricedItems {
             PriceLabel(PriceDisplay.none, size: .small)
+        } else if summary.breakdown != nil, family != .systemSmall {
+            EmptyView()
+        } else {
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(summary.display)
+                    .font(family == .systemSmall ? Typography.total : Typography.priceSmall)
+                    .foregroundStyle(Palette.ink.color)
+                    .lineLimit(1)
+                if family == .systemSmall, let breakdown = summary.breakdown {
+                    Text(breakdown)
+                        .font(Typography.footnote)
+                        .foregroundStyle(Palette.muted.color)
+                        .lineLimit(1)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(summary.accessibilityPhrase)
         }
     }
 

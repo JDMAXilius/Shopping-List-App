@@ -168,10 +168,7 @@ struct ListScreen: View {
             .foregroundStyle(Palette.ink.color)
     }
 
-    private var arrivalTotal: String {
-        let summary = PriceSummary(store.prices)
-        return (summary.isApproximate ? "about " : "") + summary.total.display
-    }
+    private var arrivalTotal: String { PriceSummary(store.prices).spokenTotal }
 
     @ViewBuilder private var unpricedSection: some View {
         if !store.unpriced.isEmpty {
