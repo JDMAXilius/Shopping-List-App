@@ -16,7 +16,6 @@ final class ListStore {
     private let observedItems: Observed<[ListItem]>
     private let observedShops: Observed<[Shop]>
     private let observedPrices: Observed<[PriceObservation]>
-    private var undoStack: [Op.Kind] = []
     private var deviceHistory: [String]
     // Set by a check-off, cleared by every other write: the arrival tone is never a
     // reward for deleting the last row.
@@ -25,6 +24,10 @@ final class ListStore {
 
     private(set) var activeShopID: ShopID?
     private(set) var aisleOrder: [CategoryID] = []
+    /// One slot, not a stack: the newest inverse, offered only in the moment after the action
+    /// that made it. Only an action with no other one-tap way back earns one — a check-off is
+    /// reversed by its own tick, and a brand-new row by the row you are looking at.
+    private(set) var pendingUndo: PendingUndo?
     // Fed by the SyncEngine once a transport exists (wave 9); until then always .synced.
     var syncStatus: SyncStatus = .synced
 
@@ -110,18 +113,20 @@ final class ListStore {
         let plan = ListDerivation.addPlan(name: name, quantity: parsed.quantity, unit: parsed.unit,
                                           items: observedItems.value, match: catalog.resolve(name),
                                           shopID: activeShopID)
-        guard let first = plan.ops.first, append(first, undo: plan.undo) else { return false }
-        for kind in plan.ops.dropFirst() { append(kind, undo: nil) }
+        guard let first = plan.ops.first, append(first) else { return false }
+        for kind in plan.ops.dropFirst() { append(kind) }
+        // After the whole plan lands: every append clears the slot, and a merge's uncheck
+        // would take the offer away in the same breath that earned it.
+        pendingUndo = plan.undo
         remember(name)
         Haptics.play(.add)
         return true
     }
 
     func toggle(_ item: ListItem) {
+        // No undo slot: the tick that checked it off is the same tap that unchecks it.
         let id = item.listItemID
-        guard append(item.checked ? .uncheck(id) : .check(id),
-                     undo: item.checked ? .check(id) : .uncheck(id))
-        else { return }
+        guard append(item.checked ? .uncheck(id) : .check(id)) else { return }
         checkedOff = !item.checked
         Haptics.play(item.checked ? .uncheck : .checkOff)
         if !item.checked { Sound.play(.check) }
@@ -139,28 +144,35 @@ final class ListStore {
         let itemID = item.itemID ?? ItemID()
         if item.itemID == nil {
             // A price whose identity never landed would belong to nobody.
-            guard append(.edit(item.listItemID, [.itemID(itemID)]), undo: nil) else { return }
+            guard append(.edit(item.listItemID, [.itemID(itemID)])) else { return }
         }
         append(.price(PriceObservation(itemID: itemID, shopID: shopID, date: Date(),
-                                       amount: amount, source: .manual)), undo: nil)
+                                       amount: amount, source: .manual)))
     }
 
     func edit(_ item: ListItem, _ writes: [FieldWrite]) {
-        append(.edit(item.listItemID, writes), undo: nil)
+        append(.edit(item.listItemID, writes))
     }
 
     func remove(_ item: ListItem) {
-        guard append(.delete(item.listItemID), undo: .add(item)) else { return }
+        let undo = ListDerivation.removalUndo(item)
+        guard append(.delete(item.listItemID)) else { return }
+        pendingUndo = undo
         Haptics.play(.delete)
     }
 
     func undo() {
-        guard let inverse = undoStack.popLast() else { return }
-        guard append(inverse, undo: nil) else {
-            undoStack.append(inverse)
+        guard let pending = pendingUndo else { return }
+        guard append(pending.inverse) else {
+            // Nothing was written, so the offer still stands — append cleared it on the way in.
+            pendingUndo = pending
             return
         }
         Haptics.play(.undo)
+    }
+
+    func dismissUndo() {
+        pendingUndo = nil
     }
 
     func switchShop(_ shopID: ShopID) {
@@ -172,15 +184,14 @@ final class ListStore {
     func addShop(named name: String) {
         let shop = Shop(name: name.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !shop.name.isEmpty else { return }
-        guard append(.shop(.upsert(shop)), undo: nil) else { return }
+        guard append(.shop(.upsert(shop))) else { return }
         switchShop(shop.id)
     }
 
     func reorderAisles(_ ordered: [CategoryID]) {
         guard let shopID = activeShopID else { return }
         // The order the screen shows is the order that reached the database, or neither.
-        guard append(.shop(.aisleOrder(AisleOrder(shopID: shopID, ordered: ordered))), undo: nil)
-        else { return }
+        guard append(.shop(.aisleOrder(AisleOrder(shopID: shopID, ordered: ordered)))) else { return }
         aisleOrder = ordered
     }
 
@@ -202,14 +213,13 @@ final class ListStore {
         aisleOrder = activeShopID.flatMap { try? repository.aisleOrder(for: $0) }?.ordered ?? []
     }
 
+    /// Every write clears the undo slot; the two actions that earn one set it afterwards.
     @discardableResult
-    private func append(_ kind: Op.Kind, undo inverse: Op.Kind?) -> Bool {
+    private func append(_ kind: Op.Kind) -> Bool {
         checkedOff = false
+        pendingUndo = nil
         guard (try? repository.append(kind, kitchenID: kitchenID)) != nil else { return false }
         refresh()
-        guard let inverse else { return true }
-        undoStack.append(inverse)
-        if undoStack.count > 20 { undoStack.removeFirst() }
         return true
     }
 

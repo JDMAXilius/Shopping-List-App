@@ -7,6 +7,7 @@ struct ListScreen: View {
     let store: ListStore
     @Binding var sheet: Sheet?
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var draft = ""
     @State private var showCompleted = false
 
@@ -16,8 +17,11 @@ struct ListScreen: View {
                 VStack(alignment: .leading, spacing: 12) {
                     header
                     if isOffline { offlineBanner }
+                    undoRow
                     listCard
                 }
+                .animation(Motion.undoReturn.resolved(reduceMotion: reduceMotion),
+                           value: store.pendingUndo?.phrase)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
             }
@@ -88,6 +92,39 @@ struct ListScreen: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Palette.card.color))
+    }
+
+    /// The way back from an action that changed the list quietly — a remove, or an add that
+    /// merged into a row already there. It sits in the flow, covers nothing and takes no focus;
+    /// when there is nothing to undo it is absent, never a disabled control.
+    @ViewBuilder private var undoRow: some View {
+        if let pending = store.pendingUndo {
+            Button { store.undo() } label: {
+                // The line names the restore, because the two cases restore different things
+                // and "Undo" on its own would stand for both.
+                (Text("Undo").font(.system(.footnote, weight: .semibold))
+                    .foregroundStyle(Palette.ink.color)
+                    + Text(" · \(pending.phrase)").font(Typography.footnote)
+                    .foregroundStyle(Palette.muted.color))
+                    .lineLimit(1)
+                    .padding(.horizontal, 14)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Palette.card.color))
+            }
+            .buttonStyle(.plain)
+            .transition(.opacity)
+            .accessibilityLabel("Undo, \(pending.phrase)")
+            // It leaves on its own; every other write clears it in the store. Cancelled means
+            // a newer action already owns the slot, and clearing would take its turn away.
+            .task(id: pending.phrase) {
+                try? await Task.sleep(for: .seconds(6))
+                guard !Task.isCancelled else { return }
+                store.dismissUndo()
+            }
+        }
     }
 
     // MARK: - The list

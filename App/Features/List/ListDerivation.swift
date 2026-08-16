@@ -29,6 +29,14 @@ struct ItemSuggestion: Identifiable, Hashable {
     var id: String { Merge.normalized(name) }
 }
 
+/// The inverse of the last action that changed the list silently, carrying the words the inline
+/// Undo offers it in. Op and phrase travel together so the store cannot hold an inverse no
+/// affordance can invoke — and so "Undo" alone never has to stand for two different restores.
+struct PendingUndo {
+    let inverse: Op.Kind
+    let phrase: String
+}
+
 // The one place a price becomes a tier: measured only from this shop's own observations,
 // then the catalog's seeded estimate, then nothing. `—` beats a guess.
 @MainActor
@@ -94,22 +102,44 @@ enum QuantityText {
 @MainActor
 enum ListDerivation {
     /// What an add means for a list that may already hold the name: MORE of that row, never
-    /// a second one that unchecks it and resets its quantity. The first op carries the undo.
+    /// a second one that unchecks it and resets its quantity. A merge changes a row the typist
+    /// may not even be looking at, so it carries the way back; a brand-new row carries none —
+    /// it is on screen, and removing it is the same gesture as removing anything else.
     static func addPlan(name: String, quantity: Double?, unit: String?, items: [ListItem],
                         match: ListCatalog.Match?,
-                        shopID: ShopID?) -> (ops: [Op.Kind], undo: Op.Kind) {
+                        shopID: ShopID?) -> (ops: [Op.Kind], undo: PendingUndo?) {
         let key = Merge.normalized(name)
         guard let existing = items.first(where: { Merge.normalized($0.name) == key }) else {
             // A miss is a perfectly good row: no item id, no price, category `other`.
             let item = ListItem(itemID: match?.itemID, name: name, quantity: quantity ?? 1,
                                 unit: unit ?? match?.unit, shopID: shopID)
-            return ([.add(item)], .delete(item.listItemID))
+            return ([.add(item)], nil)
         }
         let id = existing.listItemID
         var ops: [Op.Kind] = [.edit(id, [.quantity(existing.quantity + (quantity ?? 1))])]
         // Needing more of something you already bought puts it back on the active list.
         if existing.checked { ops.append(.uncheck(id)) }
-        return (ops, .edit(id, [.quantity(existing.quantity), .checked(existing.checked)]))
+        let undo = PendingUndo(
+            inverse: .edit(id, [.quantity(existing.quantity), .checked(existing.checked)]),
+            phrase: "\(existing.name) back to \(restoreText(existing))")
+        return (ops, undo)
+    }
+
+    /// The way back from a remove. Resurrection is by name, never by id (ARCHITECTURE §5): an
+    /// add reusing the deleted id lands under the tombstone. A fresh row carries the fields
+    /// back — unchecked, to buy.
+    static func removalUndo(_ item: ListItem) -> PendingUndo {
+        let restored = ListItem(itemID: item.itemID, name: item.name, quantity: item.quantity,
+                                unit: item.unit, note: item.note, shopID: item.shopID,
+                                createdAt: item.createdAt)
+        return PendingUndo(inverse: .add(restored), phrase: "\(item.name) back on the list")
+    }
+
+    /// What the merge took away, in the row's own quantity words: `×1, checked`, `1.5 lb`.
+    private static func restoreText(_ item: ListItem) -> String {
+        let quantity = QuantityText.label(quantity: item.quantity, unit: item.unit)
+            ?? "×\(QuantityText.number(item.quantity))"
+        return item.checked ? "\(quantity), checked" : quantity
     }
 
     static func aisles(_ rows: [ListRow], order: [CategoryID], catalog: ListCatalog,

@@ -74,6 +74,34 @@ final class ListStoreTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(store.rows.first).item.checked)
     }
 
+    /// The merge is the one add that changes a row you may not be looking at — and it can take
+    /// a check-off away. It gets the same inline row a remove gets, saying what it restores.
+    func testAReAddThatMergesIsUndoableThroughTheSameInlineRow() throws {
+        let (store, _) = try makeStore()
+        store.add(text: "unicorn steaks")            // no catalog match: no unit of its own
+        store.toggle(try XCTUnwrap(store.rows.first).item)
+
+        store.add(text: "unicorn steaks")
+        XCTAssertFalse(try XCTUnwrap(store.rows.first).item.checked)
+        XCTAssertEqual(store.pendingUndo?.phrase, "unicorn steaks back to ×1, checked")
+
+        store.undo()
+        let after = try XCTUnwrap(store.rows.first).item
+        XCTAssertEqual(after.quantity, 1)
+        XCTAssertTrue(after.checked)                 // the check-off it silently spent
+        XCTAssertNil(store.pendingUndo)              // the affordance goes when it fires
+    }
+
+    func testAMergeIntoAnUncheckedRowOffersTheQuantityItLeaves() throws {
+        let (store, _) = try makeStore()
+        store.add(text: "2 unicorn steaks")
+
+        store.add(text: "unicorn steaks")
+        XCTAssertEqual(try XCTUnwrap(store.rows.first).item.quantity, 3)
+        // Nothing was checked, so the phrase claims no check back — it says only what it does.
+        XCTAssertEqual(store.pendingUndo?.phrase, "unicorn steaks back to ×2")
+    }
+
     func testTwoAddsOfTheSameNameLeaveInOneRemove() throws {
         let (store, _) = try makeStore()
         store.add(text: "bread")
@@ -121,26 +149,60 @@ final class ListStoreTests: XCTestCase {
 
     // MARK: - Ops and undo
 
-    func testToggleAndUndoProduceInverseOps() throws {
+    func testACheckOffIsItsOwnWayBackAndTakesNoUndoSlot() throws {
         let (store, repository) = try makeStore()
         store.add(text: "bananas")
         store.toggle(try XCTUnwrap(store.rows.first).item)
         XCTAssertTrue(try XCTUnwrap(store.rows.first).item.checked)
+        XCTAssertNil(store.pendingUndo)
 
         store.undo()
+        XCTAssertTrue(try XCTUnwrap(store.rows.first).item.checked)   // no row offered one
+        store.toggle(try XCTUnwrap(store.rows.first).item)            // the tick is the undo
         XCTAssertFalse(try XCTUnwrap(store.rows.first).item.checked)
         XCTAssertEqual(try repository.unpushedOps().map(\.type), ["add", "check", "uncheck"])
     }
 
     func testUndoOfARemoveBringsTheRowBack() throws {
         let (store, repository) = try makeStore()
-        store.add(text: "bread")
-        store.remove(try XCTUnwrap(store.rows.first).item)
+        store.add(text: "2 lb bread")
+        store.edit(try XCTUnwrap(store.rows.first).item, [.note("the seeded one")])
+        let before = try XCTUnwrap(store.rows.first).item
+        store.remove(before)
         XCTAssertTrue(store.rows.isEmpty)
+        // The inline affordance says what the tap will do, not what happened.
+        XCTAssertEqual(store.pendingUndo?.phrase, "bread back on the list")
 
         store.undo()
-        XCTAssertEqual(store.rows.map(\.item.name), ["bread"])
-        XCTAssertEqual(try repository.unpushedOps().map(\.type), ["add", "delete", "add"])
+        let after = try XCTUnwrap(store.rows.first).item
+        XCTAssertEqual(after.name, "bread")
+        XCTAssertEqual(after.quantity, 2)
+        XCTAssertEqual(after.unit, "lb")
+        XCTAssertEqual(after.note, "the seeded one")
+        XCTAssertEqual(after.itemID, before.itemID)
+        // Resurrection is by name: reusing the deleted id would land under the tombstone.
+        XCTAssertNotEqual(after.listItemID, before.listItemID)
+        XCTAssertFalse(after.checked)                    // it is back on the list to buy
+        XCTAssertNil(store.pendingUndo)                  // the affordance goes when it fires
+        XCTAssertEqual(try repository.unpushedOps().map(\.type),
+                       ["add", "edit", "delete", "add"])
+    }
+
+    /// The slot holds exactly what a row can offer, and only until the next write: an inverse
+    /// no affordance renders would be an undo the user cannot invoke.
+    func testTheUndoSlotHoldsOnlyWhatTheInlineRowOffers() throws {
+        let (store, _) = try makeStore()
+        store.add(text: "bread")
+        XCTAssertNil(store.pendingUndo)                  // a brand-new row is its own way back
+        store.toggle(try XCTUnwrap(store.rows.first).item)
+        XCTAssertNil(store.pendingUndo)                  // the tick reverses itself
+
+        store.remove(try XCTUnwrap(store.rows.first).item)
+        XCTAssertEqual(store.pendingUndo?.phrase, "bread back on the list")
+        store.add(text: "milk")
+        XCTAssertNil(store.pendingUndo)                  // the next action takes the offer away
+        store.undo()
+        XCTAssertEqual(store.rows.map(\.item.name), ["milk"])
     }
 
     func testSetPriceRecordsAMeasuredObservation() throws {
