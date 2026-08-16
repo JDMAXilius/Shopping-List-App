@@ -17,11 +17,8 @@ struct ListScreen: View {
                 VStack(alignment: .leading, spacing: 12) {
                     header
                     if isOffline { offlineBanner }
-                    undoRow
                     listCard
                 }
-                .animation(Motion.undoReturn.resolved(reduceMotion: reduceMotion),
-                           value: store.pendingUndo?.phrase)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
             }
@@ -110,9 +107,11 @@ struct ListScreen: View {
                     .padding(.horizontal, 14)
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                     .contentShape(Rectangle())
+                    // Paper on card: the pill sits inside the bottom stack, which is itself
+                    // card — a card-on-card fill would be invisible.
                     .background(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Palette.card.color))
+                            .fill(Palette.paper.color))
             }
             .buttonStyle(.plain)
             .transition(.opacity)
@@ -311,12 +310,17 @@ struct ListScreen: View {
 
     private var bottomStack: some View {
         VStack(spacing: 12) {
+            // Undo lives here, not in the scroll: a merge is triggered from the input bar
+            // an inch below, and an undo the user can scroll away from is not an undo.
+            undoRow
             suggestionResults
             TotalBar(prices: store.prices)
             // Mic stays off until speech lands (wave 6) — an affordance must not
             // promise voice one screen before the sheet denies it.
             InputBar(text: $draft, isMicEnabled: false, onSubmit: submit, onMic: {})
         }
+        .animation(Motion.undoReturn.resolved(reduceMotion: reduceMotion),
+                   value: store.pendingUndo?.phrase)
         .padding(16)
         .background(Palette.card.color)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
