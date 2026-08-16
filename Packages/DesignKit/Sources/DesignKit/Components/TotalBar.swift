@@ -29,7 +29,7 @@ public struct TotalBar: View {
                     }
                 }
                 Spacer(minLength: 12)
-                Text((summary.isApproximate ? "≈ " : "") + summary.total.display)
+                Text(summary.display)
                     .font(Typography.total)
                     .foregroundStyle(Palette.ink.color)
             }
@@ -45,18 +45,7 @@ public struct TotalBar: View {
         }
     }
 
-    /// "3 estimated · 1 no price yet" — the total breaks itself down, always honest.
-    private var breakdown: String? {
-        var parts: [String] = []
-        if summary.estimatedCount > 0 { parts.append("\(summary.estimatedCount) estimated") }
-        if summary.unpricedCount > 0 {
-            parts.append("\(summary.unpricedCount) no price yet")
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
+    private var breakdown: String? { summary.breakdown }
 
-    private var accessibilityText: String {
-        let figure = "\(summary.isApproximate ? "about " : "")\(summary.total.display) total"
-        return breakdown.map { "\(figure), \($0)" } ?? figure
-    }
+    private var accessibilityText: String { summary.accessibilityPhrase }
 }

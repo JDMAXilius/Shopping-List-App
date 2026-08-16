@@ -51,11 +51,19 @@ targets:
       - path: App
         excludes:
           - "**/*Tests.swift"
+      # App target, not an extension: the intents call ListDerivation.addPlan and ListCatalog,
+      # which are @MainActor app-target types. An extension would compile a second copy of them.
+      # Schema27 is Apple's .reminders cluster, parked for iOS 27 — see its README.
+      - path: Intents
+        excludes:
+          - "Schema27/**"
+          - "**/*Tests.swift"
     dependencies:
       - package: Core
       - package: Catalog
       - package: Data
       - package: DesignKit
+      - target: BaggedWidget
     entitlements:
       path: App/Bagged.entitlements
       properties:
@@ -72,6 +80,59 @@ targets:
         SupabaseAnonKey: $(SUPABASE_ANON_KEY)
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+  # Own process. It reads the App Group database and never migrates it — only the app does
+  # (AppDatabase.swift) — and the two shared List files come in as sources rather than being
+  # re-implemented: two copies of the seeded-estimate currency rule is how a widget starts
+  # quoting US seeds to a UK kitchen.
+  BaggedWidget:
+    type: app-extension
+    platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.bagged.widget
+    sources:
+      - path: Widget
+        excludes:
+          - "**/*Tests.swift"
+      - path: App/Features/List/ListCatalog.swift
+      - path: App/Features/List/ListDerivation.swift
+    dependencies:
+      - package: Core
+      - package: Catalog
+      - package: Data
+      - package: DesignKit
+    entitlements:
+      path: Widget/BaggedWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.app.bagged
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Bagged
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  # An .appex cannot host unit tests and @main cannot live in a test bundle, so the widget's
+  # sources are compiled into the test target instead of linked.
+  WidgetTests:
+    type: bundle.unit-test
+    platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.bagged.widgettests
+    sources:
+      - path: Widget
+        excludes:
+          - BaggedWidget.swift
+      - path: App/Features/List/ListCatalog.swift
+      - path: App/Features/List/ListDerivation.swift
+    dependencies:
+      - package: Core
+      - package: Catalog
+      - package: Data
+      - package: DesignKit
+
   BaggedTests:
     type: bundle.unit-test
     platform: iOS
@@ -84,6 +145,11 @@ targets:
           - "**/*Tests.swift"
         excludes:
           - "UITests/**"
+      - path: Intents
+        includes:
+          - "**/*Tests.swift"
+        excludes:
+          - "Schema27/**"
     dependencies:
       - target: Bagged
       - package: SnapshotTesting
@@ -106,4 +172,5 @@ schemes:
     test:
       targets:
         - BaggedTests
+        - WidgetTests
         - BaggedUITests

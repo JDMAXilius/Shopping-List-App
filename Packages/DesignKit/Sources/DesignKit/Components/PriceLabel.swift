@@ -82,6 +82,28 @@ public struct PriceSummary: Hashable, Sendable {
 
     /// True when nothing in the group carries a price at all.
     public var hasPricedItems: Bool { measuredCount > 0 || estimatedCount > 0 }
+
+    /// The figure, marked. Three surfaces had each written this string themselves — the widget's
+    /// tile, TotalBar and the list's arrival line — which is the exact fork this type exists to
+    /// make impossible. It lives here now, and they read it.
+    public var display: String { (isApproximate ? "≈ " : "") + total.display }
+
+    /// "3 estimated · 1 no price yet" — what makes the figure honest, and the reason a surface
+    /// with no room for it must not show the figure at all.
+    public var breakdown: String? {
+        var parts: [String] = []
+        if estimatedCount > 0 { parts.append("\(estimatedCount) estimated") }
+        if unpricedCount > 0 { parts.append("\(unpricedCount) no price yet") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// `≈` is not a word. The figure as it is said — in a sentence, or out loud.
+    public var spokenTotal: String { (isApproximate ? "about " : "") + total.display }
+
+    /// One phrase, so a total can never be read aloud two ways.
+    public var accessibilityPhrase: String {
+        breakdown.map { "\(spokenTotal) total, \($0)" } ?? "\(spokenTotal) total"
+    }
 }
 
 /// THE way a price renders — `$4.49` solid ink · `~$5.00` lighter + muted · `—` none.
