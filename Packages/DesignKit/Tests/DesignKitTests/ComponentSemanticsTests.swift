@@ -122,4 +122,104 @@ final class ComponentSemanticsTests: XCTestCase {
         XCTAssertEqual(InputBar.micFill(isEnabled: false), Palette.muted)
         XCTAssertNotEqual(InputBar.micFill(isEnabled: false), Palette.persimmon)
     }
+
+    // MARK: SectionLabel — the tone rule, enforced rather than documented (W6-P1)
+
+    func testTheDefaultToneIsMutedAndIsLegalOnEitherGround() {
+        // Why the one-argument initializer can omit the surface at all.
+        for surface in Palette.Surface.allCases {
+            XCTAssertTrue(SectionLabel.isLegible(tone: .muted, on: surface))
+            XCTAssertEqual(SectionLabel.foreground(tone: .muted, surface: surface), Palette.muted)
+        }
+    }
+
+    func testAttentionIsPersimmonOnCard() {
+        XCTAssertTrue(SectionLabel.isLegible(tone: .attention, on: .card))
+        XCTAssertEqual(
+            SectionLabel.foreground(tone: .attention, surface: .card), Palette.persimmon)
+    }
+
+    func testAttentionOnPaperIsRefused() {
+        // The rule that was being re-decided at six sites: persimmon at caption size holds
+        // contrast on card, never on paper. Here it is a value, not a comment.
+        XCTAssertFalse(SectionLabel.isLegible(tone: .attention, on: .paper))
+        XCTAssertNotEqual(
+            SectionLabel.foreground(tone: .attention, surface: .paper), Palette.persimmon)
+    }
+
+    func testTheRefusalKeepsTheEmphasisInsteadOfDeletingIt() {
+        // Ink, not muted: falling back to muted would silently turn an asking label into an
+        // ordinary one — the bug would leave no trace on screen for anyone to notice.
+        XCTAssertEqual(SectionLabel.foreground(tone: .attention, surface: .paper), Palette.ink)
+        XCTAssertNotEqual(
+            SectionLabel.foreground(tone: .attention, surface: .paper),
+            SectionLabel.foreground(tone: .muted, surface: .paper))
+    }
+
+    func testNoToneAndGroundCombinationEverRendersPersimmonOffCard() {
+        for surface in Palette.Surface.allCases {
+            for tone in [SectionLabel.Tone.muted, .attention]
+            where SectionLabel.foreground(tone: tone, surface: surface) == Palette.persimmon {
+                XCTAssertEqual(surface, .card)
+            }
+        }
+    }
+
+    func testUppercaseIsTheRenderingAndIsIdempotent() {
+        // Casing moved into the component with the tracking; already-uppercased callers
+        // must render exactly as they did before the migration.
+        XCTAssertEqual(SectionLabel.display("Produce"), "PRODUCE")
+        XCTAssertEqual(SectionLabel.display("TOTAL"), "TOTAL")
+        XCTAssertEqual(
+            SectionLabel.display(SectionLabel.display("Completed (3)")), "COMPLETED (3)")
+    }
+
+    // MARK: UndoBar — absence is the disabled state, and the wording is one string (W6-P1)
+
+    func testNothingToUndoDrawsNothing() {
+        // Absent, never a disabled control: there is no colour for "undo you can't press".
+        XCTAssertNil(UndoBarSemantics.visiblePhrase(nil))
+        XCTAssertNil(UndoBarSemantics.visiblePhrase(""))
+        XCTAssertNil(UndoBarSemantics.visiblePhrase("   "))
+    }
+
+    func testAnOfferAlwaysNamesWhatComesBack() {
+        XCTAssertEqual(
+            UndoBarSemantics.visiblePhrase("  bread back on the list  "),
+            "bread back on the list")
+        XCTAssertEqual(
+            UndoBarSemantics.line("bread back on the list"),
+            "Undo · bread back on the list")
+    }
+
+    func testTheOfferIsNeverTheBareWord() {
+        // "Undo" alone would stand for two different restores; the separator never dangles.
+        let line = UndoBarSemantics.line("scan discarded")
+        XCTAssertNotEqual(line, UndoBarSemantics.actionWord)
+        XCTAssertFalse(line.hasSuffix(UndoBarSemantics.separator))
+    }
+
+    func testTheSpokenOfferMatchesTheWrittenOne() {
+        XCTAssertEqual(
+            UndoBarSemantics.accessibilityLabel("unicorn steaks back to ×1, checked"),
+            "Undo, unicorn steaks back to ×1, checked")
+    }
+
+    func testTheUndoDwellIsAContractNotAPerScreenNumber() {
+        // The bounds that make 8s defensible, tested instead of the literal: above the read
+        // + glance + reach budget (~7.5s), and below WCAG 2.2.1's 20s threshold, past which
+        // a timed offer would owe the user a control to extend it.
+        XCTAssertGreaterThan(Motion.undoDwell, .seconds(7))
+        XCTAssertLessThan(Motion.undoDwell, .seconds(20))
+    }
+
+    // MARK: Palette.Surface — the fill inversion, defined once
+
+    func testAnInsetFillNeverMatchesTheGroundItSitsOn() {
+        for surface in Palette.Surface.allCases {
+            XCTAssertNotEqual(surface.insetFill, surface.fill)
+        }
+        XCTAssertEqual(Palette.Surface.card.insetFill, Palette.paper)
+        XCTAssertEqual(Palette.Surface.paper.insetFill, Palette.card)
+    }
 }

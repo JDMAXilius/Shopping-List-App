@@ -57,10 +57,7 @@ public struct AisleHeader: View {
 
     private var expanded: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(title.uppercased())
-                .font(Typography.sectionLabel)
-                .tracking(Typography.labelTracking)
-                .foregroundStyle(Palette.muted.color)
+            SectionLabel(title)
             Spacer(minLength: 12)
             if let subtotal {
                 Text(approxPrefix + subtotal.display)
@@ -75,10 +72,7 @@ public struct AisleHeader: View {
             Image(systemName: "checkmark")
                 .font(.system(.caption, weight: .bold))
                 .foregroundStyle(Palette.confirmed.color)
-            Text(title.uppercased())
-                .font(Typography.sectionLabel)
-                .tracking(Typography.labelTracking)
-                .foregroundStyle(Palette.muted.color)
+            SectionLabel(title)
             Text("· done (\(doneCount)) ·")
                 .font(Typography.footnote)
                 .foregroundStyle(Palette.muted.color)

@@ -21,10 +21,7 @@ public struct TotalBar: View {
             doubleRule
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("TOTAL")
-                        .font(Typography.sectionLabel)
-                        .tracking(Typography.labelTracking)
-                        .foregroundStyle(Palette.muted.color)
+                    SectionLabel("TOTAL")
                     if let breakdown {
                         Text(breakdown)
                             .font(Typography.footnote)

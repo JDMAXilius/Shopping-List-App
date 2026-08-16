@@ -53,13 +53,16 @@ Bagged/
 │   └── DesignKit/                     # tokens + shared components · zero feature code
 │       ├── Sources/DesignKit/
 │       │   ├── Palette.swift          # paper, ink, persimmon, confirmed, aisle tints
+│       │   │                          #   + Surface: which ground a component sits on
 │       │   ├── Typography.swift       # system sans; prices = mono tabular
 │       │   ├── Motion.swift           # 150–250ms, spring, interruptible, Reduce Motion
+│       │   │                          #   + undoDwell: how long an undo offer stands
 │       │   ├── Haptics.swift          # event → pattern map
 │       │   ├── Sound.swift            # the two sounds, ambient session, silent switch
 │       │   ├── Glyphs.swift           # line-icon set: 22 categories + top items
 │       │   ├── Components/            # ItemRow · PriceLabel · AisleHeader · TotalBar
 │       │   │                          #   · InputBar · TabPill · EmptyState
+│       │   │                          #   · SectionLabel · UndoBar
 │       │   └── Resources/             # check.wav · complete.wav (generated, spec-tested)
 │       └── Tests/DesignKitTests/
 │           └── SnapshotTests          # ONE style · default + largest Dynamic Type

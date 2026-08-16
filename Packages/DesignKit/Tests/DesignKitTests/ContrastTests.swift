@@ -73,6 +73,29 @@ final class ContrastTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(ratio(disabled, Palette.card), 3.0)   // the disc's own edge
     }
 
+    // W6-P1: the rule above now has a component that resolves it, so assert the resolution
+    // rather than the raw pair. Whatever SectionLabel decides to draw, on either ground,
+    // must clear small-text 4.5:1 — that is what makes the refusal a floor and not a style.
+    func testEverySectionLabelColourClearsSmallTextOnItsOwnGround() {
+        for surface in Palette.Surface.allCases {
+            for tone in [SectionLabel.Tone.muted, .attention] {
+                let drawn = SectionLabel.foreground(tone: tone, surface: surface)
+                XCTAssertGreaterThanOrEqual(
+                    ratio(drawn, surface.fill), 4.5,
+                    "SectionLabel \(tone) on \(surface)")
+            }
+        }
+    }
+
+    // The undo pill's fill inverts against its ground, so its two type colours have to hold
+    // on the INVERTED fill — the pill on card is painted paper, and vice versa.
+    func testUndoPillTypeHoldsOnEitherInvertedFill() {
+        for surface in Palette.Surface.allCases {
+            XCTAssertGreaterThanOrEqual(ratio(Palette.ink, surface.insetFill), 4.5)
+            XCTAssertGreaterThanOrEqual(ratio(Palette.muted, surface.insetFill), 4.5)
+        }
+    }
+
     // Ink must survive on every aisle tint — glyph strokes and text sit on the tiles.
     func testInkOnEveryAisleTint() {
         for tint in Palette.aisleTints {

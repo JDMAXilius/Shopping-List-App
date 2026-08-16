@@ -12,7 +12,9 @@ public enum Typography {
     public static var body: Font { .system(.body) }
     public static var footnote: Font { .system(.footnote) }
 
-    /// Letterspaced small labels (aisle headers, `TOTAL`); apply `labelTracking` alongside.
+    /// Letterspaced small labels (aisle headers, `TOTAL`). **Use `SectionLabel`, not this** —
+    /// the font is only half the treatment, and composing the other half inline is what put
+    /// six copies of the persimmon-contrast rule in the app (W6-P1).
     public static var sectionLabel: Font { .system(.caption, design: .default, weight: .semibold) }
     public static let labelTracking: CGFloat = 1.2
 

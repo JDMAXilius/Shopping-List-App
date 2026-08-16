@@ -54,3 +54,34 @@ public enum Palette {
         tintProduce, tintDairy, tintBakery, tintFrozen, tintHousehold, tintPantry,
     ]
 }
+
+extension Palette {
+
+    /// Which of the two grounds a component has been placed on. NOT a theme and not an
+    /// appearance variant — there is still exactly one style (PRODUCT.md §2); this only
+    /// names where a component sits, because two rules depend on it: persimmon's contrast
+    /// floor (`SectionLabel.Tone.attention`) and the fill inversion (`UndoBar`). Naming it
+    /// once is what stops every screen guessing it again.
+    public enum Surface: Sendable, Hashable, CaseIterable {
+        case paper
+        case card
+
+        /// The ground itself.
+        public var fill: RGB {
+            switch self {
+            case .paper: return Palette.paper
+            case .card: return Palette.card
+            }
+        }
+
+        /// The fill an inset element wears so it reads AS an element on this ground:
+        /// paper inside a card, card on the paper background. Card-on-card is invisible,
+        /// which is exactly the per-screen guess this property replaces.
+        public var insetFill: RGB {
+            switch self {
+            case .paper: return Palette.card
+            case .card: return Palette.paper
+            }
+        }
+    }
+}

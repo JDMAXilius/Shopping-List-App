@@ -45,6 +45,11 @@ public enum Motion {
     public static let undoReturn = MotionToken(
         .spring(response: 0.22, dampingFraction: 0.85), reduced: nil)
 
+    /// How long an undo offer stands (a duration, not an animation — `UndoBar`'s default).
+    /// Budget: glance back from the aisle ~4s + read the phrase ~2s + reach and tap ~1.5s.
+    /// Under WCAG 2.2.1's 20s threshold, so it needs no timing control; over the 4s floor.
+    public static let undoDwell: Duration = .seconds(8)
+
     /// Total updates: digits roll ~200ms, no bounce. Reduced: instant.
     public static let totalRoll = MotionToken(
         .easeOut(duration: 0.20), reduced: nil)
