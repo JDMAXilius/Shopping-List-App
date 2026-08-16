@@ -13,6 +13,7 @@
 		059412DE26605EF9B9462053 /* testSectionLabel.ax5.png in Resources */ = {isa = PBXBuildFile; fileRef = 93F88B9A6A6AE08892DFF329 /* testSectionLabel.ax5.png */; };
 		0A4DF6C95A7261990B892A0F /* testPriceLabel.ax5.png in Resources */ = {isa = PBXBuildFile; fileRef = DDC14EC735FAB39F0A1C8E95 /* testPriceLabel.ax5.png */; };
 		0E05A6A7C6B4DE8DB7E4E09E /* DesignKit in Frameworks */ = {isa = PBXBuildFile; productRef = A01EDB2CE8303B339E2FBB67 /* DesignKit */; };
+		11D30849BCE2E6C9319CF722 /* testPaidTotalLabel.default.png in Resources */ = {isa = PBXBuildFile; fileRef = 957953A9CAF6D05E7E4F9EB0 /* testPaidTotalLabel.default.png */; };
 		155F2242088E5BC0BC3107FA /* ReceiptReviewScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2025F6D7ECB895E99B5C4C81 /* ReceiptReviewScreen.swift */; };
 		1B4466A23AD861EEEF0B2BD1 /* testEmptyState.ax5.png in Resources */ = {isa = PBXBuildFile; fileRef = F6115E8CA43719FCC51AA56E /* testEmptyState.ax5.png */; };
 		1D99BAE1D22EDC7D5FF5EE65 /* testPriceLabel.default.png in Resources */ = {isa = PBXBuildFile; fileRef = F5077265BAC04E0339A20D64 /* testPriceLabel.default.png */; };
@@ -39,6 +40,7 @@
 		6DD4AC0FBE32014F7C856A10 /* testUndoBar.ax5.png in Resources */ = {isa = PBXBuildFile; fileRef = 27C4BCC20F004E4F0F18E475 /* testUndoBar.ax5.png */; };
 		6E743EC98B2340878788A142 /* testUndoBar.default.png in Resources */ = {isa = PBXBuildFile; fileRef = 9A3546750F9EE63B30DF82CA /* testUndoBar.default.png */; };
 		7015488D89B153C387EF0766 /* testNotice.default.png in Resources */ = {isa = PBXBuildFile; fileRef = 4EAE68B4A0F751AED08A6D6E /* testNotice.default.png */; };
+		73140FB533033E9393236246 /* PricesTabUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69D08273F63F5A0C7898DFD4 /* PricesTabUITests.swift */; };
 		764D7DB0A53B0BA1DF294286 /* CaptureDerivation.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED76FF0314F4A087DAB67EBD /* CaptureDerivation.swift */; };
 		78EB33F001C8D4BE08A2B213 /* ItemDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AA8E9D67C2C76DE84915807 /* ItemDetailSheet.swift */; };
 		7A7064B2551B960D36A2CC31 /* ScanClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13776C5A3BC3883229CD417A /* ScanClient.swift */; };
@@ -60,7 +62,9 @@
 		C46F0F5AE97E029AEB0AD5BF /* testEmptyState.default.png in Resources */ = {isa = PBXBuildFile; fileRef = C0DDD52DB6C81AB6A3AD4899 /* testEmptyState.default.png */; };
 		CEBA69433DF6BE9EF62702CB /* PriceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9DD114B17309B2C0325DCCE /* PriceStore.swift */; };
 		D021EF6E84403A8BA28CC28D /* AisleOrderEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85D1B7BA879948DB38DDBF3 /* AisleOrderEditor.swift */; };
+		D1DF6402A10A04D5671B304C /* testPaidTotalLabel.ax5.png in Resources */ = {isa = PBXBuildFile; fileRef = B0DD6DCF20DFA5B65770C10D /* testPaidTotalLabel.ax5.png */; };
 		D4C9BDED09DE08B91ED1FB42 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9998E8E66C056B83E3F0C641 /* RootView.swift */; };
+		D691186BA3D63E6907269D67 /* testPriceLabelDisplaySize.default.png in Resources */ = {isa = PBXBuildFile; fileRef = 83CAD268D178C2BB0A82170E /* testPriceLabelDisplaySize.default.png */; };
 		D69C57F9A4E3D2924117A022 /* testItemRow.default.png in Resources */ = {isa = PBXBuildFile; fileRef = 8E93D56E48B9D858637B6192 /* testItemRow.default.png */; };
 		D903330C14991DD1C5EA989A /* testSectionLabel.default.png in Resources */ = {isa = PBXBuildFile; fileRef = 31AEFB08135C785FCD7CE0B1 /* testSectionLabel.default.png */; };
 		E11A873AB608208B4B0E93B6 /* MoneyText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AF5C6C9F00B168C3C16DAA5 /* MoneyText.swift */; };
@@ -69,6 +73,7 @@
 		E5F424407A18E6A4DD02E24F /* testTabPill.default.png in Resources */ = {isa = PBXBuildFile; fileRef = 6EF435A9B1F7747B250C8724 /* testTabPill.default.png */; };
 		E5FE9184C172062FC10BFDCF /* PriceDerivation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32FE13A839CDE7AD1183F10 /* PriceDerivation.swift */; };
 		EAE986E179FDB5253471B315 /* PricesScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ABC75666947BAABF11ABD1C /* PricesScreen.swift */; };
+		EE0D8B0498D91AC27F9E9A70 /* testPriceLabelDisplaySize.ax5.png in Resources */ = {isa = PBXBuildFile; fileRef = FC85DD967ACAC3072F19313D /* testPriceLabelDisplaySize.ax5.png */; };
 		F19D369CE22FAD9E6CDCEBAF /* CaptureShopPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3650BCF367A36AEA4F918876 /* CaptureShopPicker.swift */; };
 		F1FE9C6E8F4135EA9B2ED866 /* BaggedApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9496DAE4A6A8F94B61CD1BC /* BaggedApp.swift */; };
 		F38317924A6646AF4DE7DB23 /* CaptureSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D54E9B06FFD766D1D8A143E /* CaptureSession.swift */; };
@@ -122,6 +127,7 @@
 		621EC183F2D55EA819DDAE9E /* testAisleHeader.default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testAisleHeader.default.png; sourceTree = "<group>"; };
 		62897DEC0E9FD8CF69B17B6A /* Data */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Data; path = Packages/Data; sourceTree = SOURCE_ROOT; };
 		64C58CB42C97E0CFCC9CDB96 /* BaggedUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BaggedUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		69D08273F63F5A0C7898DFD4 /* PricesTabUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PricesTabUITests.swift; sourceTree = "<group>"; };
 		69E0BE851250C4C9D4F2E0C9 /* testItemRow.ax5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testItemRow.ax5.png; sourceTree = "<group>"; };
 		6DF551CA9917B1FDF717BEA4 /* VisionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionService.swift; sourceTree = "<group>"; };
 		6EF435A9B1F7747B250C8724 /* testTabPill.default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testTabPill.default.png; sourceTree = "<group>"; };
@@ -131,9 +137,11 @@
 		7EE7C0A5A5764C80E6D2DD94 /* testChip.default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testChip.default.png; sourceTree = "<group>"; };
 		80DDB6EA5DD394870861243D /* CaptureSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSessionTests.swift; sourceTree = "<group>"; };
 		826336EF0FFBFF4CB84F2202 /* FlowWalkthroughUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowWalkthroughUITests.swift; sourceTree = "<group>"; };
+		83CAD268D178C2BB0A82170E /* testPriceLabelDisplaySize.default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testPriceLabelDisplaySize.default.png; sourceTree = "<group>"; };
 		8AA8E9D67C2C76DE84915807 /* ItemDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailSheet.swift; sourceTree = "<group>"; };
 		8E93D56E48B9D858637B6192 /* testItemRow.default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testItemRow.default.png; sourceTree = "<group>"; };
 		93F88B9A6A6AE08892DFF329 /* testSectionLabel.ax5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testSectionLabel.ax5.png; sourceTree = "<group>"; };
+		957953A9CAF6D05E7E4F9EB0 /* testPaidTotalLabel.default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testPaidTotalLabel.default.png; sourceTree = "<group>"; };
 		9998E8E66C056B83E3F0C641 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		9A3546750F9EE63B30DF82CA /* testUndoBar.default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testUndoBar.default.png; sourceTree = "<group>"; };
 		9FBFC3AED40D99DD3CEF8558 /* Bagged.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Bagged.entitlements; sourceTree = "<group>"; };
@@ -142,6 +150,7 @@
 		AF0C36F7740001F91E414FA0 /* testTabPill.ax5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testTabPill.ax5.png; sourceTree = "<group>"; };
 		AFBB24380EF71E04FB7D1191 /* BaggedTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BaggedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B0B57345BC42CCEEBEDD3F18 /* ComponentSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentSnapshotTests.swift; sourceTree = "<group>"; };
+		B0DD6DCF20DFA5B65770C10D /* testPaidTotalLabel.ax5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testPaidTotalLabel.ax5.png; sourceTree = "<group>"; };
 		B599F11C8AE5F98529564375 /* FakeScanBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeScanBackend.swift; sourceTree = "<group>"; };
 		B72D41E78E2AFD648E6A4575 /* Environment+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Environment+.swift"; sourceTree = "<group>"; };
 		B9BEA112301E70B62865AC0E /* testNotice.ax5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testNotice.ax5.png; sourceTree = "<group>"; };
@@ -166,6 +175,7 @@
 		ED76FF0314F4A087DAB67EBD /* CaptureDerivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureDerivation.swift; sourceTree = "<group>"; };
 		F5077265BAC04E0339A20D64 /* testPriceLabel.default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testPriceLabel.default.png; sourceTree = "<group>"; };
 		F6115E8CA43719FCC51AA56E /* testEmptyState.ax5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testEmptyState.ax5.png; sourceTree = "<group>"; };
+		FC85DD967ACAC3072F19313D /* testPriceLabelDisplaySize.ax5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testPriceLabelDisplaySize.ax5.png; sourceTree = "<group>"; };
 		FF1FF9C6688494D7BACF7A19 /* ShopSwitcherSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopSwitcherSheet.swift; sourceTree = "<group>"; };
 		FF7501F64A551A8209002AC6 /* DesignKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = DesignKit; path = Packages/DesignKit; sourceTree = SOURCE_ROOT; };
 		FFBBE8446FF89F0710538D98 /* testTotalBar.ax5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testTotalBar.ax5.png; sourceTree = "<group>"; };
@@ -218,6 +228,7 @@
 			children = (
 				457278E0EEF329BEDBDCD9F1 /* CaptureOnlyUITests.swift */,
 				826336EF0FFBFF4CB84F2202 /* FlowWalkthroughUITests.swift */,
+				69D08273F63F5A0C7898DFD4 /* PricesTabUITests.swift */,
 			);
 			path = UITests;
 			sourceTree = "<group>";
@@ -342,8 +353,12 @@
 				8E93D56E48B9D858637B6192 /* testItemRow.default.png */,
 				B9BEA112301E70B62865AC0E /* testNotice.ax5.png */,
 				4EAE68B4A0F751AED08A6D6E /* testNotice.default.png */,
+				B0DD6DCF20DFA5B65770C10D /* testPaidTotalLabel.ax5.png */,
+				957953A9CAF6D05E7E4F9EB0 /* testPaidTotalLabel.default.png */,
 				DDC14EC735FAB39F0A1C8E95 /* testPriceLabel.ax5.png */,
 				F5077265BAC04E0339A20D64 /* testPriceLabel.default.png */,
+				FC85DD967ACAC3072F19313D /* testPriceLabelDisplaySize.ax5.png */,
+				83CAD268D178C2BB0A82170E /* testPriceLabelDisplaySize.default.png */,
 				93F88B9A6A6AE08892DFF329 /* testSectionLabel.ax5.png */,
 				31AEFB08135C785FCD7CE0B1 /* testSectionLabel.default.png */,
 				AF0C36F7740001F91E414FA0 /* testTabPill.ax5.png */,
@@ -501,8 +516,12 @@
 				D69C57F9A4E3D2924117A022 /* testItemRow.default.png in Resources */,
 				F603CA5BD306BC3158B153E3 /* testNotice.ax5.png in Resources */,
 				7015488D89B153C387EF0766 /* testNotice.default.png in Resources */,
+				D1DF6402A10A04D5671B304C /* testPaidTotalLabel.ax5.png in Resources */,
+				11D30849BCE2E6C9319CF722 /* testPaidTotalLabel.default.png in Resources */,
 				0A4DF6C95A7261990B892A0F /* testPriceLabel.ax5.png in Resources */,
 				1D99BAE1D22EDC7D5FF5EE65 /* testPriceLabel.default.png in Resources */,
+				EE0D8B0498D91AC27F9E9A70 /* testPriceLabelDisplaySize.ax5.png in Resources */,
+				D691186BA3D63E6907269D67 /* testPriceLabelDisplaySize.default.png in Resources */,
 				059412DE26605EF9B9462053 /* testSectionLabel.ax5.png in Resources */,
 				D903330C14991DD1C5EA989A /* testSectionLabel.default.png in Resources */,
 				AF1A3CD662B708A73A6D4CFD /* testTabPill.ax5.png in Resources */,
@@ -575,6 +594,7 @@
 			files = (
 				6CF2CA8A3FE9D51A17306CCD /* CaptureOnlyUITests.swift in Sources */,
 				888AC9E68B33E154F8EC00AA /* FlowWalkthroughUITests.swift in Sources */,
+				73140FB533033E9393236246 /* PricesTabUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
