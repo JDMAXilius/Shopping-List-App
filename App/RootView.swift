@@ -3,29 +3,45 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(\.listStore) private var listStore
+    @Environment(\.repository) private var repository
+    @Environment(\.kitchenID) private var kitchenID
+    @Environment(\.catalog) private var catalog
+    @Environment(\.scanBackend) private var scanBackend
     @Environment(\.scenePhase) private var scenePhase
     // DesignKit's Tab, not SwiftUI's iOS 18 TabView `Tab`.
     @State private var tab: DesignKit.Tab = .list
     @State private var sheet: Sheet?
     @State private var listPath = NavigationPath()
+    /// Lives as long as the capture sheet does (ARCHITECTURE §3), and is built before the sheet
+    /// is asked for — a session minted in a body pass would lose a half-checked review.
+    @State private var capture: CaptureSession?
 
     var body: some View {
         ZStack(alignment: .bottom) {
             Palette.paper.color.ignoresSafeArea()
             content
                 .safeAreaPadding(.bottom, 72)
-            // Nothing to capture into without a database: a blank sheet over the honest
-            // failure message would be the second lie.
-            TabPill(selection: $tab, onAdd: { if listStore != nil { sheet = .capture } })
+            TabPill(selection: $tab, onAdd: { presentCapture() })
                 .padding(.bottom, 8)
         }
-        .sheet(item: $sheet) { presented in
+        // Released after the dismissal, not during it: the flow keeps its state to the last frame.
+        .sheet(item: $sheet, onDismiss: { capture = nil }) { presented in
             sheetContent(presented)
         }
         .onChange(of: scenePhase) { _, phase in
             // The widget and App Intents write to the same file while we're backgrounded.
             if phase == .active { listStore?.refresh() }
         }
+    }
+
+    /// Nothing to capture into without a database, so the `+` stays quiet rather than opening a
+    /// sheet that can only apologise.
+    private func presentCapture() {
+        guard let listStore, let repository, let kitchenID, let catalog, let scanBackend
+        else { return }
+        capture = CaptureSession(repository: repository, kitchenID: kitchenID, store: listStore,
+                                 catalog: catalog, backend: scanBackend)
+        sheet = .capture
     }
 
     @ViewBuilder private var content: some View {
@@ -78,11 +94,26 @@ struct RootView: View {
             case .shopSwitcher, .firstShop:
                 ShopSwitcherSheet(store: listStore)
             case .capture:
-                // Wave 6 owns the real chooser; saying so beats a blank sheet or a fake camera.
-                EmptyState(glyph: .other, message: "Receipt capture arrives with the camera work.")
+                if let capture {
+                    CaptureChooserSheet(session: capture)
+                } else {
+                    EmptyState(
+                        glyph: .other,
+                        message: "Capture couldn't start on this device. Reopening the app usually fixes it.")
+                        .presentationDetents([.medium])
+                }
+            // Neither screen exists yet (wave 9), and a sheet the user can only escape by
+            // guessing is worse than one that says so.
+            case .invite:
+                EmptyState(
+                    glyph: .household,
+                    message: "Sharing your kitchen arrives with accounts and invites.")
                     .presentationDetents([.medium])
-            case .invite, .paywall:
-                EmptyView()
+            case .paywall:
+                EmptyState(
+                    glyph: .other,
+                    message: "Bagged Plus isn't on sale yet. Everything you already have keeps working.")
+                    .presentationDetents([.medium])
             }
         }
     }
