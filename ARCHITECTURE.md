@@ -116,8 +116,11 @@ kitchen   (id uuid pk, name text, created_at timestamptz)
 member    (kitchen_id fk, user_id uuid, role text check (role in ('owner','guest')),
            joined_at, pk (kitchen_id, user_id))
 invite    (kitchen_id fk, token text unique, created_at, revoked_at timestamptz)
-op        (id uuid pk, kitchen_id fk, device_id uuid, clock bigint, type text,
-           payload jsonb, created_at)                      -- THE sync table
+op        (id uuid pk, seq bigserial, kitchen_id fk, device_id uuid, clock bigint,
+           type text, payload jsonb, created_at)           -- THE sync table
+           -- seq is the pull cursor (created_at commits out of order; a timestamp
+           -- cursor loses ops). INSERT ... ON CONFLICT (id) DO NOTHING: push is
+           -- idempotent by contract — crash-before-mark re-delivery is the normal case
 entitlement (user_id pk, is_plus bool, scans_used int default 0, updated_at)
 ```
 
