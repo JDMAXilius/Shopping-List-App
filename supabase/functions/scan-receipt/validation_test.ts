@@ -177,3 +177,47 @@ Deno.test("validateBody: the request boundary still refuses what it always did",
   assertEquals(validateBody("nope"), null);
   assertEquals(validateBody(null), null);
 });
+
+// The number the client cannot hold. `Number.isInteger(1e300)` is true, so this used to leave
+// here as a 200, fail the whole strict decode on the device, and burn a scan with no refund
+// path — the exact failure this file exists to stop, one field type further out.
+Deno.test("validateLine: an amount no Int can hold is refused before it is billed", () => {
+  for (const amount of [1e300, -1e300, Number.MAX_SAFE_INTEGER, 100_000_001, -100_000_001]) {
+    assertEquals(validateLine({ ...GOOD, amount_minor: amount }), null);
+  }
+  // The bound itself is a legal, if absurd, line: $1,000,000.00.
+  assertNotEquals(validateLine({ ...GOOD, amount_minor: 100_000_000 }), null);
+  assertNotEquals(validateLine({ ...GOOD, amount_minor: -100_000_000 }), null);
+});
+
+// A coupon stays legal — it is on the receipt, and the review screen has to reconcile to the
+// printed total. Whether it is a PRICE is the client's ruling.
+Deno.test("validateLine: a negative line is still a line", () => {
+  assertNotEquals(validateLine({ ...GOOD, raw_text: "MFR COUPON", amount_minor: -100 }), null);
+  assertNotEquals(validateLine({ ...GOOD, amount_minor: 0 }), null);
+});
+
+// quantity divides the line amount on the device. Zero is a division that produces nothing
+// useful, and 1e9 turns $4.49 into a per-unit price of zero.
+Deno.test("validateLine: quantity must be a real count", () => {
+  for (const quantity of [0, -1, 10_001, Infinity, NaN]) {
+    assertEquals(validateLine({ ...GOOD, quantity }), null);
+  }
+  assertNotEquals(validateLine({ ...GOOD, quantity: 0.75 }), null);
+});
+
+Deno.test("validateOptionals: an unholdable total fails the receipt like any bad line", () => {
+  assertEquals(validateOptionals({ total_minor: 1e300 }), null);
+  assertEquals(validateOptionals({ total_minor: 100_000_001 }), null);
+  assertNotEquals(validateOptionals({ total_minor: 100_000_000 }), null);
+});
+
+// Money's symbol table is keyed uppercase, so "eur" rendered as "eur 40.00" on the device and
+// "Dollars" rendered as "Dollars 40.00". A currency is three letters or it is not a currency.
+Deno.test("validateEnvelope: currency is an ISO code, upper-cased here", () => {
+  assertEquals(validateEnvelope({ lines: [GOOD], currency: "eur" })?.currency, "EUR");
+  assertEquals(validateEnvelope({ lines: [GOOD], currency: " usd " })?.currency, "USD");
+  for (const currency of ["US$", "€", "Dollars", "US", "USDD", "  x  ", "12", "u$d"]) {
+    assertEquals(validateEnvelope({ lines: [GOOD], currency }), null);
+  }
+});

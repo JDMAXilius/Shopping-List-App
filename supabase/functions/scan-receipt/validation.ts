@@ -8,6 +8,15 @@
 
 export const MEDIA_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
+// $1,000,000 in minor units. `Number.isInteger(1e300)` is true, and the client decodes
+// amount_minor into a Swift Int — an out-of-range number returns 200, fails the WHOLE decode
+// on the device, and burns a free scan that nothing can refund. The bound the client needs
+// has to be stated here, because here is the only place that can enforce it.
+const AMOUNT_LIMIT = 100_000_000;
+const QUANTITY_LIMIT = 10_000;
+
+const inRange = (v: number, limit: number) => Number.isInteger(v) && Math.abs(v) <= limit;
+
 export const RECEIPT_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -21,16 +30,16 @@ export const RECEIPT_SCHEMA = {
         required: ["raw_text", "amount_minor", "quantity", "confidence"],
         properties: {
           raw_text: { type: "string" },
-          amount_minor: { type: "integer" },
-          quantity: { type: "number" },
+          amount_minor: { type: "integer", minimum: -100000000, maximum: 100000000 },
+          quantity: { type: "number", exclusiveMinimum: 0, maximum: 10000 },
           confidence: { enum: ["sure", "not_sure", "no_match"] },
           match_hint: { type: "string" },
         },
       },
     },
     shop_name: { type: "string" },
-    total_minor: { type: "integer" },
-    currency: { type: "string" },
+    total_minor: { type: "integer", minimum: -100000000, maximum: 100000000 },
+    currency: { type: "string", pattern: "^[A-Z]{3}$" },
     purchased_at: { type: "string" },
   },
 } as const;
@@ -79,8 +88,13 @@ export function validateLine(value: unknown): ReceiptLine | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
   const l = value as Record<string, unknown>;
   if (typeof l.raw_text !== "string" || l.raw_text.trim().length === 0) return null;
-  if (typeof l.amount_minor !== "number" || !Number.isInteger(l.amount_minor)) return null;
-  if (typeof l.quantity !== "number" || !Number.isFinite(l.quantity)) return null;
+  if (typeof l.amount_minor !== "number" || !inRange(l.amount_minor, AMOUNT_LIMIT)) return null;
+  if (
+    typeof l.quantity !== "number" || !Number.isFinite(l.quantity) ||
+    l.quantity <= 0 || l.quantity > QUANTITY_LIMIT
+  ) {
+    return null;
+  }
   if (typeof l.confidence !== "string" || !CONFIDENCE_VALUES.has(l.confidence)) return null;
   // null is accepted as absent — both mean "no hint", and that is how the client decodes
   // it. Any other type is a malformed line.
@@ -132,15 +146,22 @@ export interface ReceiptEnvelope {
 // Deliberately NOT extended past emptiness: lines present with `total_minor` null (a receipt
 // whose grand total is not printed, or not parsed, is still a receipt — the review screen
 // shows what was read), and lines whose amounts sum to zero (a coupon-heavy trip is real,
-// and per-line negatives are valid by validateLine). Those are odd receipts, not unread ones.
+// and per-line negatives are valid by validateLine — a coupon is ON the receipt, and hiding it
+// here would stop the review screen from reconciling to the printed total. Whether a negative
+// line is a PRICE is the client's ruling, not ours; it is not).
 export function validateEnvelope(parsed: unknown): ReceiptEnvelope | null {
   // JSON.parse returns null, a number or an array just as happily as an object, and reaching
   // for .lines on null throws — which would have been an unrefunded 500.
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
   const receipt = parsed as Record<string, unknown>;
   if (!Array.isArray(receipt.lines) || receipt.lines.length === 0) return null;
-  if (typeof receipt.currency !== "string" || receipt.currency.trim().length === 0) return null;
-  return { receipt, lines: receipt.lines, currency: receipt.currency };
+  // A three-letter ISO code, upper-cased here. Any non-empty string used to pass, and the
+  // client puts this straight into Money: "eur" renders as "eur 40.00" because the symbol
+  // table is keyed uppercase, and "Dollars" renders as "Dollars 40.00".
+  if (typeof receipt.currency !== "string") return null;
+  const currency = receipt.currency.trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(currency)) return null;
+  return { receipt, lines: receipt.lines, currency };
 }
 
 export interface ReceiptOptionals {
@@ -159,7 +180,7 @@ export function validateOptionals(receipt: Record<string, unknown>): ReceiptOpti
   if (!nullableString(receipt.purchased_at)) return null;
   if (
     receipt.total_minor !== undefined && receipt.total_minor !== null &&
-    !Number.isInteger(receipt.total_minor)
+    !(typeof receipt.total_minor === "number" && inRange(receipt.total_minor, AMOUNT_LIMIT))
   ) {
     return null;
   }
