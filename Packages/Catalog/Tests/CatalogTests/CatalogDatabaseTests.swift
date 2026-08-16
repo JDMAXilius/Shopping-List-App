@@ -52,6 +52,59 @@ final class CatalogDatabaseTests: XCTestCase {
         }
     }
 
+    // Ids and names read straight out of Resources/catalog.db, not remembered.
+    func testItemByIDCarriesNameCategoryAndUnit() throws {
+        let db = try CatalogDatabase.bundled()
+        XCTAssertEqual(
+            db.item(1),
+            CatalogItem(id: 1, canonicalName: "milk", categoryID: "dairy", emoji: "🥛",
+                        defaultUnit: "L"))
+        XCTAssertEqual(
+            db.item(150),
+            CatalogItem(id: 150, canonicalName: "spinach", categoryID: "produce", emoji: "🥬",
+                        defaultUnit: "bag"))
+        XCTAssertEqual(
+            db.item(461),
+            CatalogItem(id: 461, canonicalName: "dog treats", categoryID: "pet", emoji: "🦴",
+                        defaultUnit: "bag"))
+        XCTAssertEqual(db.item(45)?.canonicalName, "eggs")
+        XCTAssertEqual(db.item(49)?.canonicalName, "butter")
+        XCTAssertEqual(db.item(122)?.canonicalName, "bananas")
+        XCTAssertEqual(db.item(369)?.canonicalName, "yorkshire puddings")
+    }
+
+    func testItemForUnknownIDIsNil() throws {
+        let db = try CatalogDatabase.bundled()
+        XCTAssertNil(db.item(0))
+        XCTAssertNil(db.item(-1))
+        XCTAssertNil(db.item(462))
+        XCTAssertNil(db.item(999_999))
+        XCTAssertNil(db.item(.max))
+    }
+
+    /// The id an item is looked up by is the id it comes back with — the half of the
+    /// `ItemID.catalog(n).catalogID == n` round trip that lives on this side of the bridge.
+    func testEveryItemIsNamedAndAnsweredUnderItsOwnID() throws {
+        let db = try CatalogDatabase.bundled()
+        for itemID in Int64(1)...461 {
+            guard let item = db.item(itemID) else { return XCTFail("no item \(itemID)") }
+            XCTAssertEqual(item.id, itemID)
+            XCTAssertFalse(item.canonicalName.isEmpty, "item \(itemID) has no name")
+        }
+    }
+
+    func testItemAgreesWithCategoryAndResolvedName() throws {
+        let db = try CatalogDatabase.bundled()
+        for query in ["milk", "bananas", "coffee", "toilet paper", "eggs"] {
+            guard let hit = try resolve(db: db, query: query, limit: 1).first else {
+                return XCTFail("no match for \(query)")
+            }
+            XCTAssertEqual(db.item(hit.id)?.canonicalName, hit.canonicalName)
+            XCTAssertEqual(db.item(hit.id)?.categoryID, hit.categoryID)
+            XCTAssertEqual(db.item(hit.id)?.defaultUnit, hit.defaultUnit)
+        }
+    }
+
     func testResolvedMatchAgreesWithCategoryLookup() throws {
         let db = try CatalogDatabase.bundled()
         for query in ["milk", "bananas", "coffee", "toilet paper", "eggs"] {

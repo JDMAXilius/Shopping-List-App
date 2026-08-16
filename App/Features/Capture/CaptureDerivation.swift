@@ -29,6 +29,16 @@ struct CaptureMatch: Hashable, Sendable {
     let estimate: Money?
 }
 
+extension CaptureMatch {
+    /// A remembered alias carries an id and no name, so the catalog names it; `fallback` — the
+    /// list's name for it, else the till text — is left for a user-created item, which has none.
+    @MainActor
+    init(remembered itemID: ItemID, fallback: String, catalog: ListCatalog) {
+        self.init(itemID: itemID, name: catalog.item(for: itemID)?.name ?? fallback,
+                  estimate: catalog.estimate(for: itemID))
+    }
+}
+
 struct CaptureLine: Identifiable, Hashable, Sendable {
     let id: UUID
     let rawText: String

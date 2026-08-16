@@ -100,6 +100,23 @@ public struct CatalogCategory: Sendable, Equatable {
     }
 }
 
+public struct CatalogItem: Sendable, Equatable {
+    public let id: Int64
+    public let canonicalName: String
+    public let categoryID: String
+    public let emoji: String?
+    public let defaultUnit: String?
+
+    public init(id: Int64, canonicalName: String, categoryID: String, emoji: String?,
+                defaultUnit: String?) {
+        self.id = id
+        self.canonicalName = canonicalName
+        self.categoryID = categoryID
+        self.emoji = emoji
+        self.defaultUnit = defaultUnit
+    }
+}
+
 extension CatalogDatabase {
     /// Every category, in default aisle order. Read once per connection, then cached —
     /// callers group and sort by these on every render.
@@ -117,10 +134,23 @@ extension CatalogDatabase {
         return loaded
     }
 
+    /// One item by id, for callers holding an id and no text. Neither cached nor preloaded:
+    /// `id` is the INTEGER PRIMARY KEY, so this is a rowid seek, not 461 rows held for a few.
+    public func item(_ id: Int64) -> CatalogItem? {
+        let sql = """
+            SELECT id, canonical_name, category_id, emoji, default_unit FROM item WHERE id = ?
+            """
+        guard let row = ((try? rows(sql, bind: [.integer(id)])) ?? []).first,
+            let rowID = row[0].integerValue, let name = row[1].textValue,
+            let categoryID = row[2].textValue
+        else { return nil }
+        return CatalogItem(id: rowID, canonicalName: name, categoryID: categoryID,
+                           emoji: row[3].textValue, defaultUnit: row[4].textValue)
+    }
+
     /// The category id of a catalog item; nil when no such item exists.
     public func category(forItem itemID: Int64) -> String? {
-        let sql = "SELECT category_id FROM item WHERE id = ?"
-        return ((try? rows(sql, bind: [.integer(itemID)])) ?? []).first?.first?.textValue
+        item(itemID)?.categoryID
     }
 }
 

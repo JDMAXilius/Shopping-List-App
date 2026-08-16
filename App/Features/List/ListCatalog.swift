@@ -24,6 +24,7 @@ final class ListCatalog {
     private var categoryOrder: [String: Int] = [:]
     private var categoryCache: [Int64: CategoryGlyph] = [:]
     private var estimateCache: [Int64: Money?] = [:]
+    private var itemCache: [Int64: Match?] = [:]
 
     init(database: CatalogDatabase? = try? CatalogDatabase.bundled(), regionKey: String = "us-national") {
         self.database = database
@@ -55,6 +56,21 @@ final class ListCatalog {
             return Match(itemID: .catalog(hit.id), name: hit.canonicalName,
                          unit: hit.defaultUnit, category: glyph)
         }
+    }
+
+    /// The catalog item behind an id we hold with no text — a remembered alias, a stored row.
+    /// nil for a user-created item, which no catalog row can name.
+    func item(for itemID: ItemID) -> Match? {
+        guard let database, let catalogID = itemID.catalogID else { return nil }
+        if let cached = itemCache[catalogID] { return cached }
+        let match = database.item(catalogID).map { item in
+            let glyph = CategoryGlyph(rawValue: item.categoryID) ?? .other
+            categoryCache[item.id] = glyph
+            return Match(itemID: .catalog(item.id), name: item.canonicalName,
+                         unit: item.defaultUnit, category: glyph)
+        }
+        itemCache[catalogID] = .some(match)
+        return match
     }
 
     // The seeded estimate every added item lands with — nil when the item has no seed.
