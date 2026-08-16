@@ -160,6 +160,46 @@ final class MergeTests: XCTestCase {
         XCTAssertEqual(Merge.normalized("Bread/Wht"), "bread/wht")
     }
 
+    // The name of an ITEM and the name of a LIST ROW are two facts, and neither is the other.
+    func testNamingAnItemIsNotRenamingTheRowThatHoldsIt() {
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 0)
+        let itemID = ItemID()
+        let row = ListItem(itemID: itemID, name: "TJ ORG BABY SPNC",
+                           createdAt: Date(timeIntervalSince1970: 10))
+        let state = Merge.apply([a.op(.add(row)),
+                                 a.op(.name(itemID, "  Organic  baby spinach ")),
+                                 a.op(.edit(row.listItemID, [.name("Spinach")]))], to: ListState())
+
+        XCTAssertEqual(state.items.map(\.name), ["Spinach"], "the row keeps its own name")
+        XCTAssertEqual(state.itemName(for: itemID), "Organic baby spinach",
+                       "the item keeps the kitchen's name for it, whitespace-cleaned")
+        XCTAssertEqual(state.itemNames, [itemID: "Organic baby spinach"])
+    }
+
+    func testABlankNameNeverErasesTheOneTheKitchenHas() {
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 0)
+        let itemID = ItemID()
+        let state = Merge.apply([a.op(.name(itemID, "Kombucha")),
+                                 a.op(.name(itemID, "   ")),
+                                 a.op(.name(ItemID(), ""))], to: ListState())
+
+        XCTAssertEqual(state.itemName(for: itemID), "Kombucha",
+                       "a later blank is dropped, not stored — it would name nothing")
+        XCTAssertEqual(state.itemNames.count, 1, "and a blank for a fresh id writes no entry")
+    }
+
+    func testNamesAreNotSharedBetweenItems() {
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 0)
+        let kombucha = ItemID()
+        let kefir = ItemID()
+        let state = Merge.apply([a.op(.name(kombucha, "Kombucha")),
+                                 a.op(.name(kefir, "Kefir"))], to: ListState())
+
+        XCTAssertEqual(state.itemName(for: kombucha), "Kombucha")
+        XCTAssertEqual(state.itemName(for: kefir), "Kefir")
+        XCTAssertNil(state.itemName(for: ItemID()), "an item nobody named has no name, not a guess")
+    }
+
     func testOpWireFormatRoundTrips() throws {
         var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 0)
         let item = ListItem(name: "Oat milk", quantity: 2, unit: "L",
@@ -170,6 +210,7 @@ final class MergeTests: XCTestCase {
         let ops = [a.op(.add(item)),
                    a.op(.edit(item.listItemID, [.name("Oat Milk"), .unit(nil), .checked(true)])),
                    a.op(.price(observation)),
+                   a.op(.name(ItemID(), "Trader Joe's kombucha")),
                    a.op(.delete(item.listItemID))]
 
         let encoder = JSONEncoder()

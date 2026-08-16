@@ -6,6 +6,9 @@ public enum DataError: Error {
     case malformedOp
     case malformedRow
     case unknownScan
+    /// A price in a currency this kitchen does not shop in; both codes travel so the screen
+    /// that reports it can name them.
+    case currencyMismatch(kitchen: String, written: String)
 }
 
 func requireUUID(_ string: String) throws -> UUID {

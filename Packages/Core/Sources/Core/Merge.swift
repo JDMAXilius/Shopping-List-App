@@ -10,6 +10,7 @@ public struct ListState: Equatable, Sendable {
     var shopRecords: [ShopID: Stamped<Shop>] = [:]
     var aisleRecords: [ShopID: Stamped<AisleOrder>] = [:]
     var aliasRecords: [String: Stamped<ItemID?>] = [:]
+    var nameRecords: [ItemID: Stamped<String>] = [:]
 
     public init() {}
 
@@ -120,6 +121,16 @@ public struct ListState: Equatable, Sendable {
         aliasRecords[Merge.aliasKey(rawText)].map { $0.value }
     }
 
+    /// What this kitchen calls each item it has named. Items the catalog names are absent —
+    /// nobody had to teach those.
+    public var itemNames: [ItemID: String] {
+        nameRecords.mapValues { $0.value }
+    }
+
+    public func itemName(for itemID: ItemID) -> String? {
+        nameRecords[itemID]?.value
+    }
+
     private static func keep(_ slot: FieldSlot, in slots: inout [ListItemField: FieldSlot]) {
         if let existing = slots[slot.write.field], slot.stamp <= existing.stamp { return }
         slots[slot.write.field] = slot
@@ -215,6 +226,13 @@ public enum Merge {
             guard !key.isEmpty else { return }
             if let existing = state.aliasRecords[key], stamp <= existing.stamp { return }
             state.aliasRecords[key] = Stamped(value: itemID, stamp: stamp)
+        case .name(let itemID, let name):
+            // LWW on the string: two people naming the same barcode is a race, not an error.
+            let resolved = cleaned(name)
+            // A blank names nothing, and storing it would erase the name the kitchen has.
+            guard !resolved.isEmpty else { return }
+            if let existing = state.nameRecords[itemID], stamp <= existing.stamp { return }
+            state.nameRecords[itemID] = Stamped(value: resolved, stamp: stamp)
         }
     }
 

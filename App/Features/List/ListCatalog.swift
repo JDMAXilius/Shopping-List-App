@@ -19,6 +19,8 @@ final class ListCatalog {
 
     private let database: CatalogDatabase?
     private let regionKey: String
+    /// The kitchen's code — the one currency its prices and totals are in.
+    private let currencyCode: String
     private let multiplier: Double
     private var categoryNames: [String: String] = [:]
     private var categoryOrder: [String: Int] = [:]
@@ -26,9 +28,13 @@ final class ListCatalog {
     private var estimateCache: [Int64: Money?] = [:]
     private var itemCache: [Int64: Match?] = [:]
 
-    init(database: CatalogDatabase? = try? CatalogDatabase.bundled(), regionKey: String = "us-national") {
+    /// `currencyCode` is the KITCHEN's, and nil means "whatever this region's seeds are priced
+    /// in" — the default region and the default currency must agree or there are no estimates.
+    init(database: CatalogDatabase? = try? CatalogDatabase.bundled(),
+         regionKey: String = "us-national", currencyCode: String? = nil) {
         self.database = database
         self.regionKey = regionKey
+        self.currencyCode = currencyCode ?? ListCatalog.seedCurrency(regionKey)
         guard let database else {
             multiplier = 1
             return
@@ -67,6 +73,14 @@ final class ListCatalog {
         return first.uppercased() + name.dropFirst()
     }
 
+    /// THE name order, in one place: the catalog's name → the name this kitchen taught → the
+    /// list row's name → the raw text. Every caller asks here; a fourth that re-derives it will
+    /// get it wrong.
+    func displayName(for itemID: ItemID, kitchenNames: [ItemID: String], listName: String?,
+                     fallback: String) -> String {
+        item(for: itemID)?.name ?? kitchenNames[itemID] ?? listName ?? fallback
+    }
+
     /// The catalog item behind an id we hold with no text — a remembered alias, a stored row.
     /// nil for a user-created item, which no catalog row can name.
     func item(for itemID: ItemID) -> Match? {
@@ -88,7 +102,7 @@ final class ListCatalog {
         if let cached = estimateCache[catalogID] { return cached }
         let amount = (try? PriceEstimate.estimate(
             db: database, itemID: catalogID, regionKey: regionKey)).flatMap { $0 }
-        let result = amount.map { money($0) }
+        let result = amount.flatMap { money($0) }
         estimateCache[catalogID] = .some(result)
         return result
     }
@@ -110,7 +124,23 @@ final class ListCatalog {
         categoryOrder[category.rawValue] ?? 999
     }
 
-    private func money(_ amount: Double) -> Money {
-        Money(minorUnits: Int((amount * 100).rounded()))
+    /// nil when the seeds are priced in another currency than the kitchen shops in: `—` beats
+    /// a number that would claim a conversion nobody did.
+    private func money(_ amount: Double) -> Money? {
+        guard ListCatalog.seedCurrency(regionKey) == currencyCode else { return nil }
+        var scale = 1.0
+        for _ in 0 ..< Money.minorUnitExponent(for: currencyCode) { scale *= 10 }
+        return Money(minorUnits: Int((amount * scale).rounded()), currencyCode: currencyCode)
+    }
+
+    // The money each region's seeds are already priced in — the multipliers are regional, not
+    // exchange rates, so a us-national seed is dollars and nothing else.
+    private static func seedCurrency(_ regionKey: String) -> String {
+        switch regionKey {
+        case "uk": return "GBP"
+        case "ca": return "CAD"
+        case "au": return "AUD"
+        default: return "USD"
+        }
     }
 }

@@ -53,7 +53,13 @@ final class CaptureSession {
     /// Chosen at review: at the till the shutter fires before anyone knows the shop.
     var shopID: ShopID?
 
-    private(set) var currencyCode = "USD"
+    /// The KITCHEN's currency, never the last receipt's: a kitchen shops in one, and every
+    /// price typed or scanned here is in it.
+    private(set) var currencyCode: String
+    /// What this receipt printed, when that is not what the kitchen shops in — the one case
+    /// where two currencies could reach one total, so it stops the commit instead.
+    private(set) var currencyMismatch: String?
+    private var printedCurrency: String?
     private var purchasedAt: Date?
     private var printedTotalMinor: Int?
 
@@ -64,6 +70,10 @@ final class CaptureSession {
         self.store = store
         self.catalog = catalog
         self.backend = backend
+        // The kitchen is the ONLY source of a currency here — it took the device's locale when
+        // it was created. With no kitchen row there is no claim to make, so USD stands.
+        currencyCode = ((try? repository.kitchens()) ?? [])
+            .first { $0.id == kitchenID }?.currencyCode ?? "USD"
         shopID = store.activeShopID
         resume()
     }
@@ -181,22 +191,26 @@ final class CaptureSession {
     // MARK: - The parsed receipt
 
     private func build(_ receipt: ScanReceipt) {
-        currencyCode = receipt.currency
+        printedCurrency = receipt.currency
+        currencyMismatch = receipt.currency == currencyCode ? nil : receipt.currency
         printedTotalMinor = receipt.totalMinor
         purchasedAt = receipt.purchasedAt
         printedShopName = receipt.shopName
         let aliases = (try? repository.aliases()) ?? [:]
-        lines = receipt.lines.map { captureLine($0, aliases: aliases) }
+        let names = (try? repository.itemNames()) ?? [:]
+        lines = receipt.lines.map { captureLine($0, aliases: aliases, names: names) }
         if let printed = receipt.shopName.map(Merge.normalized),
            let known = store.shops.first(where: { Merge.normalized($0.name) == printed }) {
             shopID = known.id
         }
     }
 
-    private func captureLine(_ scanned: ScanLine, aliases: [String: ItemID?]) -> CaptureLine {
+    private func captureLine(_ scanned: ScanLine, aliases: [String: ItemID?],
+                             names: [ItemID: String]) -> CaptureLine {
+        // Shown in what the till printed, always — a foreign receipt is flagged, never relabelled.
         var line = CaptureLine(rawText: scanned.rawText,
                                amount: Money(minorUnits: scanned.amountMinor,
-                                             currencyCode: currencyCode),
+                                             currencyCode: printedCurrency ?? currencyCode),
                                quantity: scanned.quantity, confidence: scanned.confidence,
                                hint: scanned.matchHint)
         // A key present with a nil value is "ignore this forever" — not the same as a key that
@@ -204,7 +218,7 @@ final class CaptureSession {
         if let index = aliases.index(forKey: Merge.aliasKey(scanned.rawText)) {
             line.isRemembered = true
             if let itemID = aliases[index].value {
-                line.match = match(itemID, fallback: scanned.rawText)
+                line.match = match(itemID, names: names, fallback: scanned.rawText)
                 // Money off is never accepted for the user: it has no price to accept.
                 line.decision = line.isMoneyOff ? .unresolved : .accept
             } else {
@@ -226,11 +240,11 @@ final class CaptureSession {
         return line
     }
 
-    // A remembered alias carries an id, not a name. The catalog names it; the list's name, else
-    // the till text, is the fallback for a user-created item the catalog has never heard of.
-    private func match(_ itemID: ItemID, fallback: String) -> CaptureMatch {
-        let listName = store.rows.first { $0.item.itemID == itemID }?.item.name
-        return CaptureMatch(remembered: itemID, fallback: listName ?? fallback, catalog: catalog)
+    // A remembered alias carries an id, not a name; ListCatalog owns the order they are tried in.
+    private func match(_ itemID: ItemID, names: [ItemID: String], fallback: String) -> CaptureMatch {
+        CaptureMatch(remembered: itemID, kitchenNames: names,
+                     listName: store.rows.first { $0.item.itemID == itemID }?.item.name,
+                     fallback: fallback, catalog: catalog)
     }
 
     // MARK: - Per-line decisions
@@ -261,8 +275,8 @@ final class CaptureSession {
         }
     }
 
-    /// A line the catalog has never heard of. The id is minted here and its alias is written at
-    /// commit, or the next receipt asks the same question again.
+    /// A line the catalog has never heard of. The id is minted here; its alias AND its name are
+    /// written at commit, or the next receipt asks again and the price book cannot name it.
     func createItem(named name: String, for id: CaptureLine.ID) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -277,15 +291,19 @@ final class CaptureSession {
     // MARK: - The commit, which is the only write
 
     var acceptedCount: Int { lines.filter(\.isPriced).count }
-    var canCommit: Bool { stage == .review && shopID != nil }
+    // A receipt in another currency cannot be committed at all: its lines would sum with the
+    // kitchen's own prices under one label, and that total would be a lie about money.
+    var canCommit: Bool { stage == .review && shopID != nil && currencyMismatch == nil }
     var shopName: String? { store.shops.first { $0.id == shopID }?.name }
 
     func suggestions(for text: String) -> [ListCatalog.Match] { catalog.matches(text) }
 
     /// The seeded estimate travels with the id, so the >3× gate has something to compare
-    /// against wherever a match is made — a receipt line, a barcode, a typed one.
+    /// against wherever a match is made — a receipt line, a barcode, a typed one. An id minted
+    /// by the caller is named nowhere else, so the match carries the name it has to teach.
     func match(itemID: ItemID, name: String) -> CaptureMatch {
-        CaptureMatch(itemID: itemID, name: name, estimate: catalog.estimate(for: itemID))
+        CaptureMatch(itemID: itemID, name: name, estimate: catalog.estimate(for: itemID),
+                     teaches: itemID.catalogID == nil ? name : nil)
     }
 
     /// What this kitchen has already said this text means — a barcode it taught once, a till
@@ -294,7 +312,7 @@ final class CaptureSession {
         let aliases = (try? repository.aliases()) ?? [:]
         guard let index = aliases.index(forKey: Merge.aliasKey(rawText)),
               let itemID = aliases[index].value else { return nil }
-        return match(itemID, fallback: rawText)
+        return match(itemID, names: (try? repository.itemNames()) ?? [:], fallback: rawText)
     }
 
     /// One transaction: one price op per accepted line, the alias each user decision earned, and
@@ -302,7 +320,7 @@ final class CaptureSession {
     /// cannot be retried, because the scan the retry needs is already gone.
     @discardableResult
     func commit() -> Bool {
-        guard stage == .review, let pending = scan, let shopID else { return false }
+        guard canCommit, let pending = scan, let shopID else { return false }
         let date = purchasedAt ?? pending.capturedAt
         let total = printedTotalMinor ?? lines.reduce(0) { $0 + $1.amount.minorUnits }
         var ops: [Op.Kind] = []
@@ -311,6 +329,11 @@ final class CaptureSession {
                 ops.append(.alias(rawText: line.rawText, itemID: alias.itemID))
             }
             guard line.isPriced, let match = line.match else { continue }
+            // The name goes in with the price: an item minted at the resolver has no other
+            // home for it, and a price book row it cannot name is the bug this closes.
+            if let teaches = match.teaches {
+                ops.append(.name(match.itemID, teaches))
+            }
             ops.append(.price(PriceObservation(itemID: match.itemID, shopID: shopID, date: date,
                                                amount: line.unitAmount, source: .receipt)))
         }
@@ -331,13 +354,18 @@ final class CaptureSession {
     /// `stage`, `scan` or `lines`, so a review left open upstairs survives this.
     @discardableResult
     func record(_ line: CaptureLine, shopID: ShopID, date: Date) -> Bool {
-        guard line.isPriced, let match = line.match, line.amount.minorUnits > 0 else { return false }
+        guard line.isPriced, let match = line.match, line.amount.minorUnits > 0,
+              line.amount.currencyCode == currencyCode else { return false }
         // Never forward: a future-dated observation would outrank every real one for 90 days.
         let observation = PriceObservation(itemID: match.itemID, shopID: shopID,
                                            date: min(date, Date()), amount: line.unitAmount,
                                            source: .typed)
         guard (try? repository.append(.price(observation), kitchenID: kitchenID)) != nil else {
             return false
+        }
+        // An item minted on this screen is named nowhere else; the kitchen learns it here.
+        if let teaches = match.teaches {
+            try? repository.append(.name(match.itemID, teaches), kitchenID: kitchenID)
         }
         // The item written is the item the screen showed, always. What this kitchen already
         // knows is resolved before the user is asked (`remembered`), never behind them here.

@@ -89,29 +89,35 @@ public struct PriceSummary: Hashable, Sendable {
 /// render a price outside the three tiers. Never colour alone: `~` + weight + colour.
 public struct PriceLabel: View {
     private let display: PriceDisplay
+    private let size: PriceSize
 
-    public init(_ display: PriceDisplay) {
+    /// `size` scales the type only (W7-P3): the hero figures on price history and month spend
+    /// render at `.display` through THIS view, so the three tiers keep one implementation.
+    public init(_ display: PriceDisplay, size: PriceSize = .body) {
         self.display = display
+        self.size = size
     }
 
     public var body: some View {
         switch display.tier {
         case .measured(let money):
-            Text(money.display)
-                .font(Typography.price)
-                .foregroundStyle(Palette.ink.color)
-                .accessibilityLabel(display.accessibilityPhrase)
+            text(money.display, font: size.measuredFont, colour: Palette.ink)
         case .estimated(let money):
             // Money.estimateDisplay supplies the `~` and the half-unit rounding.
-            Text(money.estimateDisplay)
-                .font(Typography.priceEstimated)
-                .foregroundStyle(Palette.muted.color)
-                .accessibilityLabel(display.accessibilityPhrase)
+            text(money.estimateDisplay, font: size.estimatedFont, colour: Palette.muted)
         case .none:
-            Text("—")
-                .font(Typography.priceEstimated)
-                .foregroundStyle(Palette.muted.color)
-                .accessibilityLabel(display.accessibilityPhrase)
+            text("—", font: size.estimatedFont, colour: Palette.muted)
         }
+    }
+
+    private func text(_ string: String, font: Font, colour: Palette.RGB) -> some View {
+        Text(string)
+            .font(font)
+            .foregroundStyle(colour.color)
+            // Only the hero is width-critical, and only it is allowed to shrink — a row
+            // price keeps the layout it had (its callers give it `fixedSize`).
+            .lineLimit(size == .display ? 1 : nil)
+            .minimumScaleFactor(size.minimumScale)
+            .accessibilityLabel(display.accessibilityPhrase)
     }
 }

@@ -123,6 +123,20 @@ enum Migrations {
                 """)
             try db.execute(sql: "DROP TABLE pending_scan")
             try db.execute(sql: "ALTER TABLE pending_scan_v3 RENAME TO pending_scan")
+            try db.execute(sql: "PRAGMA user_version = 3")
+        }
+        migrator.registerMigration("v4") { db in
+            // Projection of ListState.itemNames: what the kitchen calls an item the catalog
+            // cannot name. A list row's name is a different fact and stays on list_item.
+            try db.create(table: "item_name") { t in
+                t.column("item_id", .text).primaryKey()
+                t.column("name", .text).notNull()
+            }
+            // Existing kitchens are USD because every call site minted USD before this column
+            // existed — a locale guess here would relabel prices that are already recorded.
+            try db.alter(table: "kitchen") { t in
+                t.add(column: "currency_code", .text).notNull().defaults(to: "USD")
+            }
             try db.execute(sql: "PRAGMA user_version = \(AppDatabase.schemaVersion)")
         }
         return migrator

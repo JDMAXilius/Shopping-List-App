@@ -3,10 +3,20 @@ import Foundation
 public struct Kitchen: Hashable, Sendable, Codable {
     public let id: KitchenID
     public var name: String
+    /// A kitchen shops in ONE currency: every price in its book, and every total over them,
+    /// is in this code. A receipt printing another one is an exception to flag, never to mix.
+    public var currencyCode: String
 
-    public init(id: KitchenID = KitchenID(), name: String) {
+    public init(id: KitchenID = KitchenID(), name: String,
+                currencyCode: String = Kitchen.defaultCurrencyCode(for: .current)) {
         self.id = id
         self.name = name
+        self.currencyCode = currencyCode
+    }
+
+    // The device is the only signal at creation; a locale with no currency (POSIX) gets USD.
+    public static func defaultCurrencyCode(for locale: Locale) -> String {
+        locale.currency?.identifier ?? "USD"
     }
 }
 

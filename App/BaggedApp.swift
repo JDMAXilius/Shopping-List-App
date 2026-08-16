@@ -10,16 +10,19 @@ struct BaggedApp: App {
     static let appGroupID = "group.app.bagged"
 
     private let store: ListStore?
+    private let prices: PriceStore?
     private let repository: Repository?
     private let kitchenID: KitchenID?
     private let catalog: ListCatalog
     private let scanBackend: any ScanBackend
 
     init() {
-        let catalog = ListCatalog()
-        let opened = try? BaggedApp.openStore(catalog: catalog)
-        self.catalog = catalog
+        let opened = try? BaggedApp.openStore()
+        // A catalog built before the kitchen was read would price its seeds in a guessed
+        // currency; without a database there is no kitchen, and the device's own is all there is.
+        catalog = opened?.catalog ?? ListCatalog()
         store = opened?.store
+        prices = opened?.prices
         repository = opened?.repository
         kitchenID = opened?.kitchenID
         scanBackend = BaggedApp.makeScanBackend()
@@ -29,6 +32,7 @@ struct BaggedApp: App {
         WindowGroup {
             RootView()
                 .environment(\.listStore, store)
+                .environment(\.priceStore, prices)
                 .environment(\.repository, repository)
                 .environment(\.kitchenID, kitchenID)
                 .environment(\.catalog, catalog)
@@ -36,8 +40,9 @@ struct BaggedApp: App {
         }
     }
 
-    private static func openStore(catalog: ListCatalog)
-        throws -> (store: ListStore, repository: Repository, kitchenID: KitchenID) {
+    private static func openStore()
+        throws -> (store: ListStore, prices: PriceStore, repository: Repository,
+                   kitchenID: KitchenID, catalog: ListCatalog) {
         let database = try AppDatabase(url: try databaseURL())
         // Only the app migrates; the widget renders last-known state on a version mismatch.
         try database.migrate()
@@ -46,8 +51,11 @@ struct BaggedApp: App {
         let kitchens = try repository.kitchens()
         let kitchen = kitchens.first ?? Kitchen(name: "your kitchen")
         if kitchens.isEmpty { try repository.saveKitchen(kitchen) }
+        let catalog = ListCatalog(currencyCode: kitchen.currencyCode)
         let store = try ListStore(repository: repository, kitchenID: kitchen.id, catalog: catalog)
-        return (store, repository, kitchen.id)
+        let prices = try PriceStore(repository: repository, kitchen: kitchen, catalog: catalog,
+                                    list: store)
+        return (store, prices, repository, kitchen.id, catalog)
     }
 
     /// Any scan not in the queue is stranded — nothing else will ever pick it up. `.parsing` is

@@ -3,6 +3,7 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(\.listStore) private var listStore
+    @Environment(\.priceStore) private var priceStore
     @Environment(\.repository) private var repository
     @Environment(\.kitchenID) private var kitchenID
     @Environment(\.catalog) private var catalog
@@ -12,6 +13,7 @@ struct RootView: View {
     @State private var tab: DesignKit.Tab = .list
     @State private var sheet: Sheet?
     @State private var listPath = NavigationPath()
+    @State private var pricePath = NavigationPath()
     /// Lives as long as the capture sheet does (ARCHITECTURE §3), and is built before the sheet
     /// is asked for — a session minted in a body pass would lose a half-checked review.
     @State private var capture: CaptureSession?
@@ -24,12 +26,17 @@ struct RootView: View {
                 .padding(.bottom, 8)
         }
         // Released after the dismissal, not during it: the flow keeps its state to the last frame.
-        .sheet(item: $sheet, onDismiss: { capture = nil }) { presented in
+        // A capture that landed wrote prices and a receipt, and the receipt index is not
+        // observed — the book re-reads on the way out, not on the next launch.
+        .sheet(item: $sheet, onDismiss: { capture = nil; priceStore?.refresh() }) { presented in
             sheetContent(presented)
         }
         .onChange(of: scenePhase) { _, phase in
             // The widget and App Intents write to the same file while we're backgrounded.
-            if phase == .active { listStore?.refresh() }
+            if phase == .active {
+                listStore?.refresh()
+                priceStore?.refresh()
+            }
         }
     }
 
@@ -61,13 +68,11 @@ struct RootView: View {
                 // card, never over it).
                 .padding(.bottom, 72)
                 .tag(DesignKit.Tab.list)
-                // Waves 7 and 9 replace these two roots with their own screens.
-                EmptyState(
-                    glyph: .other,
-                    message: "Your price book fills in as you record what you paid.")
+                pricesRoot
                     .toolbar(.hidden, for: .tabBar)
                     .safeAreaPadding(.bottom, 72)
                     .tag(DesignKit.Tab.prices)
+                // Wave 9 replaces this root with its own screens.
                 EmptyState(
                     glyph: .household,
                     message: "Your kitchen, sharing and settings live here.")
@@ -79,6 +84,33 @@ struct RootView: View {
             EmptyState(
                 glyph: .other,
                 message: "Bagged couldn't open your list on this device. Reopening the app usually fixes it.")
+        }
+    }
+
+    @ViewBuilder private var pricesRoot: some View {
+        if let priceStore {
+            NavigationStack(path: $pricePath) {
+                PricesScreen(store: priceStore, onCapture: { presentCapture() })
+                    .navigationDestination(for: Route.self) { route in
+                        priceDestination(route, store: priceStore)
+                    }
+            }
+        } else {
+            EmptyState(
+                glyph: .other,
+                message: "Bagged couldn't open your price book on this device. Reopening the app usually fixes it.")
+        }
+    }
+
+    @ViewBuilder private func priceDestination(_ route: Route, store: PriceStore) -> some View {
+        switch route {
+        case .priceHistory(let itemID):
+            PriceHistoryScreen(store: store, itemID: itemID)
+        case .monthSpend:
+            MonthSpendScreen(store: store)
+        default:
+            // Every other route is pushed from a stack that later waves own.
+            EmptyView()
         }
     }
 

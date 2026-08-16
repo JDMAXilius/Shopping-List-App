@@ -221,3 +221,22 @@ Deno.test("validateEnvelope: currency is an ISO code, upper-cased here", () => {
     assertEquals(validateEnvelope({ lines: [GOOD], currency }), null);
   }
 });
+
+// A misread date is not a reason to fail a readable receipt, but it is a reason not to pass it
+// on: a future date makes the price `trusted`, prints as "today", outranks every real
+// observation for 90 days, AND drops out of its month total. Out of range reads as not printed.
+Deno.test("validateOptionals: a date the model cannot have read is dropped, not shipped", () => {
+  const now = Date.parse("2026-08-16T12:00:00Z");
+  const at = (v: unknown) => validateOptionals({ purchased_at: v }, now)?.purchased_at;
+  assertEquals(at("2027-01-03"), null);                  // the smudged 01/03/27
+  assertEquals(at("2126-08-16T12:00:00Z"), null);        // a till with a broken clock
+  assertEquals(at("1998-04-02"), null);                  // older than any receipt worth keeping
+  assertEquals(at("not a date"), null);
+  assertEquals(at(""), null);
+  // In range, and returned verbatim — the client parses it, not us.
+  assertEquals(at("2026-08-16T09:14:00Z"), "2026-08-16T09:14:00Z");
+  assertEquals(at("2026-05-18"), "2026-05-18");
+  assertEquals(at("2026-08-17T06:00:00Z"), "2026-08-17T06:00:00Z");  // clock skew, one day slack
+  // A receipt with no date at all is normal, not a failure.
+  assertNotEquals(validateOptionals({ total_minor: 840 }, now), null);
+});

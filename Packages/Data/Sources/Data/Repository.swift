@@ -28,6 +28,7 @@ public final class Repository: Sendable {
         try cache.withLock { cache in
             let snapshot = cache
             let (op, next) = try database.pool.write { db -> (Op, MergeCache) in
+                try Repository.checkCurrency(kind, kitchenID, db)
                 var working = try Repository.current(snapshot, db)
                 var identity = try DeviceIdentity.load(db)
                 identity.clock.tick()
@@ -38,6 +39,7 @@ public final class Repository: Sendable {
                 Repository.fold(canonical, into: &working)
                 try Repository.materializePrice(canonical, db)
                 try Repository.materializeAlias(canonical, working.state, db)
+                try Repository.materializeName(canonical, working.state, db)
                 try Repository.rewriteProjection(working, db)
                 return (canonical, working)
             }
@@ -65,6 +67,7 @@ public final class Repository: Sendable {
                     Repository.fold(canonical, into: &working)
                     try Repository.materializePrice(canonical, db)
                     try Repository.materializeAlias(canonical, working.state, db)
+                    try Repository.materializeName(canonical, working.state, db)
                 }
                 try identity.save(db)
                 try Repository.rewriteProjection(working, db)
@@ -81,11 +84,13 @@ public final class Repository: Sendable {
                 var fresh = MergeCache()
                 try db.execute(sql: "DELETE FROM price_observation")
                 try db.execute(sql: "DELETE FROM alias")
+                try db.execute(sql: "DELETE FROM item_name")
                 for record in try OpRecord.fetchAll(db, sql: "SELECT * FROM op") {
                     let op = try OpCoding.op(from: record)
                     Repository.fold(op, into: &fresh)
                     try Repository.materializePrice(op, db)
                     try Repository.materializeAlias(op, fresh.state, db)
+                    try Repository.materializeName(op, fresh.state, db)
                 }
                 try Repository.rewriteProjection(fresh, db)
                 return fresh
@@ -157,6 +162,18 @@ public final class Repository: Sendable {
                                    forKey: record.rawText)
             }
             return result
+        }
+    }
+
+    /// What this kitchen calls each item it has named — the price book's only name for an item
+    /// no catalog knows. Items the catalog names are absent, not empty.
+    public func itemNames() throws -> [ItemID: String] {
+        try database.pool.read { try Repository.fetchItemNames($0) }
+    }
+
+    @MainActor public func observedItemNames() throws -> Observed<[ItemID: String]> {
+        Observed(initial: try itemNames(), database: database) {
+            try Repository.fetchItemNames($0)
         }
     }
 
@@ -284,6 +301,7 @@ public final class Repository: Sendable {
                 var working = try Repository.current(snapshot, db)
                 var identity = try DeviceIdentity.load(db)
                 for kind in kinds {
+                    try Repository.checkCurrency(kind, kitchenID, db)
                     identity.clock.tick()
                     let op = Op(kitchenID: kitchenID, deviceID: identity.deviceID,
                                 clock: identity.clock.value, wallClock: Date(), kind: kind)
@@ -291,6 +309,7 @@ public final class Repository: Sendable {
                     Repository.fold(canonical, into: &working)
                     try Repository.materializePrice(canonical, db)
                     try Repository.materializeAlias(canonical, working.state, db)
+                    try Repository.materializeName(canonical, working.state, db)
                 }
                 try identity.save(db)
                 try Repository.rewriteProjection(working, db)
@@ -419,6 +438,27 @@ public final class Repository: Sendable {
                         itemID: resolved?.rawValue.uuidString).save(db)
     }
 
+    // One key per op, like the alias table above, and for the same reason.
+    private static func materializeName(_ op: Op, _ state: ListState, _ db: Database) throws {
+        guard case .name(let itemID, _) = op.kind else { return }
+        // Write what the merge decided: a late-arriving stale name loses LWW, a blank was dropped.
+        guard let resolved = state.itemName(for: itemID) else { return }
+        try ItemNameRecord(itemID: itemID.rawValue.uuidString, name: resolved).save(db)
+    }
+
+    // A kitchen shops in one currency, so a price in another one must never reach its book:
+    // Money.+ preconditions on mixed codes and a total would label itself with whichever it
+    // saw first. Only LOCAL writes are refused — a remote op is already truth, and dropping
+    // it would break convergence.
+    private static func checkCurrency(_ kind: Op.Kind, _ kitchenID: KitchenID,
+                                      _ db: Database) throws {
+        guard case .price(let observation) = kind,
+              let kitchen = try KitchenRecord.fetchOne(db, key: kitchenID.rawValue.uuidString),
+              kitchen.currencyCode != observation.amount.currencyCode else { return }
+        throw DataError.currencyMismatch(kitchen: kitchen.currencyCode,
+                                         written: observation.amount.currencyCode)
+    }
+
     // Wholesale rewrite: at grocery-list scale diffing is a pessimization, and
     // equality with rebuild() holds by construction. The alias table is not here — it is
     // maintained per-op above, and rebuild() clears it before replaying.
@@ -450,6 +490,14 @@ public final class Repository: Sendable {
     private static func fetchShops(_ db: Database) throws -> [Shop] {
         try ShopRecord.fetchAll(db, sql: "SELECT * FROM shop ORDER BY name, id")
             .map { try $0.shop() }
+    }
+
+    private static func fetchItemNames(_ db: Database) throws -> [ItemID: String] {
+        var names: [ItemID: String] = [:]
+        for record in try ItemNameRecord.fetchAll(db, sql: "SELECT * FROM item_name") {
+            names[ItemID(try requireUUID(record.itemID))] = record.name
+        }
+        return names
     }
 
     private static func fetchPriceObservations(_ db: Database) throws -> [PriceObservation] {
