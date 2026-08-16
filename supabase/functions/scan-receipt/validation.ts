@@ -101,6 +101,8 @@ export function validateLine(value: unknown): ReceiptLine | null {
 // with a count. A receipt quietly missing a line is exactly the failure the review screen
 // exists to prevent (PRODUCT §5 CAPTURE — "nothing commits unreviewed", and the capture
 // result claims "every line became a price"). The caller refunds the scan; the user retries.
+// Emptiness is not this function's question — validateEnvelope has already refused a receipt
+// with no lines at all, one status earlier (422, not 502).
 export function validateLines(values: readonly unknown[]): ReceiptLine[] | null {
   const lines: ReceiptLine[] = [];
   for (const value of values) {
@@ -109,6 +111,36 @@ export function validateLines(values: readonly unknown[]): ReceiptLine[] | null 
     lines.push(line);
   }
   return lines;
+}
+
+export interface ReceiptEnvelope {
+  receipt: Record<string, unknown>;
+  lines: readonly unknown[];
+  currency: string;
+}
+
+// The whole "this parse is not usable as a receipt" gate, in one place: the caller answers
+// every failure here identically (422 unparseable_image + refund), because to the user they
+// are one thing — "we couldn't read this, try again".
+//
+// ZERO LINES IS A FAILED READ. A receipt with no line items is not a receipt: a photo of a
+// cat, a blank wall or a menu comes back from structured outputs as a well-formed
+// `{lines: [], ...}`, and shipping that as a 200 would put an empty review screen (PRODUCT §5
+// CAPTURE) in front of someone and charge them one of their three free scans (§3 Money) for
+// nothing. Nothing malfunctioned, there was just nothing there — which is 422, not 502.
+//
+// Deliberately NOT extended past emptiness: lines present with `total_minor` null (a receipt
+// whose grand total is not printed, or not parsed, is still a receipt — the review screen
+// shows what was read), and lines whose amounts sum to zero (a coupon-heavy trip is real,
+// and per-line negatives are valid by validateLine). Those are odd receipts, not unread ones.
+export function validateEnvelope(parsed: unknown): ReceiptEnvelope | null {
+  // JSON.parse returns null, a number or an array just as happily as an object, and reaching
+  // for .lines on null throws — which would have been an unrefunded 500.
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+  const receipt = parsed as Record<string, unknown>;
+  if (!Array.isArray(receipt.lines) || receipt.lines.length === 0) return null;
+  if (typeof receipt.currency !== "string" || receipt.currency.trim().length === 0) return null;
+  return { receipt, lines: receipt.lines, currency: receipt.currency };
 }
 
 export interface ReceiptOptionals {

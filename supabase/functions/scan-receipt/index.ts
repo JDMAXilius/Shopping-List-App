@@ -7,6 +7,7 @@ import Anthropic from "npm:@anthropic-ai/sdk";
 import {
   RECEIPT_SCHEMA,
   validateBody,
+  validateEnvelope,
   validateLines,
   validateOptionals,
 } from "./validation.ts";
@@ -184,29 +185,24 @@ Deno.serve(async (req) => {
       // about the image, and 422 sends the user to retake it, which is the right move.
       return await failAfterQuota(422, "unparseable_image");
     }
-    // JSON.parse returns null, a number or an array just as happily as an object, and
-    // reaching for .lines on null throws — which would have been an unrefunded 500.
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-      return await failAfterQuota(422, "unparseable_image");
-    }
-    const receipt = parsed as Record<string, unknown>;
-    if (!Array.isArray(receipt.lines) || typeof receipt.currency !== "string" ||
-        receipt.currency.trim().length === 0) {
-      return await failAfterQuota(422, "unparseable_image");
-    }
+    // One gate for every shape that is not a readable receipt — not an object, no lines
+    // array, NO LINES AT ALL, no currency. All 422: the model answered, and the answer was
+    // that there was nothing on this image to read. All refunded by the same path.
+    const envelope = validateEnvelope(parsed);
+    if (envelope === null) return await failAfterQuota(422, "unparseable_image");
 
     // Past this point the model claimed a parse, so a schema violation is OUR upstream
     // malfunctioning — not a bad photo. 502, never 422: telling someone their perfectly good
     // receipt is unreadable would send them to retake it for a fault that is not theirs.
-    const lines = validateLines(receipt.lines);
-    const optionals = validateOptionals(receipt);
+    const lines = validateLines(envelope.lines);
+    const optionals = validateOptionals(envelope.receipt);
     if (lines === null || optionals === null) return await failAfterQuota(502, "upstream");
 
     return json(200, {
       lines,
       shop_name: optionals.shop_name,
       total_minor: optionals.total_minor,
-      currency: receipt.currency,
+      currency: envelope.currency,
       purchased_at: optionals.purchased_at,
       is_plus,
       scans_used,

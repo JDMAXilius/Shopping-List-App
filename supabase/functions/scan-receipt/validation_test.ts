@@ -9,6 +9,7 @@ import { assertEquals, assertNotEquals } from "jsr:@std/assert@1";
 import {
   type ReceiptLine,
   validateBody,
+  validateEnvelope,
   validateLine,
   validateLines,
   validateOptionals,
@@ -92,8 +93,54 @@ Deno.test("validateLines: good lines pass through in printed order", () => {
   assertEquals(out?.[1].raw_text, "MILK 2%");
 });
 
-Deno.test("validateLines: an empty receipt is valid, not an error", () => {
+Deno.test("validateLines: an empty array is structurally fine — emptiness is not judged here", () => {
+  // Not a contradiction of the zero-lines ruling: by the time this runs, validateEnvelope has
+  // already refused the empty receipt as unreadable (422). This function only answers "is
+  // every line well-formed", and vacuously yes is the honest answer to none of them.
   assertEquals(validateLines([]), []);
+});
+
+Deno.test("validateEnvelope: zero lines is a failed read, not an empty receipt", () => {
+  // The ruling: a receipt with no line items is not a receipt. A cat, a blank wall or a menu
+  // comes back as a perfectly well-formed {lines: [], currency}. The caller turns null into
+  // 422 + refund — the user is told we couldn't read it, and is not charged a free scan.
+  assertEquals(validateEnvelope({ lines: [], currency: "USD" }), null);
+  assertEquals(validateEnvelope({ lines: [], currency: "USD", shop_name: "Trader Joe's" }), null);
+  assertEquals(validateEnvelope({ lines: [], currency: "USD", total_minor: 8450 }), null);
+});
+
+Deno.test("validateEnvelope: a receipt with even one line is readable", () => {
+  const envelope = validateEnvelope({ lines: [GOOD], currency: "USD" });
+  assertEquals(envelope?.currency, "USD");
+  assertEquals(envelope?.lines.length, 1);
+  // The raw lines pass through untouched — validateLines, not this gate, judges them.
+  assertEquals(envelope?.lines[0], GOOD);
+});
+
+Deno.test("validateEnvelope: the ruling stops at emptiness — odd receipts are still receipts", () => {
+  // Deliberately NOT extended. A grand total that was never printed (or never parsed) does
+  // not make the lines unreadable...
+  assertNotEquals(validateEnvelope({ lines: [GOOD], currency: "USD", total_minor: null }), null);
+  // ...and a trip whose lines sum to zero is rare, not impossible: coupons print as negatives.
+  assertNotEquals(
+    validateEnvelope({
+      lines: [GOOD, { ...GOOD, raw_text: "COUPON", amount_minor: -349 }],
+      currency: "USD",
+    }),
+    null,
+  );
+});
+
+Deno.test("validateEnvelope: the shapes that were never readable are still refused", () => {
+  for (const v of [null, undefined, [], "receipt", 3, true]) {
+    assertEquals(validateEnvelope(v), null);
+  }
+  assertEquals(validateEnvelope({ currency: "USD" }), null);            // no lines at all
+  assertEquals(validateEnvelope({ lines: {}, currency: "USD" }), null);  // lines not an array
+  assertEquals(validateEnvelope({ lines: [GOOD] }), null);               // no currency
+  assertEquals(validateEnvelope({ lines: [GOOD], currency: "" }), null);
+  assertEquals(validateEnvelope({ lines: [GOOD], currency: "  " }), null);
+  assertEquals(validateEnvelope({ lines: [GOOD], currency: 840 }), null);
 });
 
 Deno.test("validateOptionals: absent and null both become explicit null", () => {
