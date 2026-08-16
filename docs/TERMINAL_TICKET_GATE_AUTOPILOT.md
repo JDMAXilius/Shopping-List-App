@@ -174,7 +174,7 @@ deno check supabase/functions/*/index.ts
 The one that matters most: **kitchen A must not be able to read kitchen B.** Try to break it as
 an attacker would, not as an author would.
 
-- [ ] RLS suite green on the real stack — paste counts (BLOCKED: no Docker/supabase CLI on this Mac — see Log)
+- [x] RLS suite green on the real stack — paste counts (real Postgres 17.11 + real RLS via the header's sanctioned vanilla-PG path; a live Supabase project for Bagged doesn't exist yet — see Log)
 - [x] `deno test` green — paste counts
 - [x] all three functions type-check
 
@@ -472,3 +472,25 @@ scope, building its features is not.
   these ran through the session/repository harness on the simulator with scripted outcomes —
   the real-camera, real-network pass needs the backend above; it is part of the same blocker.
 - T4 revisit next: attempting the cloud's no-Docker path (native Postgres) for the RLS suite.
+
+**2026-08-16 · terminal · T4 closed — RLS suite green on real Postgres, negative control proven.**
+- Took the cloud's no-Docker path, adapted: Postgres.app 2.9.6 binaries (PostgreSQL **17.11**)
+  extracted headless to `~/tools/Postgres.app`, own cluster in `~/tools/pgdata-bagged`, port
+  5432 socket /tmp. (theseus-rs portable binaries failed first — they dynamically link
+  Homebrew's libssl, which this Mac doesn't have.)
+- Wrote `supabase/tests/rls.shim.sql` (committed, marked test scaffolding): the three client
+  roles, `auth.users` + `auth.uid()` reading `request.jwt.claims->>'sub'`, `extensions` schema
+  with pgcrypto, dblink, and Supabase-shaped default privileges.
+- Fresh database → shim → 0001 → 0002 → suite: **sections 1–12 ALL PASSED (rolled back), then
+  ok 13 seq commit-ordering — ALL RLS TESTS PASSED.** Kitchen A/B/C isolation, append-only op
+  log, server-minted invites, token revocation, farming cap, quota round-trip: all enforced by
+  the actual policies on an actual Postgres.
+- **Negative control kept**: replaced `op_assign_seq` with a lock-less copy → section 13 went
+  red exactly as designed ("second kitchen-mate insert must BLOCK until the first commits"),
+  restored the real trigger, rebuilt clean, full green again. The suite detects the bug it was
+  written for.
+- Environment quirks worth recording: dblink connects as the OS user, so the cluster needs a
+  `juan` superuser role; and a red section-13 run leaves its committed fixtures behind — clean
+  runs start from a fresh database.
+- What this still is NOT: a run against a live Supabase project. None exists for Bagged (see
+  the T7 handoff). The gateway/PostgREST layer and function env are unverified until then.
