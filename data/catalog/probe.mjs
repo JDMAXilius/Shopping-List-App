@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { resolve } from './resolve.mjs';
+import { parseQuantity } from './quantity.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const db = new DatabaseSync(join(here, 'catalog.db'), { readOnly: true });
@@ -17,11 +18,14 @@ const queries = readFileSync(join(here, 'probe-queries.txt'), 'utf8')
   .split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
 
 const verbose = process.argv.includes('--verbose');
+// --raw skips the quantity parser, to measure the resolver alone.
+const raw = process.argv.includes('--raw');
 const misses = [];
 const weak = [];
 
 for (const q of queries) {
-  const [top] = resolve(db, q);
+  const text = raw ? q : parseQuantity(q).rest;
+  const [top] = resolve(db, text);
   if (!top) { misses.push([q, null]); continue; }
   // score >= 5 is the fuzzy tier — a guess, not a match.
   if (top.score >= 5) { weak.push([q, top.canonical_name]); continue; }

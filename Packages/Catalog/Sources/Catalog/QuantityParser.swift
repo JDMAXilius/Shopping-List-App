@@ -1,5 +1,6 @@
-// New code (no JS source): pull a leading quantity + unit off free text.
-// "2 lb chicken breast" → (2, "lb", "chicken breast"). Deliberately minimal.
+// Pulls a leading quantity/container off free text so the resolver sees the item:
+// "2 lb chicken breast" → 2 lb · "chicken breast". Ported from and pinned to
+// data/catalog/quantity.mjs — run `node data/catalog/quantity.mjs` for the contract.
 
 public struct ParsedQuantity: Sendable, Equatable {
     public let quantity: Double?
@@ -16,42 +17,89 @@ public struct ParsedQuantity: Sendable, Equatable {
 public enum QuantityParser {
     // alias → canonical unit
     static let units: [String: String] = [
-        "lb": "lb", "lbs": "lb", "kg": "kg", "g": "g", "oz": "oz",
-        "l": "l", "ml": "ml", "dozen": "dozen",
-        "pack": "pack", "packs": "pack",
+        "lb": "lb", "lbs": "lb", "pound": "lb", "pounds": "lb",
+        "kg": "kg", "kgs": "kg", "kilo": "kg", "kilos": "kg",
+        "g": "g", "gram": "g", "grams": "g", "oz": "oz", "ounce": "oz", "ounces": "oz",
+        "l": "l", "litre": "l", "litres": "l", "liter": "l", "liters": "l",
+        "ml": "ml", "pint": "pint", "pints": "pint", "quart": "quart", "quarts": "quart",
+        "dozen": "dozen", "dozens": "dozen",
+        "pack": "pack", "packs": "pack", "packet": "pack", "packets": "pack",
         "bunch": "bunch", "bunches": "bunch",
-        "can": "can", "cans": "can",
+        "can": "can", "cans": "can", "tin": "tin", "tins": "tin",
         "bottle": "bottle", "bottles": "bottle",
         "box": "box", "boxes": "box",
         "bag": "bag", "bags": "bag",
+        "jar": "jar", "jars": "jar",
+        "tub": "tub", "tubs": "tub", "pot": "pot", "pots": "pot",
+        "carton": "carton", "cartons": "carton",
+        "punnet": "punnet", "punnets": "punnet",
+        "loaf": "loaf", "loaves": "loaf",
+        "head": "head", "heads": "head",
+        "clove": "clove", "cloves": "clove",
+        "slice": "slice", "slices": "slice",
+        "roll": "roll", "rolls": "roll",
+        "sachet": "sachet", "sachets": "sachet",
+        "tube": "tube", "tubes": "tube",
+        "block": "block", "blocks": "block",
+        "piece": "piece", "pieces": "piece",
+        "bar": "bar", "bars": "bar",
     ]
 
-    public static func parse(_ input: String) -> ParsedQuantity {
-        var tokens = input.split(whereSeparator: \.isWhitespace).map(String.init)
-        guard let first = tokens.first else {
-            return ParsedQuantity(quantity: nil, unit: nil, rest: "")
-        }
+    static let wordNumbers: [String: Double] = [
+        "a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
+        "twelve": 12, "couple": 2,
+    ]
 
+    // Only sizes, and only ahead of a container: "large tub of yoghurt".
+    static let sizes: Set<String> = ["large", "small", "medium", "big", "little", "jumbo", "mini"]
+
+    public static func parse(_ input: String) -> ParsedQuantity {
+        let raw = input.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard !raw.isEmpty else { return ParsedQuantity(quantity: nil, unit: nil, rest: "") }
+
+        let lower = raw.map { $0.lowercased() }
+        let token = { (i: Int) -> String in i < lower.count ? lower[i] : "" }
+
+        var i = 0
         var quantity: Double?
         var unit: String?
 
-        if let number = number(from: first) {
-            quantity = number
-            tokens.removeFirst()
-        } else if let (number, attached) = attachedUnit(from: first.lowercased()) {
-            // "2lb" — number and unit in one token
-            quantity = number
+        if token(i) == "half" {
+            quantity = 0.5
+            i += 1
+            if token(i) == "a" || token(i) == "an" { i += 1 }
+        }
+
+        if quantity == nil, let n = number(from: token(i)) {
+            quantity = n
+            i += 1
+        } else if quantity == nil, let (n, attached) = attachedUnit(from: token(i)) {
+            quantity = n
             unit = attached
-            tokens.removeFirst()
+            i += 1
+        } else if quantity == nil, let n = wordNumbers[token(i)], raw.count > 1 {
+            quantity = n
+            i += 1
+            if token(i) == "of" { i += 1 }
         }
 
-        if quantity != nil, unit == nil, let next = tokens.first,
-            let canonical = units[next.lowercased()] {
+        if unit == nil, sizes.contains(token(i)), units[token(i + 1)] != nil { i += 1 }
+
+        if unit == nil, let canonical = units[token(i)] {
             unit = canonical
-            tokens.removeFirst()
+            i += 1
+            if quantity == nil { quantity = 1 }   // "carton of milk" is one carton
         }
 
-        return ParsedQuantity(quantity: quantity, unit: unit, rest: tokens.joined(separator: " "))
+        if unit != nil, token(i) == "of" { i += 1 }
+
+        let rest = raw[i...].joined(separator: " ")
+        // Never consume the whole input: a bare "loaf" or "dozen" IS the item.
+        if rest.isEmpty {
+            return ParsedQuantity(quantity: nil, unit: nil, rest: raw.joined(separator: " "))
+        }
+        return ParsedQuantity(quantity: quantity, unit: unit, rest: rest)
     }
 
     // Strict decimal: digits with an optional single point. Rejects "nan",
