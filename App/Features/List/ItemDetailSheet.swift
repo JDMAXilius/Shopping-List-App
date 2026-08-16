@@ -11,6 +11,7 @@ struct ItemDetailSheet: View {
     @State private var note = ""
     @State private var unit = ""
     @State private var loaded = false
+    @State private var failed = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -125,7 +126,9 @@ struct ItemDetailSheet: View {
                 .tracking(Typography.labelTracking)
                 .foregroundStyle(Palette.muted.color)
             HStack {
-                TextField("$0.00", text: $priceText)
+                // The kitchen's own money in the placeholder: this field only ever accepts it.
+                TextField(Money(minorUnits: 0, currencyCode: store.currencyCode).display,
+                          text: $priceText)
                     .font(Typography.total)
                     .foregroundStyle(Palette.ink.color)
                     .keyboardType(.decimalPad)
@@ -141,10 +144,18 @@ struct ItemDetailSheet: View {
                     .font(Typography.footnote)
                     .foregroundStyle(Palette.muted.color)
             }
+            if failed {
+                Notice("That price wasn't saved, and nothing on this row changed. Try it again.",
+                       tone: .attention, on: .paper)
+            }
             Button {
-                guard let amount = ItemDetailSheet.money(from: priceText) else { return }
+                guard let amount = writable else { return }
                 commit()
-                store.setPrice(row.item, amount)
+                // A refused write keeps the sheet open: dismissing on it is the silence itself.
+                guard store.setPrice(row.item, amount) else {
+                    failed = true
+                    return
+                }
                 dismiss()
             } label: {
                 Text("Save price")
@@ -154,9 +165,18 @@ struct ItemDetailSheet: View {
                     .background(Capsule().fill(Palette.persimmon.color))
             }
             .buttonStyle(.plain)
-            .disabled(store.activeShop == nil || ItemDetailSheet.money(from: priceText) == nil)
-            .opacity(store.activeShop == nil || ItemDetailSheet.money(from: priceText) == nil ? 0.4 : 1)
+            .disabled(writable == nil)
+            .opacity(writable == nil ? 0.4 : 1)
         }
+    }
+
+    /// The money this sheet could actually write, or nil — which is exactly when the button is
+    /// off. A price with no shop, no readable number or nothing in it is not offered as savable.
+    private var writable: Money? {
+        guard store.activeShop != nil,
+              let amount = MoneyText.money(from: priceText, currencyCode: store.currencyCode),
+              amount.minorUnits > 0 else { return nil }
+        return amount
     }
 
     /// Everything typed and not yet stored, written once — on submit, on dismiss, and
@@ -177,20 +197,5 @@ struct ItemDetailSheet: View {
         if unitValue != (item.unit ?? "") { writes.append(.unit(unitValue.isEmpty ? nil : unitValue)) }
         if noteValue != (item.note ?? "") { writes.append(.note(noteValue.isEmpty ? nil : noteValue)) }
         return writes
-    }
-
-    // Strict: digits and one separator. A price we can't read is not a price we save.
-    static func money(from text: String) -> Money? {
-        let cleaned = text.filter { $0.isNumber || $0 == "." || $0 == "," }
-            .replacingOccurrences(of: ",", with: ".")
-        let parts = cleaned.split(separator: ".", omittingEmptySubsequences: false)
-        guard cleaned.contains(where: \.isNumber), parts.count <= 2,
-              let whole = Int(parts[0].isEmpty ? "0" : String(parts[0]))
-        else { return nil }
-        guard parts.count == 2 else { return Money(minorUnits: whole * 100) }
-        let fraction = parts[1].prefix(2)
-        guard let cents = Int(fraction.isEmpty ? "0" : String(fraction) + (fraction.count == 1 ? "0" : ""))
-        else { return nil }
-        return Money(minorUnits: whole * 100 + cents)
     }
 }

@@ -137,6 +137,30 @@ enum Migrations {
             try db.alter(table: "kitchen") { t in
                 t.add(column: "currency_code", .text).notNull().defaults(to: "USD")
             }
+            try db.execute(sql: "PRAGMA user_version = 4")
+        }
+        migrator.registerMigration("v5") { db in
+            // total_minor relaxes to NULL: a receipt whose grand total was never read has no till
+            // total, and summing the OCR lines invents one (SUBTOTAL + TAX + TOTAL + CASH …).
+            // recorded_minor is the other number, and ours: what the receipt wrote into the price
+            // book. Rows written before this migration carry neither claim apart — their
+            // total_minor is kept as it was stored, because nothing here can tell which it was.
+            try db.create(table: "receipt_v5") { t in
+                t.column("id", .text).primaryKey()
+                t.column("shop_id", .text).notNull()
+                t.column("captured_at", .integer).notNull()
+                t.column("line_count", .integer).notNull()
+                t.column("total_minor", .integer)
+                t.column("recorded_minor", .integer)
+                t.column("photo_path", .text)
+            }
+            try db.execute(sql: """
+                INSERT INTO receipt_v5 (id, shop_id, captured_at, line_count, total_minor, \
+                photo_path) \
+                SELECT id, shop_id, captured_at, line_count, total_minor, photo_path FROM receipt
+                """)
+            try db.execute(sql: "DROP TABLE receipt")
+            try db.execute(sql: "ALTER TABLE receipt_v5 RENAME TO receipt")
             try db.execute(sql: "PRAGMA user_version = \(AppDatabase.schemaVersion)")
         }
         return migrator

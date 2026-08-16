@@ -25,27 +25,51 @@ public final class Repository: Sendable {
 
     @discardableResult
     public func append(_ kind: Op.Kind, kitchenID: KitchenID) throws -> Op {
+        guard let op = try append([kind], kitchenID: kitchenID).first else {
+            throw DataError.malformedOp
+        }
+        return op
+    }
+
+    /// Many ops, one transaction: all of them or none of them. What a caller uses when the ops
+    /// only make sense together — an identity, the name it needs to be readable, and the price
+    /// that is the reason for both.
+    @discardableResult
+    public func append(_ kinds: [Op.Kind], kitchenID: KitchenID) throws -> [Op] {
         try cache.withLock { cache in
             let snapshot = cache
-            let (op, next) = try database.pool.write { db -> (Op, MergeCache) in
-                try Repository.checkCurrency(kind, kitchenID, db)
+            let (ops, next) = try database.pool.write { db -> ([Op], MergeCache) in
                 var working = try Repository.current(snapshot, db)
-                var identity = try DeviceIdentity.load(db)
-                identity.clock.tick()
-                let op = Op(kitchenID: kitchenID, deviceID: identity.deviceID,
-                            clock: identity.clock.value, wallClock: Date(), kind: kind)
-                try identity.save(db)
-                let canonical = try Repository.insert(op, origin: .local, into: db)
-                Repository.fold(canonical, into: &working)
-                try Repository.materializePrice(canonical, db)
-                try Repository.materializeAlias(canonical, working.state, db)
-                try Repository.materializeName(canonical, working.state, db)
+                let ops = try Repository.apply(kinds, kitchenID: kitchenID, into: &working, db)
                 try Repository.rewriteProjection(working, db)
-                return (canonical, working)
+                return (ops, working)
             }
             cache = next
-            return op
+            return ops
         }
+    }
+
+    // Inside the caller's transaction: each op checked, written, folded and materialized — so a
+    // throw anywhere in the loop takes every earlier one back out with it.
+    @discardableResult
+    private static func apply(_ kinds: [Op.Kind], kitchenID: KitchenID,
+                              into working: inout MergeCache, _ db: Database) throws -> [Op] {
+        var identity = try DeviceIdentity.load(db)
+        var written: [Op] = []
+        for kind in kinds {
+            try checkCurrency(kind, kitchenID, db)
+            identity.clock.tick()
+            let op = Op(kitchenID: kitchenID, deviceID: identity.deviceID,
+                        clock: identity.clock.value, wallClock: Date(), kind: kind)
+            let canonical = try insert(op, origin: .local, into: db)
+            fold(canonical, into: &working)
+            try materializePrice(canonical, db)
+            try materializeAlias(canonical, working.state, db)
+            try materializeName(canonical, working.state, db)
+            written.append(canonical)
+        }
+        try identity.save(db)
+        return written
     }
 
     // Remote ops land with origin=remote, advance the clock past theirs, and are never re-pushed.
@@ -280,12 +304,14 @@ public final class Repository: Sendable {
     // The photo's owner changes in one transaction: the scan drops its claim exactly when the
     // receipt takes it, so the file is never owned twice and never orphaned. The file never moves —
     // the receipt keeps the scan's id, so its name still names its owner.
+    /// `totalMinor` is the till's own printed total and nil when none was read; `recordedMinor`
+    /// is what the commit wrote into the price book. Neither is ever derived from the other.
     @discardableResult
-    public func promoteScan(_ id: UUID, shopID: ShopID, lineCount: Int,
-                            totalMinor: Int) throws -> Receipt {
+    public func promoteScan(_ id: UUID, shopID: ShopID, lineCount: Int, totalMinor: Int?,
+                            recordedMinor: Int?) throws -> Receipt {
         try database.pool.write { db in
             try Repository.promote(id, shopID: shopID, lineCount: lineCount,
-                                   totalMinor: totalMinor, db)
+                                   totalMinor: totalMinor, recordedMinor: recordedMinor, db)
         }
     }
 
@@ -293,28 +319,18 @@ public final class Repository: Sendable {
     /// in one transaction. A half-written commit cannot be retried — the scan it needs is gone —
     /// so a failure here must leave the pending scan and write nothing at all.
     @discardableResult
-    public func commitScan(_ id: UUID, shopID: ShopID, lineCount: Int, totalMinor: Int,
-                           ops kinds: [Op.Kind], kitchenID: KitchenID) throws -> Receipt {
+    public func commitScan(_ id: UUID, shopID: ShopID, lineCount: Int, totalMinor: Int?,
+                           recordedMinor: Int?, ops kinds: [Op.Kind],
+                           kitchenID: KitchenID) throws -> Receipt {
         try cache.withLock { cache in
             let snapshot = cache
             let (receipt, next) = try database.pool.write { db -> (Receipt, MergeCache) in
                 var working = try Repository.current(snapshot, db)
-                var identity = try DeviceIdentity.load(db)
-                for kind in kinds {
-                    try Repository.checkCurrency(kind, kitchenID, db)
-                    identity.clock.tick()
-                    let op = Op(kitchenID: kitchenID, deviceID: identity.deviceID,
-                                clock: identity.clock.value, wallClock: Date(), kind: kind)
-                    let canonical = try Repository.insert(op, origin: .local, into: db)
-                    Repository.fold(canonical, into: &working)
-                    try Repository.materializePrice(canonical, db)
-                    try Repository.materializeAlias(canonical, working.state, db)
-                    try Repository.materializeName(canonical, working.state, db)
-                }
-                try identity.save(db)
+                try Repository.apply(kinds, kitchenID: kitchenID, into: &working, db)
                 try Repository.rewriteProjection(working, db)
                 let receipt = try Repository.promote(id, shopID: shopID, lineCount: lineCount,
-                                                     totalMinor: totalMinor, db)
+                                                     totalMinor: totalMinor,
+                                                     recordedMinor: recordedMinor, db)
                 return (receipt, working)
             }
             cache = next
@@ -322,15 +338,15 @@ public final class Repository: Sendable {
         }
     }
 
-    private static func promote(_ id: UUID, shopID: ShopID, lineCount: Int, totalMinor: Int,
-                                _ db: Database) throws -> Receipt {
+    private static func promote(_ id: UUID, shopID: ShopID, lineCount: Int, totalMinor: Int?,
+                                recordedMinor: Int?, _ db: Database) throws -> Receipt {
         guard let record = try PendingScanRecord.fetchOne(db, key: id.uuidString) else {
             throw DataError.unknownScan
         }
         let receipt = Receipt(id: id, shopID: shopID,
                               capturedAt: Date(msSince1970: record.capturedAt),
                               lineCount: lineCount, totalMinor: totalMinor,
-                              photoPath: record.photoPath)
+                              recordedMinor: recordedMinor, photoPath: record.photoPath)
         try ReceiptRecord(receipt: receipt).insert(db)
         try db.execute(sql: "DELETE FROM pending_scan WHERE id = ?", arguments: [id.uuidString])
         return receipt

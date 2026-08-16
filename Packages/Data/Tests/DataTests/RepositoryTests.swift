@@ -199,8 +199,8 @@ final class RepositoryTests: XCTestCase {
                                     source: .receipt)),
         ]
         XCTAssertThrowsError(try repository.commitScan(scan.id, shopID: shopID, lineCount: 2,
-                                                       totalMinor: 4_850, ops: ops,
-                                                       kitchenID: kitchenID))
+                                                       totalMinor: 4_850, recordedMinor: 4_500,
+                                                       ops: ops, kitchenID: kitchenID))
         XCTAssertTrue(try repository.priceObservations().isEmpty)
         XCTAssertTrue(try repository.itemNames().isEmpty,
                       "all of it or none of it: the good lines roll back with the bad one")
@@ -448,7 +448,7 @@ final class RepositoryTests: XCTestCase {
         let scan = try repository.enqueueScan(jpeg: Foundation.Data([0xFF, 0xD8]),
                                               capturedAt: Date(msSince1970: 3_000))
         let receipt = try repository.promoteScan(scan.id, shopID: shopID, lineCount: 14,
-                                                 totalMinor: 8_450)
+                                                 totalMinor: 8_450, recordedMinor: 7_100)
 
         let photoPath = try XCTUnwrap(receipt.photoPath)
         XCTAssertEqual(photoPath, scan.photoPath, "the file does not move, its owner changes")
@@ -459,7 +459,7 @@ final class RepositoryTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: photoPath),
                       "and the photo survived the handover")
         XCTAssertThrowsError(try repository.promoteScan(scan.id, shopID: shopID, lineCount: 1,
-                                                        totalMinor: 1),
+                                                        totalMinor: 1, recordedMinor: 1),
                              "a scan can only be promoted once")
 
         try repository.deleteReceipt(receipt.id)
@@ -485,8 +485,8 @@ final class RepositoryTests: XCTestCase {
 
         // The promotion runs last and fails here: everything written before it must roll back.
         XCTAssertThrowsError(try repository.commitScan(UUID(), shopID: shopID, lineCount: 3,
-                                                       totalMinor: 488, ops: kinds,
-                                                       kitchenID: kitchenID))
+                                                       totalMinor: 488, recordedMinor: 488,
+                                                       ops: kinds, kitchenID: kitchenID))
         XCTAssertTrue(try allOps(database).isEmpty, "no half of the commit survived")
         XCTAssertTrue(try repository.priceObservations().isEmpty)
         XCTAssertTrue(try repository.aliases().isEmpty)
@@ -494,7 +494,8 @@ final class RepositoryTests: XCTestCase {
                        "the photo is still there, so the user can commit again")
 
         let receipt = try repository.commitScan(scan.id, shopID: shopID, lineCount: 3,
-                                                totalMinor: 488, ops: kinds, kitchenID: kitchenID)
+                                                totalMinor: 488, recordedMinor: 488, ops: kinds,
+                                                kitchenID: kitchenID)
 
         XCTAssertEqual(try allOps(database).count, 3, "the retry writes each op exactly once")
         XCTAssertEqual(try repository.priceObservations().count, 2)
@@ -503,6 +504,63 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(try repository.unpushedOps().count, 3, "and all three are pushable")
         XCTAssertTrue(try repository.pendingScans().isEmpty, "the receipt owns the photo now")
         XCTAssertEqual(receipt.photoPath, scan.photoPath)
+        try assertRebuildEquivalent(database, repository)
+    }
+
+    // W7 RULING 1: the till's total is what the till printed, or it is nothing. A receipt whose
+    // grand total was never read stores nil — and the money it did produce is a separate number,
+    // stored as ours.
+    func testAReceiptWithNoPrintedTotalStoresNoTotalAtAll() throws {
+        let (_, repository) = try makeStack()
+        let shopID = ShopID()
+        let scan = try repository.enqueueScan(jpeg: Foundation.Data([0xFF, 0xD8]))
+        let kinds: [Op.Kind] = [
+            .price(PriceObservation(itemID: ItemID(), shopID: shopID, date: Date(),
+                                    amount: Money(minorUnits: 449), source: .receipt)),
+            .price(PriceObservation(itemID: ItemID(), shopID: shopID, date: Date(),
+                                    amount: Money(minorUnits: 329), source: .receipt)),
+        ]
+
+        let receipt = try repository.commitScan(scan.id, shopID: shopID, lineCount: 7,
+                                                totalMinor: nil, recordedMinor: 778, ops: kinds,
+                                                kitchenID: kitchenID)
+
+        XCTAssertNil(receipt.totalMinor, "no total was printed, so none is stored as the till's")
+        XCTAssertEqual(receipt.recordedMinor, 778, "what it wrote into the price book, and ours")
+        let stored = try XCTUnwrap(try repository.receipts().first)
+        XCTAssertNil(stored.totalMinor, "and nil survives the round trip through SQLite")
+        XCTAssertEqual(stored.recordedMinor, 778)
+        // A receipt that priced nothing recorded nothing — which is 0, not "unknown".
+        let second = try repository.enqueueScan(jpeg: Foundation.Data([0xFF, 0xD8]))
+        let empty = try repository.commitScan(second.id, shopID: shopID, lineCount: 2,
+                                              totalMinor: nil, recordedMinor: 0, ops: [],
+                                              kitchenID: kitchenID)
+        XCTAssertEqual(empty.recordedMinor, 0)
+    }
+
+    // The pattern setPrice needs: an identity, the name that makes it readable and the price
+    // land together, or the row is left exactly as it was.
+    func testManyOpsInOneAppendAreAllOfItOrNoneOfIt() throws {
+        let (database, repository) = try makeStack()
+        try repository.saveKitchen(Kitchen(id: kitchenID, name: "Cocina", currencyCode: "EUR"))
+        let item = ListItem(name: "unicorn steaks")
+        try repository.append(.add(item), kitchenID: kitchenID)
+        let itemID = ItemID()
+        let refused: [Op.Kind] = [
+            .edit(item.listItemID, [.itemID(itemID)]),
+            .name(itemID, "unicorn steaks"),
+            .price(PriceObservation(itemID: itemID, shopID: ShopID(), date: Date(),
+                                    amount: Money(minorUnits: 479, currencyCode: "USD"),
+                                    source: .manual)),
+        ]
+
+        XCTAssertThrowsError(try repository.append(refused, kitchenID: kitchenID))
+
+        XCTAssertNil(try repository.items().first?.itemID,
+                     "a refused price leaves the row no identity it never earned")
+        XCTAssertTrue(try repository.itemNames().isEmpty, "and teaches the kitchen nothing")
+        XCTAssertTrue(try repository.priceObservations().isEmpty)
+        XCTAssertEqual(try allOps(database).map(\.type), ["add"], "not one op of the three")
         try assertRebuildEquivalent(database, repository)
     }
 

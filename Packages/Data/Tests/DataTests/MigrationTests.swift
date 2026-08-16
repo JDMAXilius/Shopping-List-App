@@ -149,6 +149,53 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(Set(columns), ["item_id", "name"])
     }
 
+    // W7 RULING 1: a receipt with no printed total must be able to say so in the database.
+    func testTheReceiptTotalRelaxesToNullInV5() throws {
+        let database = try makeDatabase()
+        try Migrations.migrator.migrate(database.pool, upTo: "v4")
+        XCTAssertEqual(try database.installedSchemaVersion(), 4,
+                       "a database stopped at v4 must not claim to be v5")
+        let receiptID = UUID().uuidString
+        try database.pool.write { db in
+            try db.execute(sql: """
+                INSERT INTO receipt (id, shop_id, captured_at, line_count, total_minor, photo_path) \
+                VALUES (?, ?, 9, 14, 8450, '/tmp/r.jpg')
+                """, arguments: [receiptID, UUID().uuidString])
+        }
+        XCTAssertThrowsError(try insertTotallessReceipt(database), "total_minor is NOT NULL in v4")
+
+        try database.migrate()
+
+        XCTAssertEqual(try database.installedSchemaVersion(), AppDatabase.schemaVersion)
+        let rows = try database.pool.read { db in
+            try Row.fetchAll(db, sql: "SELECT * FROM receipt")
+        }
+        let row = try XCTUnwrap(rows.first)
+        XCTAssertEqual(rows.count, 1, "the v4 → v5 upgrade preserves captured trips")
+        XCTAssertEqual(row["id"] as String, receiptID)
+        XCTAssertEqual(row["total_minor"] as Int?, 8_450, "a stored total is not thrown away")
+        XCTAssertNil(row["recorded_minor"] as Int?, "and nothing is invented for the new column")
+        XCTAssertEqual(row["photo_path"] as String?, "/tmp/r.jpg")
+        XCTAssertNoThrow(try insertTotallessReceipt(database),
+                         "a receipt whose till total was never read stores none")
+        // A trip still happened somewhere: relaxing the total must not relax the shop.
+        let shopNotNull = try database.pool.read { db in
+            try Row.fetchAll(db, sql: "PRAGMA table_info(receipt)")
+                .first { ($0["name"] as String) == "shop_id" }
+                .map { $0["notnull"] as Int }
+        }
+        XCTAssertEqual(shopNotNull, 1)
+    }
+
+    private func insertTotallessReceipt(_ database: AppDatabase) throws {
+        try database.pool.write { db in
+            try db.execute(sql: """
+                INSERT INTO receipt (id, shop_id, captured_at, line_count, total_minor) \
+                VALUES (?, ?, 10, 7, NULL)
+                """, arguments: [UUID().uuidString, UUID().uuidString])
+        }
+    }
+
     func testPendingScanStateIsConstrained() throws {
         let database = try makeDatabase()
         try database.migrate()

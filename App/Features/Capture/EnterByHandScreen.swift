@@ -192,7 +192,7 @@ struct TypedPriceEntry: View {
     private var amountRow: some View {
         HStack(alignment: .bottom, spacing: 12) {
             // The label carries the multi-buy rule: what goes in the box is the whole line.
-            Field(quantity > 1 ? "What you paid for all \(Self.quantityText(quantity))"
+            Field(quantity > 1 ? "What you paid for all \(MoneyText.quantityText(quantity))"
                                : "What you paid",
                   text: $amountText, placeholder: "0.00", keyboard: .decimal, on: .paper)
             preview
@@ -229,7 +229,7 @@ struct TypedPriceEntry: View {
     }
 
     private func step(_ symbol: String, to next: Double) -> some View {
-        Button { quantityText = Self.quantityText(next) } label: {
+        Button { quantityText = MoneyText.quantityText(next) } label: {
             Image(systemName: symbol)
                 .font(.system(.body, weight: .semibold))
                 .foregroundStyle(Palette.ink.color)
@@ -281,13 +281,13 @@ struct TypedPriceEntry: View {
 
     private var canSave: Bool { previewLine != nil && session.shopID != nil }
 
-    private var quantity: Double { Self.quantity(from: quantityText) ?? 1 }
+    private var quantity: Double { MoneyText.quantity(from: quantityText) ?? 1 }
 
     /// The line the session will write, exactly as a receipt line is written — so the >3× gate
     /// and the price-of-one rule are the same code here as they are at review.
     private var previewLine: CaptureLine? {
-        guard let amount = Self.money(from: amountText, currencyCode: session.currencyCode),
-              amount.minorUnits > 0, let quantity = Self.quantity(from: quantityText) else {
+        guard let amount = MoneyText.money(from: amountText, currencyCode: session.currencyCode),
+              amount.minorUnits > 0, let quantity = MoneyText.quantity(from: quantityText) else {
             return nil
         }
         return CaptureLine(rawText: rawText, amount: amount, quantity: quantity,
@@ -307,50 +307,10 @@ struct TypedPriceEntry: View {
         onSaved(Self.savedSentence(item: item, line: line, shop: session.shopName))
     }
 
-    /// 0.5 is half a pound, which the scanned path has always been able to say. Blank, zero and
-    /// anything that isn't a number are not quantities — and the save button stays off.
-    static func quantity(from text: String) -> Double? {
-        let cleaned = text.replacingOccurrences(of: ",", with: ".")
-            .trimmingCharacters(in: .whitespaces)
-        guard !cleaned.isEmpty, cleaned.allSatisfy({ $0.isNumber || $0 == "." }),
-              cleaned.filter({ $0 == "." }).count <= 1,
-              let value = Double(cleaned), value > 0, value <= 999 else { return nil }
-        return value
-    }
-
-    /// Whole counts stay whole — "×2", never "×2.0".
-    static func quantityText(_ value: Double) -> String {
-        value == value.rounded() ? String(Int(value)) : String(value)
-    }
-
     /// The number that was written, which for more than one is the price of one.
     static func savedSentence(item: CaptureMatch, line: CaptureLine, shop: String?) -> String {
         let each = line.showsEach ? " each" : ""
         let at = shop.map { " at \($0)" } ?? ""
         return "Saved: \(item.name) — \(line.unitAmount.display)\(each)\(at), typed."
-    }
-
-    /// Minor units, built with integers only: 4.49 has no exact Double and a price book that is
-    /// off by a cent is a wrong price book. Anything else in the text is not a price.
-    static func money(from text: String, currencyCode: String) -> Money? {
-        guard text.allSatisfy({
-            $0.isNumber || $0 == "." || $0 == "," || $0.isWhitespace || $0.isCurrencySymbol
-        }) else { return nil }
-        let digits = text.filter { $0.isNumber || $0 == "." || $0 == "," }
-            .replacingOccurrences(of: ",", with: ".")
-        let parts = digits.split(separator: ".", omittingEmptySubsequences: false)
-        guard parts.count <= 2, digits.contains(where: \.isNumber), parts[0].count <= 9,
-              let major = Int(parts[0].isEmpty ? "0" : String(parts[0])) else { return nil }
-        let exponent = Money.minorUnitExponent(for: currencyCode)
-        var minorUnits = major
-        for _ in 0 ..< exponent { minorUnits *= 10 }
-        guard exponent > 0, parts.count == 2 else {
-            return Money(minorUnits: minorUnits, currencyCode: currencyCode)
-        }
-        // "4.4" is $4.40, not $4.04 — the fraction is padded on the right, like a till.
-        let fraction = parts[1].prefix(exponent)
-        let padded = fraction + String(repeating: "0", count: exponent - fraction.count)
-        guard let cents = Int(String(padded)) else { return nil }
-        return Money(minorUnits: minorUnits + cents, currencyCode: currencyCode)
     }
 }

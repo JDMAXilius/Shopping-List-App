@@ -53,6 +53,22 @@ final class CaptureSessionTests: XCTestCase {
         "scans_used":1}
         """
 
+    // The refutation's receipt, exactly: no grand total read, and every till line the model
+    // refused to call a purchase still printed on the paper.
+    private let noTotalJSON = """
+        {"lines":[{"raw_text":"MILK","amount_minor":449,"quantity":1,"confidence":"sure",
+        "match_hint":"milk"},
+        {"raw_text":"SOURDOUGH","amount_minor":329,"quantity":1,"confidence":"sure",
+        "match_hint":"bread"},
+        {"raw_text":"SUBTOTAL","amount_minor":778,"quantity":1,"confidence":"no_match"},
+        {"raw_text":"TAX","amount_minor":62,"quantity":1,"confidence":"no_match"},
+        {"raw_text":"TOTAL","amount_minor":840,"quantity":1,"confidence":"no_match"},
+        {"raw_text":"CASH","amount_minor":1000,"quantity":1,"confidence":"no_match"},
+        {"raw_text":"CHANGE","amount_minor":160,"quantity":1,"confidence":"no_match"}],
+        "shop_name":"Trader Joe's","total_minor":null,"currency":"USD","is_plus":false,
+        "scans_used":1}
+        """
+
     private func parsed(_ json: String) throws -> ScanOutcome {
         .scanned(try JSONDecoder().decode(ScanReceipt.self, from: Foundation.Data(json.utf8)))
     }
@@ -430,7 +446,95 @@ final class CaptureSessionTests: XCTestCase {
         XCTAssertNil(harness.session.result, "and the result screen has nothing to claim")
     }
 
-    // MARK: - The close
+    // MARK: - The till's total, or nothing
+
+    /// W7 P1-A: the fallback summed SUBTOTAL + TAX + TOTAL + CASH + CHANGE into `totalMinor` and
+    /// the Prices tab printed it in solid ink as "the till's own total". This receipt charged
+    /// $8.40; the sum is $36.18. Neither is stored now, because neither was printed.
+    func testAReceiptWithNoPrintedTotalStoresNoneAndInventsNothing() async throws {
+        let harness = try makeHarness([try parsed(noTotalJSON)])
+        await harness.session.capture(jpeg: jpeg)
+
+        let milk = try XCTUnwrap(harness.session.lines.first { $0.rawText == "MILK" })
+        let bread = try XCTUnwrap(harness.session.lines.first { $0.rawText == "SOURDOUGH" })
+        harness.session.choose(itemID: ItemID.catalog(1), name: "Milk", for: milk.id)
+        harness.session.choose(itemID: ItemID.catalog(2), name: "Sourdough", for: bread.id)
+
+        XCTAssertNil(harness.session.printedTotal, "the model read no total, so there is none")
+        XCTAssertTrue(harness.session.commit())
+
+        let receipt = try XCTUnwrap(try harness.repository.receipts().first)
+        XCTAssertNil(receipt.totalMinor,
+                     "a sum of OCR lines is not the till's total and is never stored as one")
+        XCTAssertNotEqual(receipt.totalMinor, 3_618, "the number that was 4.31× what was charged")
+        // What it did do is stored as ours: the two lines that became prices, added up.
+        XCTAssertEqual(receipt.recordedMinor, 778)
+        XCTAssertEqual(try harness.repository.priceObservations().count, 2)
+    }
+
+    func testAPrintedTotalIsStoredExactlyAsPrintedAndNeverRecomputed() async throws {
+        let harness = try makeHarness([try parsed(receiptJSON)])
+        await harness.session.capture(jpeg: jpeg)
+        let milk = try XCTUnwrap(harness.session.lines.first { $0.rawText == "MILK 1L" })
+        let spinach = try XCTUnwrap(harness.session.lines.first { $0.rawText == "TJ ORG BABY SPNC" })
+        harness.session.choose(itemID: ItemID.catalog(1), name: "Milk", for: milk.id)
+        harness.session.choose(itemID: ItemID.catalog(2), name: "Baby spinach", for: spinach.id)
+        let fee = try XCTUnwrap(harness.session.lines.first { $0.rawText == "BAG FEE" })
+        harness.session.ignore(fee.id)
+
+        XCTAssertEqual(harness.session.printedTotal, Money(minorUnits: 498))
+        XCTAssertTrue(harness.session.commit())
+
+        let receipt = try XCTUnwrap(try harness.repository.receipts().first)
+        XCTAssertEqual(receipt.totalMinor, 498, "what the till printed, unchanged")
+        // The $0.10 bag fee was ignored, so what reached the price book is less than the total —
+        // and the two numbers are kept apart rather than reconciled into one.
+        XCTAssertEqual(receipt.recordedMinor, 488)
+    }
+
+    /// RULING 3: the user is the last check, and until now they were shown no total at all.
+    func testTheReviewScreenSaysWhoseNumberEachOneIs() {
+        let none = ReceiptReviewScreen.totalNote(printed: nil, recorded: Money(minorUnits: 778))
+        XCTAssertTrue(none.contains("wasn't read"))
+        XCTAssertTrue(none.contains("$7.78"))
+        XCTAssertTrue(none.contains("ours, not what the till charged"),
+                      "a computed stand-in must never read as the printed total")
+        let printed = ReceiptReviewScreen.totalNote(printed: Money(minorUnits: 840),
+                                                    recorded: Money(minorUnits: 778))
+        XCTAssertTrue(printed.contains("$7.78"))
+        XCTAssertTrue(printed.contains("the rest is tax"))
+        XCTAssertFalse(printed.contains("wasn't read"))
+        // Nothing left over, so nothing is claimed to be left over.
+        XCTAssertEqual(ReceiptReviewScreen.totalNote(printed: Money(minorUnits: 778),
+                                                     recorded: Money(minorUnits: 778)),
+                       "The lines you keep add up to $7.78.")
+    }
+
+    /// W7 P2: `commit` took the model's date unclamped while `record` clamped it. A smudged
+    /// 01/03/27 read as 2027 made a `trusted` price that printed as "today" and outranked every
+    /// real one for 90 days — and the month filter excluded it, so the money vanished twice.
+    func testAFutureDatedReceiptIsClampedByTheCommitToo() async throws {
+        let future = receiptJSON.replacingOccurrences(
+            of: "\"scans_used\":1", with: "\"scans_used\":1,\"purchased_at\":\"2099-01-03\"")
+        let harness = try makeHarness([try parsed(future)])
+        await harness.session.capture(jpeg: jpeg)
+        let milk = try XCTUnwrap(harness.session.lines.first { $0.rawText == "MILK 1L" })
+        harness.session.choose(itemID: ItemID.catalog(1), name: "Milk", for: milk.id)
+
+        XCTAssertTrue(harness.session.commit())
+
+        XCTAssertFalse(try harness.repository.priceObservations().isEmpty)
+        for observation in try harness.repository.priceObservations() {
+            XCTAssertLessThanOrEqual(observation.date.timeIntervalSinceNow, 1,
+                                     "one clamp, every path that writes a price")
+        }
+        XCTAssertEqual(CaptureSession.honestDate(Date(timeIntervalSince1970: 0),
+                                                 now: Date(timeIntervalSince1970: 100)),
+                       Date(timeIntervalSince1970: 0), "a real past date is left alone")
+        XCTAssertEqual(CaptureSession.honestDate(Date(timeIntervalSince1970: 200),
+                                                 now: Date(timeIntervalSince1970: 100)),
+                       Date(timeIntervalSince1970: 100))
+    }
 
     // MARK: - The typed price: enter by hand, and a barcode
 
@@ -553,15 +657,15 @@ final class CaptureSessionTests: XCTestCase {
     }
 
     func testTypingHalfAPoundSaysWhatTheScannedPathCanSay() throws {
-        XCTAssertEqual(TypedPriceEntry.quantity(from: "0.5"), 0.5)
-        XCTAssertEqual(TypedPriceEntry.quantity(from: "1,5"), 1.5)
-        XCTAssertEqual(TypedPriceEntry.quantity(from: "2"), 2.0)
-        XCTAssertNil(TypedPriceEntry.quantity(from: ""))
-        XCTAssertNil(TypedPriceEntry.quantity(from: "0"), "nothing bought is not a quantity")
-        XCTAssertNil(TypedPriceEntry.quantity(from: "two"))
-        XCTAssertNil(TypedPriceEntry.quantity(from: "1.2.5"))
-        XCTAssertEqual(TypedPriceEntry.quantityText(2), "2", "a whole count stays whole")
-        XCTAssertEqual(TypedPriceEntry.quantityText(0.5), "0.5")
+        XCTAssertEqual(MoneyText.quantity(from: "0.5"), 0.5)
+        XCTAssertEqual(MoneyText.quantity(from: "1,5"), 1.5)
+        XCTAssertEqual(MoneyText.quantity(from: "2"), 2.0)
+        XCTAssertNil(MoneyText.quantity(from: ""))
+        XCTAssertNil(MoneyText.quantity(from: "0"), "nothing bought is not a quantity")
+        XCTAssertNil(MoneyText.quantity(from: "two"))
+        XCTAssertNil(MoneyText.quantity(from: "1.2.5"))
+        XCTAssertEqual(MoneyText.quantityText(2), "2", "a whole count stays whole")
+        XCTAssertEqual(MoneyText.quantityText(0.5), "0.5")
 
         let harness = try makeHarness([])
         let shopID = try XCTUnwrap(harness.store.activeShopID)
@@ -577,29 +681,29 @@ final class CaptureSessionTests: XCTestCase {
     // MARK: - The money the two typed screens share
 
     func testMoneyIsBuiltFromMinorUnitsAndRefusesWhatIsNotAPrice() {
-        XCTAssertEqual(TypedPriceEntry.money(from: "4.49", currencyCode: "USD"),
+        XCTAssertEqual(MoneyText.money(from: "4.49", currencyCode: "USD"),
                        Money(minorUnits: 449))
         // "4.4" is $4.40, not $4.04 — padded on the right, like a till.
-        XCTAssertEqual(TypedPriceEntry.money(from: "4.4", currencyCode: "USD"),
+        XCTAssertEqual(MoneyText.money(from: "4.4", currencyCode: "USD"),
                        Money(minorUnits: 440))
-        XCTAssertEqual(TypedPriceEntry.money(from: "4", currencyCode: "USD"),
+        XCTAssertEqual(MoneyText.money(from: "4", currencyCode: "USD"),
                        Money(minorUnits: 400))
-        XCTAssertEqual(TypedPriceEntry.money(from: ".49", currencyCode: "USD"),
+        XCTAssertEqual(MoneyText.money(from: ".49", currencyCode: "USD"),
                        Money(minorUnits: 49))
-        XCTAssertEqual(TypedPriceEntry.money(from: "$4.49", currencyCode: "USD"),
+        XCTAssertEqual(MoneyText.money(from: "$4.49", currencyCode: "USD"),
                        Money(minorUnits: 449))
-        XCTAssertEqual(TypedPriceEntry.money(from: "4,49", currencyCode: "USD"),
+        XCTAssertEqual(MoneyText.money(from: "4,49", currencyCode: "USD"),
                        Money(minorUnits: 449))
         // A third decimal is not money: it is dropped, never rounded up into a price.
-        XCTAssertEqual(TypedPriceEntry.money(from: "4.499", currencyCode: "USD"),
+        XCTAssertEqual(MoneyText.money(from: "4.499", currencyCode: "USD"),
                        Money(minorUnits: 449))
         // Yen has no minor unit: 500 is ¥500 and must never become ¥5.00.
-        XCTAssertEqual(TypedPriceEntry.money(from: "500", currencyCode: "JPY"),
+        XCTAssertEqual(MoneyText.money(from: "500", currencyCode: "JPY"),
                        Money(minorUnits: 500, currencyCode: "JPY"))
-        XCTAssertNil(TypedPriceEntry.money(from: "", currencyCode: "USD"))
-        XCTAssertNil(TypedPriceEntry.money(from: "4a9", currencyCode: "USD"))
-        XCTAssertNil(TypedPriceEntry.money(from: "4.4.9", currencyCode: "USD"))
-        XCTAssertNil(TypedPriceEntry.money(from: "1234567890", currencyCode: "USD"))
+        XCTAssertNil(MoneyText.money(from: "", currencyCode: "USD"))
+        XCTAssertNil(MoneyText.money(from: "4a9", currencyCode: "USD"))
+        XCTAssertNil(MoneyText.money(from: "4.4.9", currencyCode: "USD"))
+        XCTAssertNil(MoneyText.money(from: "1234567890", currencyCode: "USD"))
     }
 
     func testTheSavedSentenceNamesThePriceOfOne() {

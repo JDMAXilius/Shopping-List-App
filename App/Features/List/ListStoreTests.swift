@@ -11,12 +11,16 @@ import XCTest
 final class ListStoreTests: XCTestCase {
     private let kitchenID = KitchenID()
 
-    private func makeStore() throws -> (ListStore, Repository) {
+    private func makeStore(currencyCode: String? = nil) throws -> (ListStore, Repository) {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("list-store-\(UUID().uuidString).sqlite")
         let database = try AppDatabase(url: url)
         try database.migrate()
         let repository = try Repository(database: database)
+        if let currencyCode {
+            try repository.saveKitchen(Kitchen(id: kitchenID, name: "Home",
+                                               currencyCode: currencyCode))
+        }
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "bagged.tests.\(UUID().uuidString)"))
         let store = try ListStore(repository: repository, kitchenID: kitchenID,
                                   catalog: ListCatalog(database: try CatalogDatabase.bundled()),
@@ -380,11 +384,86 @@ final class ListStoreTests: XCTestCase {
     }
 
     func testMoneyEntryRejectsWhatItCannotRead() {
-        XCTAssertEqual(ItemDetailSheet.money(from: "$4.79"), Money(minorUnits: 479))
-        XCTAssertEqual(ItemDetailSheet.money(from: "4,5"), Money(minorUnits: 450))
-        XCTAssertEqual(ItemDetailSheet.money(from: "12"), Money(minorUnits: 1200))
-        XCTAssertNil(ItemDetailSheet.money(from: ""))
-        XCTAssertNil(ItemDetailSheet.money(from: "about five"))
+        XCTAssertEqual(MoneyText.money(from: "$4.79", currencyCode: "USD"), Money(minorUnits: 479))
+        XCTAssertEqual(MoneyText.money(from: "4,5", currencyCode: "USD"), Money(minorUnits: 450))
+        XCTAssertEqual(MoneyText.money(from: "12", currencyCode: "USD"), Money(minorUnits: 1_200))
+        XCTAssertNil(MoneyText.money(from: "", currencyCode: "USD"))
+        XCTAssertNil(MoneyText.money(from: "about five", currencyCode: "USD"))
+    }
+
+    /// W7 P1-B: there is exactly one typed-money parser, and the detail sheet uses it. A second
+    /// one that hardcoded `Money(whole * 100)` made every price typed in a EUR, GBP, JPY or KWD
+    /// kitchen a `currencyMismatch` the store then swallowed.
+    func testTheDetailSheetHasNoParserOfItsOwn() throws {
+        let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        let source = try String(contentsOf: directory.appendingPathComponent("ItemDetailSheet.swift"),
+                                encoding: .utf8)
+        XCTAssertFalse(source.contains("* 100"), "the exponent comes from Money, never a literal")
+        XCTAssertFalse(source.contains("static func money"),
+                       "one parser for the whole app: MoneyText")
+        XCTAssertEqual(MoneyText.money(from: "4,79", currencyCode: "EUR"),
+                       Money(minorUnits: 479, currencyCode: "EUR"))
+        XCTAssertEqual(MoneyText.money(from: "500", currencyCode: "JPY"),
+                       Money(minorUnits: 500, currencyCode: "JPY"), "¥500 is never ¥5.00")
+        XCTAssertEqual(MoneyText.money(from: "1,500", currencyCode: "KWD"),
+                       Money(minorUnits: 1_500, currencyCode: "KWD"), "the dinar divides by 1000")
+    }
+
+    /// The bug as executed: a EUR kitchen, "4,79" typed, save tapped — and no error, no toast,
+    /// no row change, forever. What is typed is now in the kitchen's own money and it lands.
+    func testATypedPriceInANonUSDKitchenIsActuallySaved() throws {
+        let (store, _) = try makeStore(currencyCode: "EUR")
+        store.addShop(named: "Mercadona")
+        store.add(text: "milk")
+        let amount = try XCTUnwrap(MoneyText.money(from: "4,79", currencyCode: store.currencyCode))
+
+        XCTAssertEqual(store.currencyCode, "EUR")
+        XCTAssertTrue(store.setPrice(try XCTUnwrap(store.rows.first).item, amount),
+                      "the write reports what it did, and it did it")
+        XCTAssertEqual(try XCTUnwrap(store.rows.first).price,
+                       PriceDisplay(amount: Money(minorUnits: 479, currencyCode: "EUR"),
+                                    confidence: .trusted))
+    }
+
+    /// A write that fails is never silent, and never half-lands: the row keeps no identity and
+    /// no taught name bought by a price the database refused.
+    func testARefusedPriceChangesNothingAtAllAndSaysSo() throws {
+        let (store, repository) = try makeStore(currencyCode: "EUR")
+        store.addShop(named: "Mercadona")
+        store.add(text: "unicorn steaks")
+        let row = try XCTUnwrap(store.rows.first)
+
+        // USD into a EUR kitchen: exactly what the old sheet built out of "4,79".
+        XCTAssertFalse(store.setPrice(row.item, Money(minorUnits: 479, currencyCode: "USD")))
+
+        let after = try XCTUnwrap(store.rows.first)
+        XCTAssertNil(after.item.itemID, "no identity for a price that was never written")
+        XCTAssertTrue(try repository.itemNames().isEmpty, "and no name taught for it either")
+        XCTAssertTrue(try repository.priceObservations().isEmpty)
+        XCTAssertEqual(after.price, .none)
+    }
+
+    /// W7 P3: the list and the price book call an item the same thing, and it is the user's word.
+    func testTheNameTheUserGaveItWinsWhereverOneExists() throws {
+        let catalog = ListCatalog(database: try CatalogDatabase.bundled())
+        let match = try XCTUnwrap(catalog.resolve("oat milk"))
+        let taught = [match.itemID: "Oatly barista"]
+
+        XCTAssertEqual(catalog.displayName(for: match.itemID, kitchenNames: taught,
+                                           listName: "tj oat milk", fallback: "TJ OAT BEV"),
+                       "tj oat milk", "the row's own words beat everything")
+        XCTAssertEqual(catalog.displayName(for: match.itemID, kitchenNames: taught,
+                                           listName: nil, fallback: "TJ OAT BEV"),
+                       "Oatly barista", "then what this kitchen was taught")
+        // The case the order was catalog-first for: a receipt line with no list row must still
+        // read as the catalog's name, never as till text.
+        XCTAssertEqual(catalog.displayName(for: match.itemID, kitchenNames: [:], listName: nil,
+                                           fallback: "TJ ORG BABY SPNC"),
+                       match.name)
+        // An item no catalog knows and nobody named: the raw text is all there is.
+        XCTAssertEqual(catalog.displayName(for: ItemID(), kitchenNames: [:], listName: nil,
+                                           fallback: "TJ ORG BABY SPNC"),
+                       "TJ ORG BABY SPNC")
     }
 
     func testCatalogIdentityRoundTrips() {

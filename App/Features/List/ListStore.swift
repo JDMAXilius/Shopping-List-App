@@ -17,6 +17,10 @@ final class ListStore {
     private let observedShops: Observed<[Shop]>
     private let observedPrices: Observed<[PriceObservation]>
     private var deviceHistory: [String]
+    /// The KITCHEN's currency — it took the device's locale when it was created, and every price
+    /// typed anywhere in the app is parsed and written in it. With no kitchen row there is no
+    /// claim to make, so USD stands.
+    let currencyCode: String
     // Set by a check-off, cleared by every other write: the arrival tone is never a
     // reward for deleting the last row.
     @ObservationIgnored private var checkedOff = false
@@ -41,6 +45,8 @@ final class ListStore {
         observedShops = try repository.observedShops()
         observedPrices = try repository.observedPriceObservations()
         deviceHistory = defaults.stringArray(forKey: ListStore.historyKey) ?? []
+        currencyCode = ((try? repository.kitchens()) ?? [])
+            .first { $0.id == kitchenID }?.currencyCode ?? "USD"
         let saved = defaults.string(forKey: ListStore.activeShopKey)
             .flatMap(UUID.init(uuidString:)).map(ShopID.init)
         activeShopID = observedShops.value.first { $0.id == saved }?.id ?? observedShops.value.first?.id
@@ -139,17 +145,22 @@ final class ListStore {
     }
 
     /// The measured-price moment. Observations accumulate — there is no inverse op to undo.
-    func setPrice(_ item: ListItem, _ amount: Money) {
-        guard let shopID = activeShopID else { return }
+    /// All three ops or none of them: a price the database refuses must not leave the row with
+    /// an identity and a taught name it never earned, and the caller is told either way.
+    @discardableResult
+    func setPrice(_ item: ListItem, _ amount: Money) -> Bool {
+        guard let shopID = activeShopID else { return false }
         let itemID = item.itemID ?? ItemID()
+        var kinds: [Op.Kind] = []
         if item.itemID == nil {
             // A price whose identity never landed would belong to nobody — and an identity the
             // catalog cannot name is nameless the moment this row is deleted, so teach it too.
-            guard append(.edit(item.listItemID, [.itemID(itemID)])) else { return }
-            if itemID.catalogID == nil { append(.name(itemID, item.name)) }
+            kinds.append(.edit(item.listItemID, [.itemID(itemID)]))
+            if itemID.catalogID == nil { kinds.append(.name(itemID, item.name)) }
         }
-        append(.price(PriceObservation(itemID: itemID, shopID: shopID, date: Date(),
-                                       amount: amount, source: .manual)))
+        kinds.append(.price(PriceObservation(itemID: itemID, shopID: shopID, date: Date(),
+                                             amount: amount, source: .manual)))
+        return append(kinds)
     }
 
     func edit(_ item: ListItem, _ writes: [FieldWrite]) {
@@ -224,9 +235,15 @@ final class ListStore {
     /// Every write clears the undo slot; the two actions that earn one set it afterwards.
     @discardableResult
     private func append(_ kind: Op.Kind) -> Bool {
+        append([kind])
+    }
+
+    // One transaction for the whole group, so a refusal leaves nothing behind.
+    @discardableResult
+    private func append(_ kinds: [Op.Kind]) -> Bool {
         checkedOff = false
         pendingUndo = nil
-        guard (try? repository.append(kind, kitchenID: kitchenID)) != nil else { return false }
+        guard (try? repository.append(kinds, kitchenID: kitchenID)) != nil else { return false }
         refresh()
         return true
     }
