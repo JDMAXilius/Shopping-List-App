@@ -174,9 +174,9 @@ deno check supabase/functions/*/index.ts
 The one that matters most: **kitchen A must not be able to read kitchen B.** Try to break it as
 an attacker would, not as an author would.
 
-- [ ] RLS suite green on the real stack — paste counts
-- [ ] `deno test` green — paste counts
-- [ ] all three functions type-check
+- [ ] RLS suite green on the real stack — paste counts (BLOCKED: no Docker/supabase CLI on this Mac — see Log)
+- [x] `deno test` green — paste counts
+- [x] all three functions type-check
 
 ### T5 — The snapshot suite (the largest hole in the project)
 
@@ -342,3 +342,9 @@ wave-by-wave detail — **read its Log, it has the reasoning behind every ruling
   on this Mac** — `supabase start` cannot run, so the T4 real-stack RLS suite is blocked here.
 > HANDOFF → cloud: T4 RLS-on-real-stack needs Docker Desktop (or founder installs it here).
   deno tests + type-check will still run locally.
+
+**2026-08-16 · terminal · T4 partial.**
+- `deno test supabase/functions/scan-receipt/` (deno 2.9.5): **26 passed, 0 failed**.
+- `deno check` clean on scan-receipt, join-kitchen, revenuecat-webhook (supabase-js 2.112.3).
+- RLS suite on the real stack: **not run** — no Docker and no supabase CLI on this machine, so
+  `supabase start` is impossible. Box left unchecked; handoff line above stands.
