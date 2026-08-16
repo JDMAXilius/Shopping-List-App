@@ -14,6 +14,7 @@ final class CaptureSessionTests: XCTestCase {
         let session: CaptureSession
         let repository: Repository
         let store: ListStore
+        let backend: FakeScanBackend
     }
 
     private func makeHarness(_ outcomes: [ScanOutcome]) throws -> Harness {
@@ -27,9 +28,10 @@ final class CaptureSessionTests: XCTestCase {
         let store = try ListStore(repository: repository, kitchenID: kitchenID, catalog: catalog,
                                   defaults: defaults)
         store.addShop(named: "Trader Joe's")
+        let backend = FakeScanBackend(outcomes: outcomes)
         let session = CaptureSession(repository: repository, kitchenID: kitchenID, store: store,
-                                     catalog: catalog, backend: FakeScanBackend(outcomes: outcomes))
-        return Harness(session: session, repository: repository, store: store)
+                                     catalog: catalog, backend: backend)
+        return Harness(session: session, repository: repository, store: store, backend: backend)
     }
 
     private let receiptJSON = """
@@ -38,6 +40,16 @@ final class CaptureSessionTests: XCTestCase {
         {"raw_text":"TJ ORG BABY SPNC","amount_minor":299,"quantity":1,"confidence":"not_sure"},
         {"raw_text":"BAG FEE","amount_minor":10,"quantity":1,"confidence":"no_match"}],
         "shop_name":"Trader Joe's","total_minor":498,"currency":"USD","is_plus":false,
+        "scans_used":1}
+        """
+
+    // A per-item discount line, printed exactly as a till prints one.
+    private let couponJSON = """
+        {"lines":[{"raw_text":"MILK 1L","amount_minor":189,"quantity":1,"confidence":"sure",
+        "match_hint":"milk"},
+        {"raw_text":"MFR COUPON MILK 2%","amount_minor":-100,"quantity":1,"confidence":"sure",
+        "match_hint":"milk"}],
+        "shop_name":"Trader Joe's","total_minor":89,"currency":"USD","is_plus":false,
         "scans_used":1}
         """
 
@@ -83,6 +95,52 @@ final class CaptureSessionTests: XCTestCase {
         XCTAssertNil(line(amount: 1050, quantity: 3, estimate: 350).estimateFlag)
         XCTAssertEqual(line(amount: 3000, quantity: 2, estimate: 350).estimateFlag,
                        "$15.00 each — more than 3× the usual $3.50")
+    }
+
+    // MARK: - Zero or less is not a price
+
+    func testZeroOrLessIsNotAPriceWhateverTheDecisionSays() {
+        let free = line(amount: 0, estimate: 350)
+        let coupon = line(amount: -100, estimate: 350)
+        // Both are accepted lines with a match: the amount alone decides, structurally.
+        XCTAssertEqual(free.decision, .accept)
+        XCTAssertFalse(free.isPriced, "an amount of zero is not a price")
+        XCTAssertFalse(coupon.isPriced, "and neither is money off")
+        XCTAssertTrue(free.isMoneyOff)
+        XCTAssertEqual(free.moneyOffText, "no amount")
+        XCTAssertEqual(coupon.moneyOffText, "$1.00 off")
+        XCTAssertNil(coupon.estimateFlag)
+    }
+
+    func testACouponIsShownAndMatchedButNeverBecomesAPrice() async throws {
+        let harness = try makeHarness([try parsed(couponJSON)])
+        let milkID = ItemID.catalog(1)
+        // The kitchen already knows this till text, so the line arrives matched — the path that
+        // used to walk it into the price book at -$1.00.
+        try harness.repository.append(.alias(rawText: "MFR COUPON MILK 2%", itemID: milkID),
+                                      kitchenID: kitchenID)
+
+        await harness.session.capture(jpeg: jpeg)
+
+        XCTAssertEqual(harness.session.lines.count, 2, "a coupon is on the receipt and stays shown")
+        let coupon = try XCTUnwrap(harness.session.lines.first { $0.amount.minorUnits < 0 })
+        XCTAssertNotNil(coupon.match, "the alias half is unaffected")
+        XCTAssertNotEqual(coupon.decision, .accept, "it never arrives accepted")
+        XCTAssertFalse(coupon.isPriced)
+
+        // Not even the user matching it by hand can make it a price.
+        harness.session.choose(itemID: milkID, name: "Milk", for: coupon.id)
+        XCTAssertFalse(try XCTUnwrap(harness.session.lines.first { $0.id == coupon.id }).isPriced)
+        XCTAssertTrue(harness.session.commit())
+
+        let observations = try harness.repository.priceObservations()
+        XCTAssertTrue(observations.allSatisfy { $0.amount.minorUnits > 0 },
+                      "no observation with an amount of zero or less was ever written")
+        XCTAssertTrue(observations.filter { $0.itemID == milkID && $0.amount.minorUnits < 0 }.isEmpty)
+        // The alias the user's correction earned is still remembered.
+        let aliases = try harness.repository.aliases()
+        let index = try XCTUnwrap(aliases.index(forKey: Merge.aliasKey("MFR COUPON MILK 2%")))
+        XCTAssertEqual(aliases[index].value, milkID)
     }
 
     // MARK: - Nothing commits unreviewed
@@ -213,6 +271,92 @@ final class CaptureSessionTests: XCTestCase {
         XCTAssertEqual(session.stage, .idle)
     }
 
+    func testAScanAnEarlierBuildLeftFailedIsSweptBackIntoTheQueue() throws {
+        let harness = try makeHarness([])
+        let orphan = try harness.repository.enqueueScan(jpeg: jpeg)
+        // `failed` is a state nothing queries: a photo in it can be neither read nor deleted by
+        // any screen, so entry is what sweeps it.
+        try harness.repository.markScan(orphan.id, .failed)
+
+        let session = CaptureSession(repository: harness.repository, kitchenID: kitchenID,
+                                     store: harness.store, catalog: ListCatalog(database: nil),
+                                     backend: FakeScanBackend(outcomes: []))
+
+        XCTAssertEqual(session.waiting.map(\.id), [orphan.id])
+        XCTAssertTrue(try harness.repository.pendingScans().allSatisfy { $0.state == .queued })
+    }
+
+    func testOurOwnBugKeepsThePhotoAndOffersItAgain() async throws {
+        for outcome in [ScanOutcome.rejected, .unexpected(status: 418)] {
+            let harness = try makeHarness([outcome])
+            let pending = try harness.repository.enqueueScan(jpeg: jpeg)
+
+            await harness.session.read(pending)
+
+            XCTAssertEqual(harness.session.stage, .failed(.ourBug), "\(outcome)")
+            // The user did nothing wrong — a shop name we sent too long, a gateway that answered
+            // for us — so the photo stays readable instead of being stranded forever.
+            XCTAssertEqual(try harness.repository.queuedScans().map(\.id), [pending.id])
+            XCTAssertNotNil(try harness.repository.scanPhoto(pending.id))
+            XCTAssertEqual(harness.session.scan?.id, pending.id, "so the screen can offer a retry")
+            XCTAssertTrue(try harness.repository.pendingScans().filter { $0.state == .failed }
+                .isEmpty, "and no row is left in a state nothing sweeps")
+        }
+        XCTAssertTrue(ReceiptCameraScreen.keepsThePhoto(.ourBug))
+        XCTAssertFalse(ReceiptCameraScreen.sentence(.ourBug).contains("Take another"),
+                       "the sentence must not send the user away from a photo we still hold")
+    }
+
+    func testAPhotoOnlyANewPhotoCanFixIsDeletedNotStranded() async throws {
+        for outcome in [ScanOutcome.unreadableImage(freeScan: .refunded),
+                        .imageTooLarge(maxBytes: 8 * 1024 * 1024)] {
+            let harness = try makeHarness([outcome])
+            let pending = try harness.repository.enqueueScan(jpeg: jpeg)
+
+            await harness.session.read(pending)
+
+            // Nothing will ever read this file again, so the bytes go with the row: no orphan
+            // JPEG in the container, and no `failed` row waiting for a sweeper that isn't there.
+            XCTAssertTrue(try harness.repository.pendingScans().isEmpty, "\(outcome)")
+            XCTAssertFalse(FileManager.default.fileExists(atPath: pending.photoPath), "\(outcome)")
+            XCTAssertNil(harness.session.scan)
+            XCTAssertTrue(harness.session.waiting.isEmpty)
+        }
+        XCTAssertFalse(ReceiptCameraScreen.keepsThePhoto(.unreadable))
+        XCTAssertFalse(ReceiptCameraScreen.keepsThePhoto(.tooLarge))
+        XCTAssertTrue(ReceiptCameraScreen.sentence(.unreadable).contains("wasn't kept"),
+                      "a photo we deleted is not described as kept")
+    }
+
+    func testTheReceiptUnderReviewIsNotAlsoWaitingToBeRead() async throws {
+        let harness = try makeHarness([try parsed(receiptJSON)])
+        await harness.session.capture(jpeg: jpeg)
+
+        XCTAssertEqual(harness.session.stage, .review)
+        // The row stays queued — that is what keeps the promise across an app kill — but the
+        // flow must not offer to read it again and throw every hand-match away.
+        XCTAssertEqual(try harness.repository.queuedScans().count, 1)
+        XCTAssertTrue(harness.session.waiting.isEmpty)
+
+        harness.session.retakePhoto()
+        XCTAssertEqual(harness.session.waiting.count, 1, "letting go of it puts it back on offer")
+    }
+
+    func testASecondReadOfThePhotoInFlightIsNotStarted() async throws {
+        let harness = try makeHarness([try parsed(receiptJSON), try parsed(receiptJSON)])
+        let pending = try harness.repository.enqueueScan(jpeg: jpeg)
+
+        async let first: Void = harness.session.read(pending)
+        async let second: Void = harness.session.read(pending)
+        _ = await (first, second)
+
+        let calls = await harness.backend.calls
+        XCTAssertEqual(calls.count, 1,
+                       "one photo, one free scan — a read in flight is not re-entrant")
+        XCTAssertEqual(harness.session.stage, .review)
+        XCTAssertEqual(harness.session.lines.count, 3)
+    }
+
     func testQuotaExhaustedRoutesToThePaywallAndKeepsThePhoto() async throws {
         let harness = try makeHarness([.quotaExhausted(scansUsed: 3)])
 
@@ -221,6 +365,69 @@ final class CaptureSessionTests: XCTestCase {
         XCTAssertEqual(harness.session.stage, .handoff(.paywall(scansUsed: 3)))
         XCTAssertEqual(try harness.repository.queuedScans().count, 1)
         XCTAssertTrue(try harness.repository.receipts().isEmpty)
+    }
+
+    // MARK: - The shop this receipt is filed under
+
+    func testFilingAReceiptNeverRePointsTheList() async throws {
+        let harness = try makeHarness([try parsed(receiptJSON)])
+        harness.store.addShop(named: "Whole Foods")
+        let wholeFoods = try XCTUnwrap(harness.store.activeShopID)
+        let traderJoes = try XCTUnwrap(harness.store.shops.first { $0.name == "Trader Joe's" }?.id)
+
+        await harness.session.capture(jpeg: jpeg)
+
+        // The printed name decided this receipt's shop; the list is pointed somewhere else and
+        // stays there, through the commit and after it.
+        XCTAssertEqual(harness.session.shopID, traderJoes)
+        XCTAssertEqual(harness.store.activeShopID, wholeFoods)
+        XCTAssertTrue(harness.session.commit())
+        XCTAssertEqual(harness.store.activeShopID, wholeFoods, "the list stays where it was")
+        XCTAssertEqual(try harness.repository.receipts().first?.shopID, traderJoes)
+    }
+
+    func testNoScreenInTheFlowReachesThroughToTheGlobalActiveShop() throws {
+        // View code, so the pin is on the source: the picker returns a choice, and a dismissal
+        // that chose nothing must leave the receipt's shop exactly as it was.
+        let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        for screen in ["ReceiptReviewScreen", "EnterByHandScreen"] {
+            let source = try String(contentsOf: directory.appendingPathComponent("\(screen).swift"),
+                                    encoding: .utf8)
+            XCTAssertFalse(source.contains("session.store.activeShopID"),
+                           "\(screen) must take the picker's choice, never the active shop")
+            XCTAssertFalse(source.contains("ShopSwitcherSheet(store: session.store)"),
+                           "\(screen) must not present the switcher, which re-points the list")
+        }
+    }
+
+    func testAPrintedNameThatDisagreesWithTheChosenShopIsNotAFootnote() {
+        XCTAssertEqual(ReceiptReviewScreen.disagreement(printed: "TRADER JOE'S #123",
+                                                        chosen: "Whole Foods"),
+                       "This receipt printed “TRADER JOE'S #123” but it will be filed under Whole Foods.")
+        XCTAssertNil(ReceiptReviewScreen.disagreement(printed: "trader joe's", chosen: "Trader Joe's"),
+                     "the same shop typed two ways is not a disagreement")
+        XCTAssertNil(ReceiptReviewScreen.disagreement(printed: nil, chosen: "Whole Foods"))
+        XCTAssertNil(ReceiptReviewScreen.disagreement(printed: "TRADER JOE'S", chosen: nil))
+    }
+
+    // MARK: - The commit is all of it or none of it
+
+    func testACommitThatFailsWritesNothingAndLeavesTheReceiptRetryable() async throws {
+        let harness = try makeHarness([try parsed(receiptJSON)])
+        await harness.session.capture(jpeg: jpeg)
+        let spinach = try XCTUnwrap(harness.session.lines.first { $0.rawText == "TJ ORG BABY SPNC" })
+        harness.session.choose(itemID: ItemID.catalog(2), name: "Baby spinach", for: spinach.id)
+        // The scan the commit needs is gone from under it — the shape a busy database takes when
+        // the widget writes while we are backgrounded.
+        try harness.repository.deleteScan(try XCTUnwrap(harness.session.scan).id)
+
+        XCTAssertFalse(harness.session.commit())
+
+        XCTAssertTrue(try harness.repository.priceObservations().isEmpty, "not one price")
+        XCTAssertTrue(try harness.repository.aliases().isEmpty, "not one alias")
+        XCTAssertTrue(try harness.repository.receipts().isEmpty)
+        XCTAssertEqual(harness.session.stage, .review, "so the user can save again")
+        XCTAssertNil(harness.session.result, "and the result screen has nothing to claim")
     }
 
     // MARK: - The close
@@ -338,9 +545,33 @@ final class CaptureSessionTests: XCTestCase {
 
         XCTAssertFalse(harness.session.record(unmatched, shopID: shopID, date: Date()))
         XCTAssertFalse(harness.session.record(typedLine(0), shopID: shopID, date: Date()))
+        XCTAssertFalse(harness.session.record(typedLine(-100), shopID: shopID, date: Date()),
+                       "money off is not a price on this path either")
 
         XCTAssertTrue(try harness.repository.priceObservations().isEmpty)
         XCTAssertTrue(try harness.repository.aliases().isEmpty)
+    }
+
+    func testTypingHalfAPoundSaysWhatTheScannedPathCanSay() throws {
+        XCTAssertEqual(TypedPriceEntry.quantity(from: "0.5"), 0.5)
+        XCTAssertEqual(TypedPriceEntry.quantity(from: "1,5"), 1.5)
+        XCTAssertEqual(TypedPriceEntry.quantity(from: "2"), 2.0)
+        XCTAssertNil(TypedPriceEntry.quantity(from: ""))
+        XCTAssertNil(TypedPriceEntry.quantity(from: "0"), "nothing bought is not a quantity")
+        XCTAssertNil(TypedPriceEntry.quantity(from: "two"))
+        XCTAssertNil(TypedPriceEntry.quantity(from: "1.2.5"))
+        XCTAssertEqual(TypedPriceEntry.quantityText(2), "2", "a whole count stays whole")
+        XCTAssertEqual(TypedPriceEntry.quantityText(0.5), "0.5")
+
+        let harness = try makeHarness([])
+        let shopID = try XCTUnwrap(harness.store.activeShopID)
+        XCTAssertTrue(harness.session.record(typedLine(449, quantity: 0.5), shopID: shopID,
+                                             date: Date()))
+
+        // Under one the printed amount stands, exactly as it does for a receipt line: $4.49 was
+        // what was paid, and no per-unit price nobody paid is invented from it.
+        XCTAssertEqual(try harness.repository.priceObservations().first?.amount,
+                       Money(minorUnits: 449))
     }
 
     // MARK: - The money the two typed screens share

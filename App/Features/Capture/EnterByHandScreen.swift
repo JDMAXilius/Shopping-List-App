@@ -153,7 +153,9 @@ struct TypedPriceEntry: View {
     let onSaved: (String) -> Void
 
     @State private var amountText = ""
-    @State private var quantity = 1
+    /// Text, not a step count: the scanned path carries 0.5 lb and the typed one has to be able
+    /// to say the same thing.
+    @State private var quantityText = "1"
     @State private var date = Date()
     @State private var isPickingShop = false
     @State private var failed = false
@@ -179,19 +181,19 @@ struct TypedPriceEntry: View {
                 .font(Typography.footnote)
                 .foregroundStyle(Palette.muted.color)
         }
+        // Cancelling changes nothing, and choosing here never re-points the list.
         .sheet(isPresented: $isPickingShop) {
-            ShopSwitcherSheet(store: session.store)
-        }
-        .onChange(of: isPickingShop) { _, showing in
-            guard !showing else { return }
-            session.shopID = session.store.activeShopID
+            CaptureShopPicker(store: session.store, chosen: session.shopID) { shopID in
+                session.shopID = shopID
+            }
         }
     }
 
     private var amountRow: some View {
         HStack(alignment: .bottom, spacing: 12) {
             // The label carries the multi-buy rule: what goes in the box is the whole line.
-            Field(quantity > 1 ? "What you paid for all \(quantity)" : "What you paid",
+            Field(quantity > 1 ? "What you paid for all \(Self.quantityText(quantity))"
+                               : "What you paid",
                   text: $amountText, placeholder: "0.00", keyboard: .decimal, on: .paper)
             preview
                 .padding(.bottom, 12)
@@ -209,16 +211,15 @@ struct TypedPriceEntry: View {
 
     private var quantityRow: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                SectionLabel("HOW MANY")
-                Spacer(minLength: 12)
+            HStack(alignment: .bottom, spacing: 8) {
+                Field("HOW MANY", text: $quantityText, placeholder: "1", keyboard: .decimal,
+                      on: .paper)
                 step("minus", to: quantity - 1)
-                Text("×\(quantity)")
-                    .font(Typography.price)
-                    .foregroundStyle(Palette.ink.color)
-                    .frame(minWidth: 40)
                 step("plus", to: quantity + 1)
             }
+            Text("Half a pound is 0.5 — under one, what you paid is what's recorded.")
+                .font(Typography.footnote)
+                .foregroundStyle(Palette.muted.color)
             if let line = previewLine, line.showsEach {
                 Text("The price recorded is \(line.unitAmount.display) — what one cost.")
                     .font(Typography.footnote)
@@ -227,8 +228,8 @@ struct TypedPriceEntry: View {
         }
     }
 
-    private func step(_ symbol: String, to next: Int) -> some View {
-        Button { quantity = max(1, next) } label: {
+    private func step(_ symbol: String, to next: Double) -> some View {
+        Button { quantityText = Self.quantityText(next) } label: {
             Image(systemName: symbol)
                 .font(.system(.body, weight: .semibold))
                 .foregroundStyle(Palette.ink.color)
@@ -237,6 +238,8 @@ struct TypedPriceEntry: View {
                     .fill(Palette.card.color))
         }
         .buttonStyle(.plain)
+        .disabled(next <= 0)
+        .opacity(next <= 0 ? 0.4 : 1)
         .accessibilityLabel(symbol == "plus" ? "One more" : "One fewer")
     }
 
@@ -278,12 +281,16 @@ struct TypedPriceEntry: View {
 
     private var canSave: Bool { previewLine != nil && session.shopID != nil }
 
+    private var quantity: Double { Self.quantity(from: quantityText) ?? 1 }
+
     /// The line the session will write, exactly as a receipt line is written — so the >3× gate
     /// and the price-of-one rule are the same code here as they are at review.
     private var previewLine: CaptureLine? {
         guard let amount = Self.money(from: amountText, currencyCode: session.currencyCode),
-              amount.minorUnits > 0 else { return nil }
-        return CaptureLine(rawText: rawText, amount: amount, quantity: Double(quantity),
+              amount.minorUnits > 0, let quantity = Self.quantity(from: quantityText) else {
+            return nil
+        }
+        return CaptureLine(rawText: rawText, amount: amount, quantity: quantity,
                            confidence: .sure, match: item, decision: .accept,
                            alias: rawText.isEmpty ? nil : .remember(item.itemID))
     }
@@ -296,8 +303,24 @@ struct TypedPriceEntry: View {
         }
         failed = false
         amountText = ""
-        quantity = 1
+        quantityText = "1"
         onSaved(Self.savedSentence(item: item, line: line, shop: session.shopName))
+    }
+
+    /// 0.5 is half a pound, which the scanned path has always been able to say. Blank, zero and
+    /// anything that isn't a number are not quantities — and the save button stays off.
+    static func quantity(from text: String) -> Double? {
+        let cleaned = text.replacingOccurrences(of: ",", with: ".")
+            .trimmingCharacters(in: .whitespaces)
+        guard !cleaned.isEmpty, cleaned.allSatisfy({ $0.isNumber || $0 == "." }),
+              cleaned.filter({ $0 == "." }).count <= 1,
+              let value = Double(cleaned), value > 0, value <= 999 else { return nil }
+        return value
+    }
+
+    /// Whole counts stay whole — "×2", never "×2.0".
+    static func quantityText(_ value: Double) -> String {
+        value == value.rounded() ? String(Int(value)) : String(value)
     }
 
     /// The number that was written, which for more than one is the price of one.

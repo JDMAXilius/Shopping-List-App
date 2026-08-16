@@ -51,6 +51,29 @@ final class ScanClientTests: XCTestCase {
         XCTAssertEqual(json["shop_hint"] as? String, "Trader Joe's")
     }
 
+    func testALongShopNameIsCutToTheLimitInsteadOfCostingTheReceipt() async throws {
+        stub(200, successBody)
+        let name = "Whole Foods Market — 1234 Something Blvd, Suite 200, San Francisco CA 94110, "
+            + "by the parking structure"
+        XCTAssertGreaterThan(name.utf16.count, ScanClient.maxShopHintUnits)
+        _ = await makeClient().scan(image: Data([0x01]), mediaType: .jpeg, shopHint: name)
+
+        let body = try XCTUnwrap(StubURLProtocol.bodies.first)
+        let json = try XCTUnwrap(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let sent = try XCTUnwrap(json["shop_hint"] as? String)
+        // The function 400s on shop_hint.length > 100, and a 400 fails the whole scan — every
+        // scan, forever, for a user whose shop is named like this.
+        XCTAssertLessThanOrEqual(sent.utf16.count, ScanClient.maxShopHintUnits)
+        XCTAssertTrue(name.hasPrefix(sent), "what is sent is the start of the real name")
+
+        XCTAssertEqual(ScanClient.fittedHint("Trader Joe's"), "Trader Joe's", "a short name is untouched")
+        XCTAssertNil(ScanClient.fittedHint("   "), "and a blank hint is no hint")
+        let emoji = String(repeating: "🛒", count: 80)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(ScanClient.fittedHint(emoji)).utf16.count,
+                                 ScanClient.maxShopHintUnits,
+                                 "counted the way JavaScript counts it")
+    }
+
     func testNoShopHintOmitsTheKey() async throws {
         stub(200, successBody)
         _ = await makeClient().scan(image: Data([0x01]), mediaType: .png, shopHint: nil)

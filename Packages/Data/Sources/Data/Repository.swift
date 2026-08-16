@@ -266,18 +266,55 @@ public final class Repository: Sendable {
     @discardableResult
     public func promoteScan(_ id: UUID, shopID: ShopID, lineCount: Int,
                             totalMinor: Int) throws -> Receipt {
-        try database.pool.write { db -> Receipt in
-            guard let record = try PendingScanRecord.fetchOne(db, key: id.uuidString) else {
-                throw DataError.unknownScan
+        try database.pool.write { db in
+            try Repository.promote(id, shopID: shopID, lineCount: lineCount,
+                                   totalMinor: totalMinor, db)
+        }
+    }
+
+    /// A receipt's commit, all of it or none of it: every op the review earned AND the promotion
+    /// in one transaction. A half-written commit cannot be retried — the scan it needs is gone —
+    /// so a failure here must leave the pending scan and write nothing at all.
+    @discardableResult
+    public func commitScan(_ id: UUID, shopID: ShopID, lineCount: Int, totalMinor: Int,
+                           ops kinds: [Op.Kind], kitchenID: KitchenID) throws -> Receipt {
+        try cache.withLock { cache in
+            let snapshot = cache
+            let (receipt, next) = try database.pool.write { db -> (Receipt, MergeCache) in
+                var working = try Repository.current(snapshot, db)
+                var identity = try DeviceIdentity.load(db)
+                for kind in kinds {
+                    identity.clock.tick()
+                    let op = Op(kitchenID: kitchenID, deviceID: identity.deviceID,
+                                clock: identity.clock.value, wallClock: Date(), kind: kind)
+                    let canonical = try Repository.insert(op, origin: .local, into: db)
+                    Repository.fold(canonical, into: &working)
+                    try Repository.materializePrice(canonical, db)
+                    try Repository.materializeAlias(canonical, working.state, db)
+                }
+                try identity.save(db)
+                try Repository.rewriteProjection(working, db)
+                let receipt = try Repository.promote(id, shopID: shopID, lineCount: lineCount,
+                                                     totalMinor: totalMinor, db)
+                return (receipt, working)
             }
-            let receipt = Receipt(id: id, shopID: shopID,
-                                  capturedAt: Date(msSince1970: record.capturedAt),
-                                  lineCount: lineCount, totalMinor: totalMinor,
-                                  photoPath: record.photoPath)
-            try ReceiptRecord(receipt: receipt).insert(db)
-            try db.execute(sql: "DELETE FROM pending_scan WHERE id = ?", arguments: [id.uuidString])
+            cache = next
             return receipt
         }
+    }
+
+    private static func promote(_ id: UUID, shopID: ShopID, lineCount: Int, totalMinor: Int,
+                                _ db: Database) throws -> Receipt {
+        guard let record = try PendingScanRecord.fetchOne(db, key: id.uuidString) else {
+            throw DataError.unknownScan
+        }
+        let receipt = Receipt(id: id, shopID: shopID,
+                              capturedAt: Date(msSince1970: record.capturedAt),
+                              lineCount: lineCount, totalMinor: totalMinor,
+                              photoPath: record.photoPath)
+        try ReceiptRecord(receipt: receipt).insert(db)
+        try db.execute(sql: "DELETE FROM pending_scan WHERE id = ?", arguments: [id.uuidString])
+        return receipt
     }
 
     public func pendingScans() throws -> [PendingScan] {

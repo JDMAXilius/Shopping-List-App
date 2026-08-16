@@ -334,6 +334,44 @@ final class RepositoryTests: XCTestCase {
                        "the receipt's owner deletes the photo when the receipt goes")
     }
 
+    // A commit is all of it or none of it: the ops and the promotion share one transaction, so a
+    // failure cannot leave two prices written, ten missing and no scan left to retry with.
+    func testCommittingAScanWritesEveryOpAndTheReceiptOrNeither() throws {
+        let (database, repository) = try makeStack()
+        let shopID = ShopID()
+        let scan = try repository.enqueueScan(jpeg: Foundation.Data([0xFF, 0xD8]),
+                                              capturedAt: Date(msSince1970: 5_000))
+        let kinds: [Op.Kind] = [
+            .price(PriceObservation(itemID: ItemID(), shopID: shopID, date: Date(),
+                                    amount: Money(minorUnits: 189), source: .receipt)),
+            .alias(rawText: "BAG FEE", itemID: nil),
+            .price(PriceObservation(itemID: ItemID(), shopID: shopID, date: Date(),
+                                    amount: Money(minorUnits: 299), source: .receipt)),
+        ]
+
+        // The promotion runs last and fails here: everything written before it must roll back.
+        XCTAssertThrowsError(try repository.commitScan(UUID(), shopID: shopID, lineCount: 3,
+                                                       totalMinor: 488, ops: kinds,
+                                                       kitchenID: kitchenID))
+        XCTAssertTrue(try allOps(database).isEmpty, "no half of the commit survived")
+        XCTAssertTrue(try repository.priceObservations().isEmpty)
+        XCTAssertTrue(try repository.aliases().isEmpty)
+        XCTAssertEqual(try repository.queuedScans().map(\.id), [scan.id],
+                       "the photo is still there, so the user can commit again")
+
+        let receipt = try repository.commitScan(scan.id, shopID: shopID, lineCount: 3,
+                                                totalMinor: 488, ops: kinds, kitchenID: kitchenID)
+
+        XCTAssertEqual(try allOps(database).count, 3, "the retry writes each op exactly once")
+        XCTAssertEqual(try repository.priceObservations().count, 2)
+        XCTAssertEqual(try repository.aliases().count, 1)
+        XCTAssertEqual(try repository.receipts(), [receipt])
+        XCTAssertEqual(try repository.unpushedOps().count, 3, "and all three are pushable")
+        XCTAssertTrue(try repository.pendingScans().isEmpty, "the receipt owns the photo now")
+        XCTAssertEqual(receipt.photoPath, scan.photoPath)
+        try assertRebuildEquivalent(database, repository)
+    }
+
     func testPendingScansSurviveRebuildAndNeverBecomeOps() throws {
         let (database, repository) = try makeStack()
         let scan = try repository.enqueueScan(jpeg: Foundation.Data([0x01]), shopID: ShopID(),

@@ -48,7 +48,15 @@ struct LineResolverScreen: View {
             Text(line.rawText)
                 .font(.system(.title2, weight: .bold))
                 .foregroundStyle(Palette.ink.color)
-            PriceLabel(PriceDisplay(amount: line.amount, confidence: .trusted))
+            // Money off is shown as money off here too: matching it teaches the kitchen the text,
+            // and teaches it no price.
+            if line.isMoneyOff {
+                Text(line.moneyOffText)
+                    .font(Typography.body)
+                    .foregroundStyle(Palette.muted.color)
+            } else {
+                PriceLabel(PriceDisplay(amount: line.amount, confidence: .trusted))
+            }
         }
     }
 

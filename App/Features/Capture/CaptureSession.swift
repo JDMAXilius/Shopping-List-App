@@ -41,9 +41,13 @@ final class CaptureSession {
 
     private(set) var stage: Stage = .idle
     private(set) var lines: [CaptureLine] = []
-    /// Photos this phone promised to read and hasn't; they outlive the app being killed.
+    /// Photos this phone promised to read and hasn't; they outlive the app being killed. The one
+    /// this flow is holding is not among them: reading it again would spend a second scan and
+    /// replace every decision the user has made on it.
     private(set) var waiting: [PendingScan] = []
     private(set) var scan: PendingScan?
+    /// A read in flight is not re-entrant, for the same reason.
+    private var isReading = false
     private(set) var result: CaptureResult?
     private(set) var printedShopName: String?
     /// Chosen at review: at the till the shutter fires before anyone knows the shop.
@@ -67,9 +71,11 @@ final class CaptureSession {
     // MARK: - Entry
 
     /// A queued scan outlives the flow that made it, so entry reads the queue instead of
-    /// assuming this session filled it; one left `parsing` by an app kill goes back in it.
+    /// assuming this session filled it. One left `parsing` by an app kill goes back in it — and
+    /// so does one an earlier build marked `failed`, because nothing else in the app ever looks
+    /// at that state and a photo no queue holds is a photo the user can neither read nor delete.
     private func resume() {
-        for stranded in (try? repository.pendingScans()) ?? [] where stranded.state == .parsing {
+        for stranded in (try? repository.pendingScans()) ?? [] where stranded.state != .queued {
             try? repository.markScan(stranded.id, .queued)
         }
         refreshWaiting()
@@ -89,10 +95,10 @@ final class CaptureSession {
     }
 
     func read(_ pending: PendingScan) async {
+        guard !isReading else { return }
         guard let jpeg = (try? repository.scanPhoto(pending.id)) ?? nil else {
             // The row promises a photo that is gone; keeping it would promise it forever.
-            try? repository.deleteScan(pending.id)
-            refreshWaiting()
+            discardPhoto(pending)
             stage = .failed(.storage)
             return
         }
@@ -100,8 +106,12 @@ final class CaptureSession {
     }
 
     private func read(_ pending: PendingScan, jpeg: Foundation.Data) async {
+        guard !isReading else { return }
+        isReading = true
+        defer { isReading = false }
         scan = pending
         stage = .parsing
+        refreshWaiting()
         try? repository.markScan(pending.id, .parsing)
         let outcome = await backend.scan(image: jpeg, mediaType: .jpeg,
                                          shopHint: store.activeShop?.name)
@@ -137,30 +147,35 @@ final class CaptureSession {
             queue(pending)
             stage = .failed(.upstream)
         case .unreadableImage:
-            reject(pending)
+            discardPhoto(pending)
             stage = .failed(.unreadable)
         case .imageTooLarge:
-            reject(pending)
+            discardPhoto(pending)
             stage = .failed(.tooLarge)
+        // Our bug or a gateway's: the user did nothing wrong, so the photo is kept and retryable.
         case .rejected, .unexpected:
-            reject(pending)
+            queue(pending)
             stage = .failed(.ourBug)
         }
     }
 
-    // Queued means this photo is still worth reading; failed means only a new photo will do.
+    // Queued means this photo is still worth reading.
     private func queue(_ pending: PendingScan) {
         try? repository.markScan(pending.id, .queued)
         refreshWaiting()
     }
 
-    private func reject(_ pending: PendingScan) {
-        try? repository.markScan(pending.id, .failed)
+    /// The two cases only a new photo can fix. The row goes with the file: nothing would ever
+    /// read either again, and `.failed` is a state nothing in the app sweeps.
+    private func discardPhoto(_ pending: PendingScan) {
+        try? repository.deleteScan(pending.id)
+        if scan?.id == pending.id { scan = nil }
         refreshWaiting()
     }
 
     private func refreshWaiting() {
-        waiting = (try? repository.queuedScans()) ?? []
+        let held = scan?.id
+        waiting = ((try? repository.queuedScans()) ?? []).filter { $0.id != held }
     }
 
     // MARK: - The parsed receipt
@@ -190,7 +205,8 @@ final class CaptureSession {
             line.isRemembered = true
             if let itemID = aliases[index].value {
                 line.match = match(itemID, fallback: scanned.rawText)
-                line.decision = .accept
+                // Money off is never accepted for the user: it has no price to accept.
+                line.decision = line.isMoneyOff ? .unresolved : .accept
             } else {
                 line.decision = .ignore
             }
@@ -206,7 +222,7 @@ final class CaptureSession {
         guard let hit else { return line }
         line.match = CaptureMatch(itemID: hit.itemID, name: hit.name,
                                   estimate: catalog.estimate(for: hit.itemID))
-        line.decision = .accept
+        line.decision = line.isMoneyOff ? .unresolved : .accept
         return line
     }
 
@@ -281,25 +297,26 @@ final class CaptureSession {
         return match(itemID, fallback: rawText)
     }
 
-    /// `promoteScan` first — one transaction that writes the receipt and hands the photo over —
-    /// then one price op per accepted line, and the alias each user decision earned.
+    /// One transaction: one price op per accepted line, the alias each user decision earned, and
+    /// the receipt that takes the photo over. All of it or none of it — a half-written commit
+    /// cannot be retried, because the scan the retry needs is already gone.
     @discardableResult
     func commit() -> Bool {
         guard stage == .review, let pending = scan, let shopID else { return false }
         let date = purchasedAt ?? pending.capturedAt
         let total = printedTotalMinor ?? lines.reduce(0) { $0 + $1.amount.minorUnits }
-        guard (try? repository.promoteScan(pending.id, shopID: shopID, lineCount: lines.count,
-                                           totalMinor: total)) != nil else { return false }
+        var ops: [Op.Kind] = []
         for line in lines {
             if let alias = line.alias {
-                try? repository.append(.alias(rawText: line.rawText, itemID: alias.itemID),
-                                       kitchenID: kitchenID)
+                ops.append(.alias(rawText: line.rawText, itemID: alias.itemID))
             }
             guard line.isPriced, let match = line.match else { continue }
-            let observation = PriceObservation(itemID: match.itemID, shopID: shopID, date: date,
-                                               amount: line.unitAmount, source: .receipt)
-            try? repository.append(.price(observation), kitchenID: kitchenID)
+            ops.append(.price(PriceObservation(itemID: match.itemID, shopID: shopID, date: date,
+                                               amount: line.unitAmount, source: .receipt)))
         }
+        guard (try? repository.commitScan(pending.id, shopID: shopID, lineCount: lines.count,
+                                          totalMinor: total, ops: ops,
+                                          kitchenID: kitchenID)) != nil else { return false }
         result = CaptureResult(lines: lines)
         scan = nil
         refreshWaiting()
@@ -333,10 +350,12 @@ final class CaptureSession {
         return true
     }
 
-    /// Back to the viewfinder. A queued photo stays queued: it is still a promise to read it.
+    /// Back to the viewfinder. A queued photo stays queued: it is still a promise to read it,
+    /// and letting go of it is what puts it back among the waiting.
     func retakePhoto() {
         scan = nil
         lines = []
+        refreshWaiting()
         stage = .idle
     }
 

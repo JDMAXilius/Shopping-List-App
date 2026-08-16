@@ -9,6 +9,7 @@ struct ReceiptReviewScreen: View {
     @Binding var path: [CaptureRoute]
 
     @State private var isPickingShop = false
+    @State private var saveFailed = false
 
     var body: some View {
         ScrollView {
@@ -29,24 +30,35 @@ struct ReceiptReviewScreen: View {
         .background(Palette.paper.color)
         .navigationTitle("Check the lines")
         .navigationBarTitleDisplayMode(.inline)
+        // Only an explicit choice changes the shop: cancelling this is a no-op, and nothing here
+        // touches the shop the list is pointed at.
         .sheet(isPresented: $isPickingShop) {
-            ShopSwitcherSheet(store: session.store)
-        }
-        .onChange(of: isPickingShop) { _, showing in
-            guard !showing else { return }
-            session.shopID = session.store.activeShopID
+            CaptureShopPicker(store: session.store, chosen: session.shopID) { shopID in
+                session.shopID = shopID
+            }
         }
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             Notice("Nothing is saved until you tap save.", on: .paper)
-            if let printed = session.printedShopName {
+            if let disagreement = Self.disagreement(printed: session.printedShopName,
+                                                    chosen: session.shopName) {
+                Notice(disagreement, tone: .attention, on: .paper)
+            } else if let printed = session.printedShopName {
                 Text("Printed on the receipt: \(printed)")
                     .font(Typography.footnote)
                     .foregroundStyle(Palette.muted.color)
             }
         }
+    }
+
+    /// The printed name and the chosen shop disagreeing is where a whole receipt gets filed under
+    /// the wrong shop, so it asks for attention rather than sitting in a footnote.
+    static func disagreement(printed: String?, chosen: String?) -> String? {
+        guard let printed, let chosen,
+              Merge.normalized(printed) != Merge.normalized(chosen) else { return nil }
+        return "This receipt printed “\(printed)” but it will be filed under \(chosen)."
     }
 
     private var shopRow: some View {
@@ -82,7 +94,7 @@ struct ReceiptReviewScreen: View {
                     }
                 }
                 Spacer(minLength: 12)
-                PriceLabel(PriceDisplay(amount: line.amount, confidence: .trusted))
+                amount(line)
             }
             chips(line)
             if let flag = line.estimateFlag {
@@ -95,9 +107,24 @@ struct ReceiptReviewScreen: View {
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.card.color))
     }
 
+    /// A coupon is on the receipt and stays on the screen, shown as what it is: money off, in no
+    /// price tier at all, so it can never read as what an item cost.
+    @ViewBuilder private func amount(_ line: CaptureLine) -> some View {
+        if line.isMoneyOff {
+            Text(line.moneyOffText)
+                .font(Typography.body)
+                .foregroundStyle(Palette.muted.color)
+        } else {
+            PriceLabel(PriceDisplay(amount: line.amount, confidence: .trusted))
+        }
+    }
+
     private func chips(_ line: CaptureLine) -> some View {
         HStack(spacing: 8) {
             Chip(Self.word(line.confidence), tone: Self.tone(line.confidence), on: .card)
+            if line.isMoneyOff {
+                Chip("money off — not a price", on: .card)
+            }
             if line.isRemembered {
                 Chip("remembered", on: .card)
             }
@@ -138,7 +165,11 @@ struct ReceiptReviewScreen: View {
 
     private var commitBar: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Button { session.commit() } label: {
+            if saveFailed {
+                Notice("Nothing was saved — not one price. The receipt is still here: try saving it again.",
+                       tone: .attention, on: .paper)
+            }
+            Button { saveFailed = !session.commit() } label: {
                 Text(saveTitle)
                     .font(.system(.body, weight: .semibold))
                     .foregroundStyle(Palette.card.color)

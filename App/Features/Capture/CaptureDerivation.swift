@@ -82,7 +82,18 @@ struct CaptureLine: Identifiable, Hashable, Sendable {
     /// A multi-unit line shows what one cost, because that is the number being recorded.
     var showsEach: Bool { quantity > 1 }
 
-    var isPriced: Bool { decision == .accept && match != nil }
+    /// An amount of zero or less is not a price: a coupon is money off the receipt's total, and
+    /// no arrangement of decisions can make it what one of something cost.
+    var isMoneyOff: Bool { amount.minorUnits <= 0 }
+
+    /// What such a line says instead of a price — never a number in the measured tier.
+    var moneyOffText: String {
+        guard amount.minorUnits < 0 else { return "no amount" }
+        return Money(minorUnits: -amount.minorUnits, currencyCode: amount.currencyCode).display
+            + " off"
+    }
+
+    var isPriced: Bool { decision == .accept && match != nil && !isMoneyOff }
 
     /// The gate: more than 3× the seeded estimate, named with both numbers. Compared against
     /// the estimate exactly as the app shows it (`~` rounds hard), so the sentence's two

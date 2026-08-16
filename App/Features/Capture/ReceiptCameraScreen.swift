@@ -182,26 +182,27 @@ struct ReceiptCameraScreen: View {
 
     // MARK: - Words
 
-    /// A photo still worth reading stays queued; one only a new photo can fix does not.
+    /// A photo still worth reading stays queued; one only a new photo can fix is deleted, and
+    /// this answer is the one the session acted on — the two cannot disagree.
     static func keepsThePhoto(_ failure: CaptureSession.Failure) -> Bool {
         switch failure {
-        case .rateLimited, .upstream, .unauthenticated: return true
-        case .unreadable, .tooLarge, .ourBug, .storage: return false
+        case .rateLimited, .upstream, .unauthenticated, .ourBug: return true
+        case .unreadable, .tooLarge, .storage: return false
         }
     }
 
     static func sentence(_ failure: CaptureSession.Failure) -> String {
         switch failure {
         case .unreadable:
-            return "That photo couldn't be read. Try again with the whole receipt in the frame."
+            return "That photo couldn't be read, so it wasn't kept. Take another with the whole receipt in the frame."
         case .tooLarge:
-            return "That photo is too large to send. Try again."
+            return "That photo is too large to send, so it wasn't kept. Take another one."
         case .rateLimited:
             return "That's ten scans in an hour. The photo is kept — read it again in a while."
         case .upstream:
             return "The reader didn't answer. The photo is kept — try again in a moment."
         case .ourBug:
-            return "Something on our side refused that photo. Take another one."
+            return "Something on our side refused that photo. It's kept — try reading it again in a moment."
         case .unauthenticated:
             return "You're signed out, so the reader wouldn't answer. The photo is kept."
         case .storage:

@@ -118,6 +118,9 @@ struct ScanClient: ScanBackend {
     // MAX_IMAGE_BYTES in supabase/functions/scan-receipt/index.ts, measured the same way it is
     // there — against the base64 length — so an oversized photo is refused before it uploads.
     static let maxImageBytes = 8 * 1024 * 1024
+    // shop_hint.length > 100 is a 400 (supabase/functions/scan-receipt/validation.ts), counted in
+    // UTF-16 units as JavaScript counts them.
+    static let maxShopHintUnits = 100
 
     private let endpoint: URL
     private let apiKey: String
@@ -146,7 +149,8 @@ struct ScanClient: ScanBackend {
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "authorization")
         request.setValue(apiKey, forHTTPHeaderField: "apikey")
-        let body = RequestBody(imageBase64: base64, mediaType: mediaType.rawValue, shopHint: shopHint)
+        let body = RequestBody(imageBase64: base64, mediaType: mediaType.rawValue,
+                               shopHint: Self.fittedHint(shopHint))
         guard let encoded = try? JSONEncoder().encode(body) else { return .rejected }
         request.httpBody = encoded
 
@@ -185,6 +189,24 @@ struct ScanClient: ScanBackend {
         case 502: return .upstreamFailure(freeScan: Self.freeScan(data))
         default: return .unexpected(status: status)
         }
+    }
+
+    /// A hint is a hint: a long shop name is cut to the limit the function documents, because a
+    /// truncated hint still helps and a 400 costs the user the whole receipt.
+    static func fittedHint(_ shopHint: String?) -> String? {
+        guard let trimmed = shopHint?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else { return nil }
+        guard trimmed.utf16.count > maxShopHintUnits else { return trimmed }
+        var fitted = ""
+        var units = 0
+        for character in trimmed {
+            // Whole characters only: half of a grapheme is not a shop name.
+            let width = String(character).utf16.count
+            guard units + width <= maxShopHintUnits else { break }
+            fitted.append(character)
+            units += width
+        }
+        return fitted.isEmpty ? nil : fitted
     }
 
     private static func errorBody(_ data: Data) -> ErrorBody? {
