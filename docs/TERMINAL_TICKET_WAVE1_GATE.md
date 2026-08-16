@@ -34,6 +34,13 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
 - [ ] `swift test` green on Core (incl. ConflictHarnessTests) — paste counts in Log
 - [ ] `swift test` green on Catalog — 23/23 goldens — paste counts in Log
 - [ ] catalog.db shasum in Packages matches data/catalog/catalog.db
+      (currently `58aab7e9…`, 220 KB, 461 items)
+- [ ] ⚠️ **ResolverTests pinned FULL result arrays against the OLD 414-item db.** The catalog
+      grew to 461, so some pinned arrays will now differ. Do NOT hand-edit expectations:
+      regenerate with `node data/catalog/emit-goldens.mjs > Packages/Catalog/Tests/CatalogTests/goldens.json`
+      (already regenerated in this commit) and point the test at that fixture. The TOP-hit
+      semantics in `resolve.mjs --test` (23/23) remain the contract — a top-hit change is a
+      real bug; a lower-rank shuffle from new catalog rows is expected
 - [ ] `swift test` green on Data — incl. incremental==rebuild equivalence, the
       crash-before-mark re-push test, and the deterministic fake-clock backoff tests
 - [ ] Wave 3: `supabase start && supabase db reset` then run `supabase/tests/rls.test.sql`
@@ -74,3 +81,19 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
   checks, green twice, with a NEGATIVE CONTROL (trigger dropped → suite fails on exactly the
   critic's repro). What only the real stack can prove: GoTrue is_anonymous rejection + owner
   check in scan-receipt, and the Anthropic structured-output param spelling.
+
+- **2026-08-16 · cloud (catalog growth)** — Demand simulation added (`probe.mjs` + 338 realistic
+  queries): coverage was **79.6%**, now **96.4%** after 47 new items + 14 synonym fixes, all
+  driven by measured misses rather than bulk import. Killed 7 dangerous fuzzy matches — the worst
+  were `salted butter → UNSALTED butter`, `matches → matcha`, `water → watermelon`. Added the
+  five missing generic parents (bread/pasta/potatoes/cheese/chicken) that the catalog already had
+  for `milk`; before this, `pasta` returned *pasta sauce* and `chicken` ranked *stock* above
+  *breast*. 461 items · 1004 lookup terms · 220 KB. `resolve.mjs --test` still 23/23.
+  **Open finding for the Swift side:** the remaining 11 misses are ALL quantity/packaging
+  phrasings (`2 lb chicken breast`, `carton of milk`, `punnet of strawberries`, `dozen eggs`) —
+  every one resolves once the prefix is stripped, so this is a **QuantityParser vocabulary gap,
+  not a catalog gap**. Add packaging nouns (loaf/carton/punnet/tub/bag/box/jar/tin/pack of,
+  dozen, half dozen) + bare metric quantities to `Packages/Catalog/QuantityParser.swift`, and
+  run the parser BEFORE the resolver in the add-item path.
+  Also new: `audit-seeds.mjs` — gate #2 tooling. Feed it `<item>\t<price>` TSV from real
+  receipts; it reports median/mean error, bias, and the worst-offending seeds.

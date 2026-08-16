@@ -1,0 +1,365 @@
+# Demand simulation — how people actually type a weekly shop.
+# US and UK phrasing, colloquialisms, quantities, one per line.
+# Growth rule: we add what misses here, not what a public dataset happens to hold.
+
+# ── staples: dairy, eggs, bread ──
+milk
+whole milk
+oat milk
+greek yogurt
+natural yoghurt
+butter
+salted butter
+margarine
+cheddar
+mature cheddar
+mozzarella
+parmesan
+cream cheese
+feta
+halloumi
+cottage cheese
+eggs
+dozen eggs
+free range eggs
+bread
+loaf of bread
+sourdough
+wholemeal bread
+bagels
+english muffins
+crumpets
+croissants
+tortilla wraps
+pitta bread
+naan
+
+# ── produce ──
+bananas
+apples
+gala apples
+oranges
+satsumas
+clementines
+lemons
+limes
+grapes
+strawberries
+blueberries
+raspberries
+avocados
+tomatoes
+cherry tomatoes
+cucumber
+lettuce
+romaine
+spinach
+kale
+rocket
+broccoli
+cauliflower
+carrots
+celery
+onions
+red onions
+spring onions
+garlic
+ginger
+potatoes
+sweet potatoes
+new potatoes
+mushrooms
+peppers
+bell peppers
+courgette
+aubergine
+butternut squash
+brussels sprouts
+asparagus
+green beans
+peas
+sweetcorn
+leeks
+beetroot
+radishes
+fresh coriander
+basil
+parsley
+mint
+thyme
+rosemary
+
+# ── meat and fish ──
+chicken breast
+2 lb chicken breast
+chicken thighs
+whole chicken
+rotisserie chicken
+turkey mince
+beef mince
+ground beef
+steak
+sirloin
+stewing beef
+pork chops
+pork belly
+bacon
+streaky bacon
+sausages
+chorizo
+ham
+sliced ham
+salami
+lamb chops
+salmon
+smoked salmon
+cod
+haddock
+tuna steak
+prawns
+shrimp
+fish fingers
+mussels
+
+# ── frozen ──
+frozen peas
+frozen chips
+oven chips
+frozen pizza
+ice cream
+vanilla ice cream
+frozen berries
+frozen spinach
+ice lollies
+yorkshire puddings
+
+# ── breakfast and spreads ──
+cereal
+cornflakes
+granola
+porridge oats
+rolled oats
+weetabix
+muesli
+jam
+strawberry jam
+marmalade
+peanut butter
+nutella
+honey
+maple syrup
+golden syrup
+
+# ── pantry ──
+rice
+basmati rice
+brown rice
+pasta
+spaghetti
+penne
+noodles
+egg noodles
+couscous
+quinoa
+lentils
+chickpeas
+tinned tomatoes
+chopped tomatoes
+passata
+tomato puree
+baked beans
+kidney beans
+black beans
+coconut milk
+stock cubes
+chicken stock
+soup
+flour
+plain flour
+self raising flour
+bread flour
+sugar
+caster sugar
+icing sugar
+brown sugar
+baking powder
+bicarbonate of soda
+baking soda
+yeast
+vanilla extract
+cocoa powder
+chocolate chips
+cornflour
+breadcrumbs
+
+# ── condiments, oils, spices ──
+olive oil
+extra virgin olive oil
+vegetable oil
+sunflower oil
+balsamic vinegar
+white wine vinegar
+salt
+sea salt
+black pepper
+peppercorns
+paprika
+smoked paprika
+cumin
+turmeric
+cinnamon
+chilli flakes
+curry powder
+oregano
+bay leaves
+ketchup
+mayonnaise
+mustard
+dijon mustard
+brown sauce
+soy sauce
+sriracha
+hot sauce
+tabasco
+worcestershire sauce
+fish sauce
+sesame oil
+tahini
+miso paste
+curry paste
+pesto
+salsa
+hummus
+guacamole
+gravy granules
+stuffing mix
+
+# ── snacks and drinks ──
+crisps
+tortilla chips
+popcorn
+biscuits
+digestives
+cookies
+chocolate
+dark chocolate
+sweets
+nuts
+almonds
+cashews
+peanuts
+dried fruit
+raisins
+cereal bars
+crackers
+oatcakes
+orange juice
+apple juice
+sparkling water
+fizzy water
+still water
+coke
+diet coke
+lemonade
+squash
+beer
+lager
+wine
+red wine
+white wine
+prosecco
+coffee
+ground coffee
+instant coffee
+coffee beans
+tea
+tea bags
+green tea
+herbal tea
+hot chocolate
+
+# ── household ──
+washing up liquid
+dish soap
+dishwasher tablets
+laundry detergent
+washing powder
+fabric softener
+bleach
+surface spray
+antibacterial spray
+sponges
+scourers
+tea towels
+kitchen roll
+paper towels
+toilet paper
+loo roll
+tissues
+bin bags
+bin liners
+cling film
+plastic wrap
+tin foil
+aluminium foil
+baking paper
+sandwich bags
+freezer bags
+batteries
+light bulbs
+matches
+candles
+
+# ── personal care ──
+shampoo
+conditioner
+shower gel
+body wash
+soap
+hand soap
+hand sanitiser
+deodorant
+toothpaste
+toothbrush
+dental floss
+mouthwash
+razors
+shaving foam
+moisturiser
+sun cream
+sunscreen
+lip balm
+plasters
+paracetamol
+ibuprofen
+vitamins
+tampons
+sanitary pads
+cotton buds
+cotton wool
+
+# ── baby and pet ──
+nappies
+diapers
+baby wipes
+baby formula
+baby food
+dummy
+cat food
+dog food
+cat litter
+dog treats
+bird seed
+
+# ── real-world phrasings ──
+a loaf of bread
+carton of milk
+2 pints of milk
+bag of potatoes
+punnet of strawberries
+6 eggs
+some bananas
+half dozen eggs
+1kg mince
+500g pasta
+large tub of yoghurt

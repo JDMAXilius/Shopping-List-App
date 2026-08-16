@@ -1,0 +1,329 @@
+{
+  "generated_from": "catalog.db",
+  "cases": [
+    {
+      "query": "organic whole milk",
+      "results": [
+        {
+          "canonical_name": "whole milk",
+          "category_id": "dairy",
+          "score": 2,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "free-range eggs",
+      "results": [
+        {
+          "canonical_name": "free-range eggs",
+          "category_id": "dairy",
+          "score": 0,
+          "via": "exact"
+        },
+        {
+          "canonical_name": "eggs",
+          "category_id": "dairy",
+          "score": 2,
+          "via": "exact"
+        },
+        {
+          "canonical_name": "organic eggs",
+          "category_id": "dairy",
+          "score": 4,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "boneless skinless chicken breast",
+      "results": [
+        {
+          "canonical_name": "chicken breast",
+          "category_id": "meat",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "bananna",
+      "results": [
+        {
+          "canonical_name": "bananas",
+          "category_id": "produce",
+          "score": 7,
+          "via": "fuzzy"
+        }
+      ]
+    },
+    {
+      "query": "tomatos",
+      "results": [
+        {
+          "canonical_name": "vine tomatoes",
+          "category_id": "produce",
+          "score": 3,
+          "via": "exact"
+        },
+        {
+          "canonical_name": "canned tomatoes",
+          "category_id": "canned",
+          "score": 3,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "mangoes",
+      "results": [
+        {
+          "canonical_name": "mangoes",
+          "category_id": "produce",
+          "score": 0,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "aubergine",
+      "results": [
+        {
+          "canonical_name": "eggplant",
+          "category_id": "produce",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "courgette",
+      "results": [
+        {
+          "canonical_name": "zucchini",
+          "category_id": "produce",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "coriander",
+      "results": [
+        {
+          "canonical_name": "cilantro",
+          "category_id": "produce",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "rocket",
+      "results": [
+        {
+          "canonical_name": "arugula",
+          "category_id": "produce",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "spring onions",
+      "results": [
+        {
+          "canonical_name": "green onions",
+          "category_id": "produce",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "mince",
+      "results": [
+        {
+          "canonical_name": "ground beef",
+          "category_id": "meat",
+          "score": 4,
+          "via": "prefix"
+        },
+        {
+          "canonical_name": "ground lamb",
+          "category_id": "meat",
+          "score": 4.5,
+          "via": "prefix"
+        },
+        {
+          "canonical_name": "ground pork",
+          "category_id": "meat",
+          "score": 4.5,
+          "via": "prefix"
+        },
+        {
+          "canonical_name": "ground turkey",
+          "category_id": "meat",
+          "score": 4.5,
+          "via": "prefix"
+        },
+        {
+          "canonical_name": "ground chicken",
+          "category_id": "meat",
+          "score": 4.5,
+          "via": "prefix"
+        }
+      ]
+    },
+    {
+      "query": "beef mince",
+      "results": [
+        {
+          "canonical_name": "ground beef",
+          "category_id": "meat",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "oat",
+      "results": [
+        {
+          "canonical_name": "rolled oats",
+          "category_id": "breakfast",
+          "score": 2,
+          "via": "exact"
+        },
+        {
+          "canonical_name": "oat milk",
+          "category_id": "plant-milk",
+          "score": 4,
+          "via": "prefix"
+        },
+        {
+          "canonical_name": "oatcakes",
+          "category_id": "snacks",
+          "score": 4,
+          "via": "prefix"
+        },
+        {
+          "canonical_name": "oat cereal",
+          "category_id": "breakfast",
+          "score": 4,
+          "via": "prefix"
+        },
+        {
+          "canonical_name": "oat yogurt",
+          "category_id": "dairy",
+          "score": 4,
+          "via": "prefix"
+        },
+        {
+          "canonical_name": "steel cut oats",
+          "category_id": "breakfast",
+          "score": 4.5,
+          "via": "prefix"
+        }
+      ]
+    },
+    {
+      "query": "crisps",
+      "results": [
+        {
+          "canonical_name": "potato chips",
+          "category_id": "snacks",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "loo roll",
+      "results": [
+        {
+          "canonical_name": "toilet paper",
+          "category_id": "household",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "cling film",
+      "results": [
+        {
+          "canonical_name": "plastic wrap",
+          "category_id": "household",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "a large ripe avocado",
+      "results": [
+        {
+          "canonical_name": "avocados",
+          "category_id": "produce",
+          "score": 4,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "skimmed milk",
+      "results": [
+        {
+          "canonical_name": "skim milk",
+          "category_id": "dairy",
+          "score": 1,
+          "via": "exact"
+        },
+        {
+          "canonical_name": "2% milk",
+          "category_id": "dairy",
+          "score": 4.5,
+          "via": "prefix"
+        }
+      ]
+    },
+    {
+      "query": "plain flour",
+      "results": [
+        {
+          "canonical_name": "all-purpose flour",
+          "category_id": "baking",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "fizzy water",
+      "results": [
+        {
+          "canonical_name": "sparkling water",
+          "category_id": "beverages",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "nappies",
+      "results": [
+        {
+          "canonical_name": "diapers",
+          "category_id": "baby",
+          "score": 1,
+          "via": "exact"
+        }
+      ]
+    },
+    {
+      "query": "unicorn steaks",
+      "results": []
+    }
+  ]
+}

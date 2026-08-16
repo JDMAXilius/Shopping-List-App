@@ -143,6 +143,11 @@ export function resolve(db, query, limit = 6) {
 
 /* ── CLI ────────────────────────────────────────────────────────────────── */
 
+// Importable: only run the CLI when invoked directly, never on import.
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+if (!isMain) { /* imported as a library */ }
+else {
+
 const db = new DatabaseSync(join(here, 'catalog.db'), { readOnly: true });
 
 if (process.argv.includes('--test')) {
@@ -212,4 +217,6 @@ console.log(`"${query}"`);
 for (const r of results) {
   const price = r.base_amount ? `~$${r.base_amount < 10 ? r.base_amount.toFixed(2) : r.base_amount.toFixed(0)}` : '—';
   console.log(`  ${r.emoji ?? ' '} ${r.canonical_name.padEnd(26)} ${r.category_id.padEnd(14)} ${price.padStart(7)}   [${r.via}]`);
+}
+
 }
