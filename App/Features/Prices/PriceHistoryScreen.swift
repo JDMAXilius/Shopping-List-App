@@ -34,7 +34,7 @@ struct PriceHistoryScreen: View {
                 .foregroundStyle(Palette.ink.color)
         }
         VStack(alignment: .leading, spacing: 2) {
-            PriceLabel(history.headline)
+            PriceLabel(history.headline, size: .display)
             Text(history.headlineDetail)
                 .font(Typography.footnote)
                 .foregroundStyle(Palette.muted.color)

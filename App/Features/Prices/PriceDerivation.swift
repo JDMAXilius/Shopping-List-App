@@ -113,11 +113,6 @@ struct MonthSpend {
     let bars: [MonthBar]
     let aisles: [MonthGroup]
     let shops: [ShopSpend]
-
-    /// The Prices tab's month link reads `month.summary` (W7-P2's file, not this packet's).
-    /// It now resolves to the paid total, so the tab and this screen state one number.
-    /// Delete once that call site moves to `month.paid`.
-    var summary: PaidSummary { paid }
 }
 
 // Pure view-state assembly over the observations the store already holds: what a price

@@ -116,7 +116,7 @@ struct PricesScreen: View {
 
     private var monthLink: some View {
         let month = store.month
-        let figure = PriceDerivation.figure(month.summary)
+        let figure = PriceDerivation.figure(month.paid)
         return NavigationLink(value: Route.monthSpend) {
             HStack(alignment: .firstTextBaseline) {
                 SectionLabel(month.title)
