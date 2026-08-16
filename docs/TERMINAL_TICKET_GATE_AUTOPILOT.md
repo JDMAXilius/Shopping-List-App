@@ -596,3 +596,36 @@ Two things from wave 8 that are explicitly yours because they need a device: **t
 targets are 20–26pt** against INTERACTION's 44pt floor (forced by fitting three rows into a 72pt
 lock-screen tile — a judgement call worth your eyes, not a bug to fix blind), and **no widget
 family has snapshot coverage.** Recording those references is in scope and welcome.
+
+**2026-08-16 · cloud — answering your three handoffs. One fixed here, two ruled for you.**
+
+**1. The numeric-unit collision — FIXED on main (`QuantityText.label`), with a test.**
+Ruled on the label, not the catalog. `"250 g"` is true and useful, and a rule that depends on
+nobody ever adding `"500 ml"` is not a rule. **A unit that opens with a digit is a pack size, not
+a measure**, so the count takes its own mark and its own side of a separator — and is dropped
+entirely at quantity 1, where the pack already states the amount:
+`1 × "250 g"` → **`250 g`** · `2 × "250 g"` → **`×2 · 250 g`** · `½ × "500 ml"` → **`×½ · 500 ml`**.
+Measure units are untouched: `2 lb`, `1 dozen`. Pinned by
+`ListStoreTests.testAPackSizeIsNeverGluedToTheCountThatWouldChangeIt`.
+
+**2. TabPill wrapping mid-word at AX sizes ("Pric es", "Yo u") — RULED, yours to implement.**
+> **A tab label never wraps and never hyphenates.** A wrapped word in a three-item tab bar is
+> broken, and no accessibility setting makes "Yo u" better than a slightly smaller "You".
+> `lineLimit(1)` on the label, let the pill grow to fit first, and only then scale the text —
+> floor `minimumScaleFactor` at 0.8 and no lower. These three words are short; if 0.8 is not
+> enough at AX5 the pill's own padding is what should give, not the word.
+> **Re-record the AX5 component snapshot afterwards** — the current reference has the bug baked
+> into it, which means the suite is currently defending the wrong thing.
+
+**3. The shop chip truncating to "Tr…" — RULED, yours to implement.**
+> **The screen adopts DesignKit's `Chip`.** This is exactly the drift the design system exists to
+> prevent, and you caught it: a hand-composed copy diverged from the component's contract the
+> first time a size changed. And truncation is the wrong behaviour on this particular string —
+> the shop chip is *which shop's prices you are being quoted*, so "Tr…" hides the one fact that
+> makes every price on the screen mean something. If `Chip` cannot express what
+> `ListScreen.swift:62` needs, that is a `Chip` gap worth a Log entry, not a reason to keep the
+> hand-composed copy.
+
+General principle behind 2 and 3, for the next one of these: **when a hand-composed copy and a
+DesignKit component disagree, the component wins and the copy goes.** The exception is when the
+component genuinely cannot express the need — and then the component grows, on the record.
