@@ -74,7 +74,7 @@ Bagged/
 │   │   ├── List/                      # tab 1 — the product
 │   │   │   ├── ListScreen.swift       # aisles, subtotals, NO PRICE YET, COMPLETED(n)
 │   │   │   ├── ListStore.swift      ★ # the core store
-│   │   │   ├── AddItemSheet.swift     # autocomplete + hold-to-speak
+│   │   │   ├── ListDerivation.swift   # rows, sections, inline suggestions
 │   │   │   ├── ItemDetailSheet.swift  # qty, note, set-what-you-paid
 │   │   │   ├── AisleOrderEditor.swift # drag to reorder, per shop
 │   │   │   └── ShopSwitcherSheet.swift
