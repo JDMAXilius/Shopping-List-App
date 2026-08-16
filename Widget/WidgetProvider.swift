@@ -1,8 +1,10 @@
+import Catalog
 import Core
 import Data
 import DesignKit
 import Foundation
 import Synchronization
+import SwiftUI
 import WidgetKit
 
 /// The widget's own handle on the App Group database — its own process, so its own pool.
@@ -108,9 +110,13 @@ struct ListEntry: TimelineEntry {
 enum WidgetSnapshot {
     /// Checked rows sink, exactly as they do on the list screen (`ListDerivation.aisles`), and
     /// the tile takes the first `limit` of what is left. No second ordering rule.
+    /// `PriceLookup` is the app's one price rule — measured, then the seeded estimate, then
+    /// nothing — and the widget compiles it in rather than restating it. A second copy of the
+    /// currency guard inside it is how a widget starts quoting US seeds to a UK kitchen.
+    @MainActor
     static func list(items: [ListItem], observations: [PriceObservation], shopID: ShopID?,
-                     limit: Int) -> WidgetList {
-        let latest = measured(observations, at: shopID)
+                     catalog: ListCatalog, limit: Int) -> WidgetList {
+        let lookup = PriceLookup(observations: observations, shopID: shopID, catalog: catalog)
         let ordered = items.filter { !$0.checked } + items.filter(\.checked)
         return WidgetList(
             rows: ordered.prefix(limit).map {
@@ -118,28 +124,9 @@ enum WidgetSnapshot {
             },
             remaining: items.filter { !$0.checked }.count,
             total: items.count,
-            summary: PriceSummary(items.map { display($0.itemID, latest) }))
+            summary: PriceSummary(items.map { lookup.display($0.itemID) }))
     }
 
-    /// `PriceLookup`'s rule for the measured tier, unchanged: this shop's own latest
-    /// observation, and past 90 days Core has already demoted it to an estimate.
-    private static func measured(_ observations: [PriceObservation],
-                                 at shopID: ShopID?) -> [ItemID: PriceObservation] {
-        var latest: [ItemID: PriceObservation] = [:]
-        for observation in observations where observation.shopID == shopID {
-            latest[observation.itemID] = observation
-        }
-        return latest
-    }
-
-    /// The seeded estimate tier is missing here and nowhere else: it lives behind `ListCatalog`,
-    /// an app-target type an .appex cannot link, so an unmeasured row is `—` and counts as
-    /// unpriced — which is what puts the `≈` on the total (see the report's contract gap).
-    private static func display(_ itemID: ItemID?,
-                                _ latest: [ItemID: PriceObservation]) -> PriceDisplay {
-        guard let itemID, let observation = latest[itemID] else { return PriceDisplay.none }
-        return PriceDisplay(amount: observation.amount, confidence: observation.confidence())
-    }
 }
 
 struct WidgetProvider: TimelineProvider {
@@ -150,22 +137,28 @@ struct WidgetProvider: TimelineProvider {
     func getSnapshot(in context: Context, completion: @escaping (ListEntry) -> Void) {
         // The gallery has no business reading someone's list; every other pass reads the truth.
         guard !context.isPreview else { return completion(placeholder(in: context)) }
-        completion(entry(for: context.family))
+        let family = context.family
+        Task { @MainActor in completion(WidgetProvider.entry(for: family)) }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ListEntry>) -> Void) {
         // A list changes when a person changes it, never on a clock: the app and
         // ToggleItemIntent request a reload after each write, so any refresh policy would only
         // spend this widget's budget re-rendering a list nobody touched.
-        completion(Timeline(entries: [entry(for: context.family)], policy: .never))
+        let family = context.family
+        Task { @MainActor in
+            completion(Timeline(entries: [WidgetProvider.entry(for: family)], policy: .never))
+        }
     }
 
     /// From design/app/28-widget.png: three rows on the lock screen, two on the small tile.
-    private func limit(_ family: WidgetFamily) -> Int {
+    private func limit(_ family: WidgetFamily) -> Int { WidgetProvider.limit(family) }
+
+    private static func limit(_ family: WidgetFamily) -> Int {
         family == .accessoryRectangular ? 3 : 2
     }
 
-    private func entry(for family: WidgetFamily) -> ListEntry {
+    @MainActor private static func entry(for family: WidgetFamily) -> ListEntry {
         ListEntry(date: Date(),
                   state: WidgetProvider.state(WidgetStore.shared(),
                                               shopID: WidgetStore.activeShopID(
@@ -175,17 +168,35 @@ struct WidgetProvider: TimelineProvider {
 
     /// Four honest states and no fifth: no database, a schema this build disagrees with, no
     /// kitchen, or the list itself (empty included). Never a spinner, never a blank tile.
+    @MainActor
     static func state(_ access: WidgetStore.Access, shopID: ShopID?, limit: Int) -> WidgetState {
         switch access {
         case .unreachable: return .unreachable
         case .needsApp: return .needsApp
         case .noKitchen: return .noKitchen
-        case .ready(let repository, _):
+        case .ready(let repository, let kitchenID):
             guard let items = try? repository.items(),
                   let observations = try? repository.priceObservations() else { return .unreachable }
             return .list(WidgetSnapshot.list(items: items, observations: observations,
-                                             shopID: shopID, limit: limit))
+                                             shopID: shopID,
+                                             catalog: catalog(repository, kitchenID),
+                                             limit: limit))
         }
+    }
+
+    /// One per process: opening the bundled catalog costs real work and a widget's budget is
+    /// small. The currency is the kitchen's, so the seeds are refused rather than converted when
+    /// the kitchen shops in something the region isn't priced in.
+    @MainActor private static var cachedCatalog: ListCatalog?
+
+    @MainActor
+    private static func catalog(_ repository: Repository, _ kitchenID: KitchenID) -> ListCatalog {
+        if let cachedCatalog { return cachedCatalog }
+        let currency = ((try? repository.kitchens()) ?? [])
+            .first { $0.id == kitchenID }?.currencyCode ?? "USD"
+        let made = ListCatalog(currencyCode: currency)
+        cachedCatalog = made
+        return made
     }
 
     /// The gallery tile: names with no money behind them, so the summary carries no prices
