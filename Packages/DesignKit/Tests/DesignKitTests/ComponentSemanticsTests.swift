@@ -67,7 +67,7 @@ final class ComponentSemanticsTests: XCTestCase {
                 visiblePrompt: ItemRowSemantics.visiblePrompt(
                     prompt: "tap to set what you paid", price: .none),
                 isChecked: false),
-            "Chicken breast, tap to set what you paid, not checked")
+            "Chicken breast, no price yet, tap to set what you paid, not checked")
     }
 
     // MARK: ItemRow — the two named actions must never collide or lie

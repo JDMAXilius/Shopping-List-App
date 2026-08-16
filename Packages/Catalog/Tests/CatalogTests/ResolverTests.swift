@@ -33,9 +33,9 @@ final class ResolverTests: XCTestCase {
         let r = try resolveAll("free-range eggs")
         XCTAssertEqual(r.first?.canonicalName, "free-range eggs")
         XCTAssertEqual(r, [
-            m(45, "free-range eggs", "eggs", "dairy", "🥚", "dozen", 7, 0, .exact),
-            m(44, "eggs", "eggs", "dairy", "🥚", "dozen", 6, 2, .exact),
-            m(46, "organic eggs", "eggs", "dairy", "🥚", "dozen", 8, 4, .exact),
+            m(46, "free-range eggs", "eggs", "dairy", "🥚", "dozen", 7, 0, .exact),
+            m(45, "eggs", "eggs", "dairy", "🥚", "dozen", 6, 2, .exact),
+            m(47, "organic eggs", "eggs", "dairy", "🥚", "dozen", 8, 4, .exact),
         ])
     }
 
@@ -43,14 +43,14 @@ final class ResolverTests: XCTestCase {
     func test03_bonelessSkinlessChickenBreast() throws {
         let r = try resolveAll("boneless skinless chicken breast")
         XCTAssertEqual(r.first?.canonicalName, "chicken breast")
-        XCTAssertEqual(r, [m(73, "chicken breast", "chicken", "meat", "🍗", "lb", 7, 1, .exact)])
+        XCTAssertEqual(r, [m(76, "chicken breast", "chicken", "meat", "🍗", "lb", 7, 1, .exact)])
     }
 
     // typo
     func test04_bananna() throws {
         let r = try resolveAll("bananna")
         XCTAssertEqual(r.first?.canonicalName, "bananas")
-        XCTAssertEqual(r, [m(115, "bananas", "banana", "produce", "🍌", "each", 0.5, 7, .fuzzy)])
+        XCTAssertEqual(r, [m(122, "bananas", "banana", "produce", "🍌", "each", 0.5, 7, .fuzzy)])
     }
 
     // typo + plural
@@ -58,8 +58,8 @@ final class ResolverTests: XCTestCase {
         let r = try resolveAll("tomatos")
         XCTAssertEqual(r.first?.canonicalName, "vine tomatoes")
         XCTAssertEqual(r, [
-            m(138, "vine tomatoes", "tomato", "produce", "🍅", "lb", 3.5, 3, .exact),
-            m(231, "canned tomatoes", "canned-veg", "canned", "🥫", "can", 2, 3, .exact),
+            m(146, "vine tomatoes", "tomato", "produce", "🍅", "lb", 3.5, 3, .exact),
+            m(246, "canned tomatoes", "canned-veg", "canned", "🥫", "can", 2, 3, .exact),
         ])
     }
 
@@ -67,42 +67,42 @@ final class ResolverTests: XCTestCase {
     func test06_mangoes() throws {
         let r = try resolveAll("mangoes")
         XCTAssertEqual(r.first?.canonicalName, "mangoes")
-        XCTAssertEqual(r, [m(180, "mangoes", "fruit", "produce", "🥭", "each", 2, 0, .exact)])
+        XCTAssertEqual(r, [m(191, "mangoes", "fruit", "produce", "🥭", "each", 2, 0, .exact)])
     }
 
     // UK synonym
     func test07_aubergine() throws {
         let r = try resolveAll("aubergine")
         XCTAssertEqual(r.first?.canonicalName, "eggplant")
-        XCTAssertEqual(r, [m(168, "eggplant", "vegetable", "produce", "🍆", "each", 2.5, 1, .exact)])
+        XCTAssertEqual(r, [m(179, "eggplant", "vegetable", "produce", "🍆", "each", 2.5, 1, .exact)])
     }
 
     // UK synonym
     func test08_courgette() throws {
         let r = try resolveAll("courgette")
         XCTAssertEqual(r.first?.canonicalName, "zucchini")
-        XCTAssertEqual(r, [m(167, "zucchini", "vegetable", "produce", "🥒", "each", 1.5, 1, .exact)])
+        XCTAssertEqual(r, [m(178, "zucchini", "vegetable", "produce", "🥒", "each", 1.5, 1, .exact)])
     }
 
     // UK synonym
     func test09_coriander() throws {
         let r = try resolveAll("coriander")
         XCTAssertEqual(r.first?.canonicalName, "cilantro")
-        XCTAssertEqual(r, [m(186, "cilantro", "herb", "produce", "🌿", "bunch", 1.5, 1, .exact)])
+        XCTAssertEqual(r, [m(197, "cilantro", "herb", "produce", "🌿", "bunch", 1.5, 1, .exact)])
     }
 
     // UK synonym
     func test10_rocket() throws {
         let r = try resolveAll("rocket")
         XCTAssertEqual(r.first?.canonicalName, "arugula")
-        XCTAssertEqual(r, [m(143, "arugula", "greens", "produce", "🥬", "bag", 4, 1, .exact)])
+        XCTAssertEqual(r, [m(151, "arugula", "greens", "produce", "🥬", "bag", 4, 1, .exact)])
     }
 
     // UK synonym + plural
     func test11_springOnions() throws {
         let r = try resolveAll("spring onions")
         XCTAssertEqual(r.first?.canonicalName, "green onions")
-        XCTAssertEqual(r, [m(129, "green onions", "onion", "produce", "🧅", "bunch", 1.5, 1, .exact)])
+        XCTAssertEqual(r, [m(137, "green onions", "onion", "produce", "🧅", "bunch", 1.5, 1, .exact)])
     }
 
     // ambiguous: show every mince, let the list disambiguate —
@@ -114,11 +114,11 @@ final class ResolverTests: XCTestCase {
             XCTAssertTrue(names.contains(expected), "missing \(expected)")
         }
         XCTAssertEqual(r, [
-            m(80, "ground beef", "beef", "meat", "🥩", "lb", 7, 4, .prefix),
-            m(96, "ground lamb", "lamb", "meat", "🐑", "lb", 10, 4.5, .prefix),
-            m(90, "ground pork", "pork", "meat", "🥩", "lb", 6, 4.5, .prefix),
-            m(93, "ground turkey", "turkey", "meat", "🦃", "lb", 6, 4.5, .prefix),
-            m(78, "ground chicken", "chicken", "meat", "🍗", "lb", 6, 4.5, .prefix),
+            m(84, "ground beef", "beef", "meat", "🥩", "lb", 7, 4, .prefix),
+            m(102, "ground lamb", "lamb", "meat", "🐑", "lb", 10, 4.5, .prefix),
+            m(95, "ground pork", "pork", "meat", "🥩", "lb", 6, 4.5, .prefix),
+            m(99, "ground turkey", "turkey", "meat", "🦃", "lb", 6, 4.5, .prefix),
+            m(82, "ground chicken", "chicken", "meat", "🍗", "lb", 6, 4.5, .prefix),
         ])
     }
 
@@ -126,7 +126,7 @@ final class ResolverTests: XCTestCase {
     func test13_beefMince() throws {
         let r = try resolveAll("beef mince")
         XCTAssertEqual(r.first?.canonicalName, "ground beef")
-        XCTAssertEqual(r, [m(80, "ground beef", "beef", "meat", "🥩", "lb", 7, 1, .exact)])
+        XCTAssertEqual(r, [m(84, "ground beef", "beef", "meat", "🥩", "lb", 7, 1, .exact)])
     }
 
     // exact beats prefix; oat milk follows
@@ -134,11 +134,12 @@ final class ResolverTests: XCTestCase {
         let r = try resolveAll("oat")
         XCTAssertEqual(r.first?.canonicalName, "rolled oats")
         XCTAssertEqual(r, [
-            m(222, "rolled oats", "cereal", "breakfast", "🥣", "box", 5, 2, .exact),
+            m(235, "rolled oats", "cereal", "breakfast", "🥣", "box", 5, 2, .exact),
             m(11, "oat milk", "milk", "plant-milk", "🥛", "carton", 5, 4, .prefix),
-            m(228, "oat cereal", "cereal", "breakfast", "🥣", "box", 5, 4, .prefix),
-            m(43, "oat yogurt", "yogurt", "dairy", "🥣", "tub", 6, 4, .prefix),
-            m(223, "steel cut oats", "cereal", "breakfast", "🥣", "box", 6, 4.5, .prefix),
+            m(343, "oatcakes", "biscuit", "snacks", "🍘", "pack", 2.5, 4, .prefix),
+            m(242, "oat cereal", "cereal", "breakfast", "🥣", "box", 5, 4, .prefix),
+            m(44, "oat yogurt", "yogurt", "dairy", "🥣", "tub", 6, 4, .prefix),
+            m(236, "steel cut oats", "cereal", "breakfast", "🥣", "box", 6, 4.5, .prefix),
         ])
     }
 
@@ -146,28 +147,28 @@ final class ResolverTests: XCTestCase {
     func test15_crisps() throws {
         let r = try resolveAll("crisps")
         XCTAssertEqual(r.first?.canonicalName, "potato chips")
-        XCTAssertEqual(r, [m(312, "potato chips", "chips", "snacks", "🥔", "bag", 4.5, 1, .exact)])
+        XCTAssertEqual(r, [m(338, "potato chips", "chips", "snacks", "🥔", "bag", 4.5, 1, .exact)])
     }
 
     // UK slang
     func test16_looRoll() throws {
         let r = try resolveAll("loo roll")
         XCTAssertEqual(r.first?.canonicalName, "toilet paper")
-        XCTAssertEqual(r, [m(369, "toilet paper", "paper", "household", "🧻", "pack", 13, 1, .exact)])
+        XCTAssertEqual(r, [m(405, "toilet paper", "paper", "household", "🧻", "pack", 13, 1, .exact)])
     }
 
     // UK term
     func test17_clingFilm() throws {
         let r = try resolveAll("cling film")
         XCTAssertEqual(r.first?.canonicalName, "plastic wrap")
-        XCTAssertEqual(r, [m(383, "plastic wrap", "kitchen-supply", "household", "🧻", "roll", 4.5, 1, .exact)])
+        XCTAssertEqual(r, [m(421, "plastic wrap", "kitchen-supply", "household", "🧻", "roll", 4.5, 1, .exact)])
     }
 
     // article + qualifiers + singular
     func test18_aLargeRipeAvocado() throws {
         let r = try resolveAll("a large ripe avocado")
         XCTAssertEqual(r.first?.canonicalName, "avocados")
-        XCTAssertEqual(r, [m(157, "avocados", "avocado", "produce", "🥑", "each", 1.5, 4, .exact)])
+        XCTAssertEqual(r, [m(165, "avocados", "avocado", "produce", "🥑", "each", 1.5, 4, .exact)])
     }
 
     // UK variant
@@ -184,21 +185,21 @@ final class ResolverTests: XCTestCase {
     func test20_plainFlour() throws {
         let r = try resolveAll("plain flour")
         XCTAssertEqual(r.first?.canonicalName, "all-purpose flour")
-        XCTAssertEqual(r, [m(276, "all-purpose flour", "flour", "baking", "🌾", "bag", 4, 1, .exact)])
+        XCTAssertEqual(r, [m(301, "all-purpose flour", "flour", "baking", "🌾", "bag", 4, 1, .exact)])
     }
 
     // colloquial
     func test21_fizzyWater() throws {
         let r = try resolveAll("fizzy water")
         XCTAssertEqual(r.first?.canonicalName, "sparkling water")
-        XCTAssertEqual(r, [m(349, "sparkling water", "water", "beverages", "🫗", "pack", 6, 1, .exact)])
+        XCTAssertEqual(r, [m(382, "sparkling water", "water", "beverages", "🫗", "pack", 6, 1, .exact)])
     }
 
     // UK term
     func test22_nappies() throws {
         let r = try resolveAll("nappies")
         XCTAssertEqual(r.first?.canonicalName, "diapers")
-        XCTAssertEqual(r, [m(407, "diapers", "baby-care", "baby", "🍼", "pack", 25, 1, .exact)])
+        XCTAssertEqual(r, [m(452, "diapers", "baby-care", "baby", "🍼", "pack", 25, 1, .exact)])
     }
 
     // genuine miss, should return nothing confident

@@ -113,11 +113,11 @@ Also verify: `shasum Packages/Catalog/Sources/Catalog/Resources/catalog.db` matc
 `data/catalog/catalog.db` (461 items, ~220 KB). A stale bundled db means the app ships a
 different catalog than the one the tests prove.
 
-- [ ] Core green — paste counts
-- [ ] Catalog green, 23/23 goldens — paste counts
-- [ ] Data green, incl. incremental==rebuild + crash-before-mark re-push — paste counts
-- [ ] DesignKit green (Contrast · Glyph · SoundAsset · PriceSemantics · ComponentSemantics)
-- [ ] catalog.db shasum matches
+- [x] Core green — paste counts
+- [x] Catalog green, 23/23 goldens — paste counts
+- [x] Data green, incl. incremental==rebuild + crash-before-mark re-push — paste counts
+- [x] DesignKit green (Contrast · Glyph · SoundAsset · PriceSemantics · ComponentSemantics)
+- [x] catalog.db shasum matches
 
 ### T2 — Create the Xcode project (this unblocks everything below it)
 
@@ -139,8 +139,8 @@ single highest-value task on the list and it can only be done on a Mac.
   live with the merge conflicts**; if you pick a generator, commit the spec and document the
   regenerate command in the Log).
 
-- [ ] Project builds: `xcodebuild -scheme Bagged -destination 'platform=iOS Simulator,name=iPhone 16' build`
-- [ ] App test target runs the three suites — paste counts
+- [x] Project builds: `xcodebuild -scheme Bagged -destination 'platform=iOS Simulator,name=iPhone 16' build`
+- [x] App test target runs the three suites — paste counts
 
 ### T3 — The App layer, compiled for the first time
 
@@ -155,8 +155,8 @@ here. The riskiest spots are already known and were flagged by the agents that w
   under Swift 6 `sending` rules.
 - `async let` pairs in `CaptureSessionTests` (Sendable inference on the private `Harness` struct).
 
-- [ ] `App/` compiles with strict concurrency, zero warnings suppressed
-- [ ] All three App suites green — paste counts
+- [x] `App/` compiles with strict concurrency, zero warnings suppressed
+- [x] All three App suites green — paste counts
 
 ### T4 — The backend, against the real stack
 
@@ -174,9 +174,9 @@ deno check supabase/functions/*/index.ts
 The one that matters most: **kitchen A must not be able to read kitchen B.** Try to break it as
 an attacker would, not as an author would.
 
-- [ ] RLS suite green on the real stack — paste counts
-- [ ] `deno test` green — paste counts
-- [ ] all three functions type-check
+- [ ] RLS suite green on the real stack — paste counts (BLOCKED: no Docker/supabase CLI on this Mac — see Log)
+- [x] `deno test` green — paste counts
+- [x] all three functions type-check
 
 ### T5 — The snapshot suite (the largest hole in the project)
 
@@ -196,8 +196,8 @@ only be closed where a simulator is.
   containing an estimate. A snapshot that cannot tell those apart is not testing the thing that
   matters.
 
-- [ ] Snapshot harness chosen and committed
-- [ ] 12 components × 2 type sizes, all recorded and passing
+- [x] Snapshot harness chosen and committed
+- [x] 12 components × 2 type sizes, all recorded and passing
 
 ### T6 — Run the app and look at it
 
@@ -293,3 +293,71 @@ wave-by-wave detail — **read its Log, it has the reasoning behind every ruling
 ## Log
 
 <!-- Append dated entries. Never rewrite above this line. -->
+
+**2026-08-16 · terminal · T0+T1 complete.**
+- T0: Swift 6.2 (swiftlang-6.2.0.19.9, Xcode 26.0.1/17A400), node v22.19.0. `deno` and
+  `supabase` CLI NOT installed and no Homebrew on this Mac — T4 blocked until installed
+  (will retry with standalone installers).
+- Core: built first try, **46 passed, 0 failed** (Merge/ConflictHarness/Identifiers/LogicalClock/Money). Zero fixes needed.
+- Catalog: 23/23 ResolverTests failed at first with `sqlite("unable to open database file")`.
+  Root cause: `schema.sql` set `PRAGMA journal_mode = WAL`; a WAL db can't be opened read-only
+  inside a bundle (needs a writable `-shm`). Changed schema.sql to DELETE journal, rebuilt.
+  Also: `data/catalog/catalog.db` was the stale 414-item build (July 26, with uncheckpointed
+  `-wal` sidecar); rebuilt from catalog.json → 461 items, copied to Resources. Shasums now match:
+  `478d7c707da536508a6ea521df18b6305578a2d0` both copies.
+- The 20 ResolverTests + 2 PriceSeedTests failures after that were the flagged landmine: pinned
+  IDs from the 414 catalog. Regenerated expectations mechanically from `resolve.mjs` against the
+  461 db (scratch script emitted the Swift arrays; no hand-edited values). Top hits unchanged in
+  all 23; one new lower-rank row (`oatcakes`) in `oat`; toilet paper id 369→405. JS reference:
+  **23 passed, 0 failed**. Swift Catalog: **57 passed, 0 failed**.
+- Data: one mechanical fix (`try await database.pool.write` in SyncEngineTests:108 — async
+  overload selection under Swift 6). **29 passed, 0 failed** incl. incremental==rebuild and
+  crash-before-markPushed redelivery.
+- DesignKit: **70 passed, 0 failed** after one ruling. Finding: `ComponentSemanticsTests` was
+  self-contradictory — `testLabelSpeaksTheGapAndThePrompt` pins "Bread, no price yet, tap to set
+  what you paid, not checked" (gap AND prompt) while `testPromptStillOwnsTheSlotWhenItIsOnScreen`
+  pinned the same inputs without "no price yet". The latter's stated purpose is quantity
+  suppression, and the implementation comment ("price phrase … defined once", appended verbatim)
+  matches the former. Ruling: kept the code, fixed the mispinned expectation to include
+  "no price yet". A prompted row speaks gap + prompt.
+- Housekeeping: accidentally committed `Packages/Catalog/.build` in 2b09d7b; untracked and
+  gitignored in 02b749b.
+
+**2026-08-16 · terminal · T2+T3 complete.**
+- Chose **XcodeGen 2.46.0** (binary release in `~/tools/xcodegen`, no Homebrew on this Mac).
+  Spec is `project.yml`, committed alongside the generated `Bagged.xcodeproj`. Regenerate with
+  `~/tools/xcodegen/bin/xcodegen generate`.
+- Target `Bagged`: iOS 18.0 min, `SWIFT_VERSION 6.0` + strict concurrency, bundle id
+  `app.bagged`, App Group `group.app.bagged` entitlement, real `NSCameraUsageDescription`.
+  `BaggedTests` holds the three App suites (`**/*Tests.swift` split out of the app sources).
+- **The App layer compiled FIRST TRY under Swift 6 strict concurrency.** Every flagged landmine
+  (@Entry existential, `opened?.store` tuple chain, @ObservationIgnored lazy engine, @Sendable
+  frame delegate, `sending` tuple out of pool.write, async-let Harness) passed clean. One
+  warning fixed: unused `try?` result in CaptureSession.swift:345 → `_ =`.
+- No iPhone 16 simulator on this machine (Xcode 26 ships iPhone 17 family); used
+  `iPhone 17`. Build **SUCCEEDED**, zero warnings from our sources after the fix.
+- App suites on the simulator: CaptureSessionTests **33/33**, ListStoreTests **26/26**,
+  ScanClientTests **20/20** — **79 passed, 0 failed**.
+- T0 follow-up: deno 2.9.5 installed to `~/.deno/bin`. Still no supabase CLI and **no Docker
+  on this Mac** — `supabase start` cannot run, so the T4 real-stack RLS suite is blocked here.
+> HANDOFF → cloud: T4 RLS-on-real-stack needs Docker Desktop (or founder installs it here).
+  deno tests + type-check will still run locally.
+
+**2026-08-16 · terminal · T4 partial.**
+- `deno test supabase/functions/scan-receipt/` (deno 2.9.5): **26 passed, 0 failed**.
+- `deno check` clean on scan-receipt, join-kitchen, revenuecat-webhook (supabase-js 2.112.3).
+- RLS suite on the real stack: **not run** — no Docker and no supabase CLI on this machine, so
+  `supabase start` is impossible. Box left unchecked; handoff line above stands.
+
+**2026-08-16 · terminal · T5 complete.**
+- Harness: **pointfree swift-snapshot-testing 1.18** — test-only package dependency of
+  `BaggedTests` in project.yml, never linked into the app (the three-runtime-dependency rule
+  governs shipping code). Chosen over bare reference images for its automatic record mode,
+  diff artifacts on failure, and named-variant API.
+- `App/SnapshotTests/ComponentSnapshotTests.swift`: 12 tests, one composed image per component
+  covering variants, × default and `accessibility5` Dynamic Type = **24 references** recorded
+  on the iPhone 17 simulator, committed under `__Snapshots__`. Second run: **12 passed, 0
+  failed**.
+- Money tiers verified by eye in the recorded refs: ItemRow shows mono `$4.49` measured, grey
+  `~$5.00` estimated, `—` + persimmon prompt unpriced, strikethrough checked; TotalBar shows
+  exact `$8.98` all-measured vs `≈ $9.49 · 1 estimated · 1 no price yet` mixed.
