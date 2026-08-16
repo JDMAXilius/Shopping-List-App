@@ -51,6 +51,11 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
       PriceSemantics suites — all expectations machine-derived, never hand-tuned).
       Then pick the snapshot harness (pointfree swift-snapshot-testing vs plain images —
       Mac decision) and add the one-style x default + largest Dynamic Type suite
+- [ ] Wave 5: create the **Xcode project** — App target `Bagged` + Widget + Intents, the four
+      local packages as dependencies, App Group `group.app.bagged` entitlement on every target,
+      and a unit-test target that runs `App/Features/List/ListStoreTests.swift`
+      (`@testable import Bagged`). This is the one wave-5 task that CANNOT be done in cloud.
+      Then `swift test` the packages and run the app in the simulator against `design/app/01-list.png`
 - [ ] Log entry appended; pushed to main
 
 ## Log — append only
