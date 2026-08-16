@@ -50,10 +50,11 @@ struct BaggedApp: App {
         return (store, repository, kitchen.id)
     }
 
-    /// A scan left `parsing` by a killed app is stranded — nothing else will ever pick it up,
-    /// and a failure here costs a retry, never the launch.
+    /// Any scan not in the queue is stranded — nothing else will ever pick it up. `.parsing` is
+    /// an app kill mid-read; `.failed` is an earlier build, which wrote a state nothing swept.
+    /// A failure here costs a retry, never the launch.
     private static func sweepStrandedScans(_ repository: Repository) {
-        for stranded in (try? repository.pendingScans()) ?? [] where stranded.state == .parsing {
+        for stranded in (try? repository.pendingScans()) ?? [] where stranded.state != .queued {
             try? repository.markScan(stranded.id, .queued)
         }
     }

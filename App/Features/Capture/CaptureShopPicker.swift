@@ -9,30 +9,18 @@ struct CaptureShopPicker: View {
     let chosen: ShopID?
     let onChoose: (ShopID) -> Void
 
+    @State private var newShopName = ""
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        Group {
-            if store.shops.isEmpty {
-                // There is no shop to choose yet. Making the first one is what chooses it, and
-                // there is no list ordering for it to re-point.
-                ShopSwitcherSheet(store: store)
-                    .onDisappear {
-                        // A shop was made, or nothing was: skipping leaves both shops nil, which
-                        // is the same no-op cancelling is everywhere else here.
-                        if let shopID = store.activeShopID { onChoose(shopID) }
-                    }
-            } else {
-                list
-            }
-        }
-        .presentationDetents([.medium])
-        .presentationDragIndicator(.visible)
+        list
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
     }
 
     private var list: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("File this receipt under")
+            Text(store.shops.isEmpty ? "Where did you shop?" : "File this receipt under")
                 .font(.system(.title3, weight: .bold))
                 .foregroundStyle(Palette.ink.color)
             ScrollView {
@@ -40,6 +28,7 @@ struct CaptureShopPicker: View {
                     ForEach(store.shops, id: \.id) { shop in
                         row(shop)
                     }
+                    newShopRow
                 }
             }
             Text("Only this receipt. Your list stays where it is.")
@@ -49,6 +38,29 @@ struct CaptureShopPicker: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Palette.paper.color)
+    }
+
+    // A shop you have not shopped at yet is exactly the shop a receipt arrives from, so it is
+    // made here rather than sending the user out to the list — where making one re-points it.
+    private var newShopRow: some View {
+        HStack(spacing: 8) {
+            Field("New shop", text: $newShopName, placeholder: "One that isn't here yet",
+                  on: .paper, onSubmit: create)
+            Button("Add", action: create)
+                .font(.system(.body, weight: .semibold))
+                .foregroundStyle(Palette.persimmon.color)
+                .disabled(trimmed.isEmpty)
+                .opacity(trimmed.isEmpty ? 0.4 : 1)
+        }
+    }
+
+    private var trimmed: String { newShopName.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    private func create() {
+        guard let shopID = store.createShop(named: trimmed) else { return }
+        newShopName = ""
+        onChoose(shopID)
+        dismiss()
     }
 
     private func row(_ shop: Shop) -> some View {

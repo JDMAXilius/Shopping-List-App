@@ -181,11 +181,17 @@ final class ListStore {
         loadAisleOrder()
     }
 
-    func addShop(named name: String) {
+    /// Makes a shop without making it the active one — filing a receipt at a shop you have not
+    /// shopped at yet must not re-point the list you are standing in front of.
+    func createShop(named name: String) -> ShopID? {
         let shop = Shop(name: name.trimmingCharacters(in: .whitespacesAndNewlines))
-        guard !shop.name.isEmpty else { return }
-        guard append(.shop(.upsert(shop))) else { return }
-        switchShop(shop.id)
+        guard !shop.name.isEmpty, append(.shop(.upsert(shop))) else { return nil }
+        return shop.id
+    }
+
+    func addShop(named name: String) {
+        guard let shopID = createShop(named: name) else { return }
+        switchShop(shopID)
     }
 
     func reorderAisles(_ ordered: [CategoryID]) {
