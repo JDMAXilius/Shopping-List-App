@@ -84,20 +84,32 @@ struct ScanReceipt: Sendable, Equatable, Decodable {
     }
 }
 
+// What a failure cost, read from `free_scan_charged`. The field's ABSENCE is its own answer and
+// never the same as false: one says the quota was never reached, the other that it was given back.
+enum FreeScanEffect: Sendable, Equatable {
+    case notReached   // absent: the request failed before the quota was touched at all
+    case refunded     // false: the scan was restored, or the user is Plus and nothing was spent
+    case charged      // true: a free scan was really spent and the refund did not go through
+    case unreported   // no body of ours to read it from: claim nothing, refresh entitlement
+}
+
 // One case per status the function documents; nothing collapses two different truths into one.
 enum ScanOutcome: Sendable, Equatable {
     case scanned(ScanReceipt)
     // 402: the paywall trigger. scans_used is nil only if the function omitted it.
     case quotaExhausted(scansUsed: Int?)
     case unauthenticated                     // 401 — no session, or the JWT was rejected
-    case ownerAccountRequired                // 403 — guest/anonymous session, or not an owner
+    // The two 403s are different destinations, and a signed-in owner sent to a sign-in screen is
+    // a dead end: sign_in_required → Sign in (19), kitchen_required → Name your kitchen (17).
+    case signInRequired
+    case kitchenRequired
     case rejected                            // 400 / 405 — our request was malformed: our bug
     case imageTooLarge(maxBytes: Int)        // 413, or refused here before the upload
     case rateLimited                         // 429 — 10 scans/hour
-    case unreadableImage                     // 422 — the model could not parse this photo
-    case upstreamFailure                     // 502, or a 200 body we cannot decode
-    // No answer at all: offline, timeout, cancelled. The user did nothing wrong, and whether the
-    // server consumed a scan before the connection died is unknown from here.
+    case unreadableImage(freeScan: FreeScanEffect)   // 422 — no photo we can parse
+    case upstreamFailure(freeScan: FreeScanEffect)   // 502, or a 200 body we cannot decode
+    // No answer at all: offline, timeout, cancelled. The user did nothing wrong, and no free-scan
+    // claim can be made here — the request may have landed and spent one; refresh entitlement.
     case notReachable
     case unexpected(status: Int)
 }
@@ -140,7 +152,9 @@ struct ScanClient: ScanBackend {
 
         do {
             let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse else { return .upstreamFailure }
+            guard let http = response as? HTTPURLResponse else {
+                return .upstreamFailure(freeScan: .unreported)
+            }
             return outcome(status: http.statusCode, data: data)
         } catch {
             return .notReachable
@@ -151,23 +165,38 @@ struct ScanClient: ScanBackend {
         switch status {
         case 200:
             guard let receipt = try? JSONDecoder().decode(ScanReceipt.self, from: data) else {
-                return .upstreamFailure
+                // The scan itself ran, so what it cost is not ours to state from an unreadable body.
+                return .upstreamFailure(freeScan: .unreported)
             }
             return .scanned(receipt)
         case 400, 405: return .rejected
         case 401: return .unauthenticated
         case 402: return .quotaExhausted(scansUsed: Self.errorBody(data)?.scansUsed)
-        case 403: return .ownerAccountRequired
+        // A 403 naming neither step is not routed to a guessed one — either guess is a dead end.
+        case 403:
+            switch Self.errorBody(data)?.error {
+            case "sign_in_required": return .signInRequired
+            case "kitchen_required": return .kitchenRequired
+            default: return .unexpected(status: 403)
+            }
         case 413: return .imageTooLarge(maxBytes: Self.errorBody(data)?.maxBytes ?? Self.maxImageBytes)
-        case 422: return .unreadableImage
+        case 422: return .unreadableImage(freeScan: Self.freeScan(data))
         case 429: return .rateLimited
-        case 502: return .upstreamFailure
+        case 502: return .upstreamFailure(freeScan: Self.freeScan(data))
         default: return .unexpected(status: status)
         }
     }
 
     private static func errorBody(_ data: Data) -> ErrorBody? {
         try? JSONDecoder().decode(ErrorBody.self, from: data)
+    }
+
+    // Absence only means "quota never touched" when the body is the function's own envelope;
+    // anything else on the wire (a gateway page, an empty body) told us nothing.
+    private static func freeScan(_ data: Data) -> FreeScanEffect {
+        guard let body = errorBody(data) else { return .unreported }
+        guard let charged = body.freeScanCharged else { return .notReached }
+        return charged ? .charged : .refunded
     }
 
     private struct RequestBody: Encodable {
@@ -186,11 +215,13 @@ struct ScanClient: ScanBackend {
         let error: String
         let scansUsed: Int?
         let maxBytes: Int?
+        let freeScanCharged: Bool?
 
         private enum CodingKeys: String, CodingKey {
             case error
             case scansUsed = "scans_used"
             case maxBytes = "max_bytes"
+            case freeScanCharged = "free_scan_charged"
         }
     }
 }

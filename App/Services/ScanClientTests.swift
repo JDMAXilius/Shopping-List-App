@@ -117,11 +117,11 @@ final class ScanClientTests: XCTestCase {
     }
 
     // A 200 whose lines don't match the schema is the server misbehaving, not a bad photo — and
-    // no line is silently dropped.
-    func testUndecodableSuccessBodyIsUpstreamFailure() async throws {
+    // no line is silently dropped. The scan ran, so we do not claim the quota went untouched.
+    func testUndecodableSuccessBodyIsUpstreamFailureClaimingNothingAboutTheQuota() async throws {
         stub(200, #"{"lines":[{"raw_text":"MILK"}],"currency":"USD","is_plus":false,"scans_used":1}"#)
         let outcome = await makeClient().scan(image: Data([0x01]), mediaType: .jpeg, shopHint: nil)
-        XCTAssertEqual(outcome, .upstreamFailure)
+        XCTAssertEqual(outcome, .upstreamFailure(freeScan: .unreported))
     }
 
     // MARK: - Every documented status, one distinct outcome
@@ -142,19 +142,109 @@ final class ScanClientTests: XCTestCase {
         let cases: [(Int, String, ScanOutcome)] = [
             (400, #"{"error":"invalid_body"}"#, .rejected),
             (401, #"{"error":"unauthenticated"}"#, .unauthenticated),
-            (403, #"{"error":"owner_account_required"}"#, .ownerAccountRequired),
+            (403, #"{"error":"sign_in_required"}"#, .signInRequired),
+            (403, #"{"error":"kitchen_required"}"#, .kitchenRequired),
             (405, #"{"error":"method_not_allowed"}"#, .rejected),
             (413, #"{"error":"image_too_large","max_bytes":8388608}"#, .imageTooLarge(maxBytes: 8_388_608)),
-            (422, #"{"error":"unparseable_image"}"#, .unreadableImage),
+            (422, #"{"error":"unparseable_image","free_scan_charged":false}"#,
+             .unreadableImage(freeScan: .refunded)),
             (429, #"{"error":"rate_limited"}"#, .rateLimited),
-            (502, #"{"error":"upstream"}"#, .upstreamFailure),
+            (502, #"{"error":"upstream","free_scan_charged":false}"#,
+             .upstreamFailure(freeScan: .refunded)),
             (418, "", .unexpected(status: 418)),
         ]
         for (status, body, expected) in cases {
             StubURLProtocol.reset()
             stub(status, body)
             let outcome = await makeClient().scan(image: Data([0x01]), mediaType: .jpeg, shopHint: nil)
-            XCTAssertEqual(outcome, expected, "status \(status)")
+            XCTAssertEqual(outcome, expected, "status \(status) \(body)")
+        }
+    }
+
+    // MARK: - The two 403s are two different missing steps
+
+    // One string for both used to send a signed-in owner who has no kitchen to a sign-in screen
+    // she could do nothing with. The strings are the routing, so they are pinned literally.
+    func testTheTwo403sRouteToDifferentScreens() async throws {
+        stub(403, #"{"error":"sign_in_required"}"#)
+        let anonymous = await makeClient().scan(image: Data([0x01]), mediaType: .jpeg, shopHint: nil)
+        XCTAssertEqual(anonymous, .signInRequired)
+
+        StubURLProtocol.reset()
+        stub(403, #"{"error":"kitchen_required"}"#)
+        let ownerless = await makeClient().scan(image: Data([0x01]), mediaType: .jpeg, shopHint: nil)
+        XCTAssertEqual(ownerless, .kitchenRequired)
+        XCTAssertNotEqual(anonymous, ownerless)
+    }
+
+    func testA403NamingNeitherStepIsNotRoutedToAGuessedOne() async throws {
+        for body in [#"{"error":"owner_account_required"}"#, ""] {
+            StubURLProtocol.reset()
+            stub(403, body)
+            let outcome = await makeClient().scan(image: Data([0x01]), mediaType: .jpeg, shopHint: nil)
+            XCTAssertEqual(outcome, .unexpected(status: 403), "body \(body)")
+        }
+    }
+
+    // MARK: - What the failure cost
+
+    func testFreeScanChargedIsCarriedOnBothOutcomesThatCanReportIt() async throws {
+        let cases: [(Int, String, FreeScanEffect)] = [
+            (422, #"{"error":"unparseable_image","free_scan_charged":true}"#, .charged),
+            (422, #"{"error":"unparseable_image","free_scan_charged":false}"#, .refunded),
+            (502, #"{"error":"upstream","free_scan_charged":true}"#, .charged),
+            (502, #"{"error":"upstream","free_scan_charged":false}"#, .refunded),
+        ]
+        for (status, body, expected) in cases {
+            StubURLProtocol.reset()
+            stub(status, body)
+            let outcome = await makeClient().scan(image: Data([0x01]), mediaType: .jpeg, shopHint: nil)
+            let actual: FreeScanEffect?
+            switch outcome {
+            case .unreadableImage(let effect), .upstreamFailure(let effect): actual = effect
+            default: actual = nil
+            }
+            XCTAssertEqual(actual, expected, "status \(status) \(body)")
+        }
+    }
+
+    // An early 502 never reached the quota; a refunded one did and gave it back. Both cost the
+    // user nothing, and the app still must not say the same sentence about them.
+    func testAbsentFreeScanChargedIsNotTheSameAnswerAsFalse() async throws {
+        stub(502, #"{"error":"upstream"}"#)
+        let early = await makeClient().scan(image: Data([0x01]), mediaType: .jpeg, shopHint: nil)
+        XCTAssertEqual(early, .upstreamFailure(freeScan: .notReached))
+        XCTAssertNotEqual(early, .upstreamFailure(freeScan: .refunded))
+    }
+
+    // A gateway page or an empty body is not our envelope, so its silence is not the contract's
+    // silence: it says nothing about the quota rather than "never touched".
+    func testABodyThatIsNotOursReportsNothingAboutTheQuota() async throws {
+        for body in ["", "<html>502 Bad Gateway</html>", "{}"] {
+            StubURLProtocol.reset()
+            stub(502, body)
+            let outcome = await makeClient().scan(image: Data([0x01]), mediaType: .jpeg, shopHint: nil)
+            XCTAssertEqual(outcome, .upstreamFailure(freeScan: .unreported), "body \(body)")
+
+            StubURLProtocol.reset()
+            stub(422, body)
+            let unreadable = await makeClient().scan(image: Data([0x01]), mediaType: .jpeg, shopHint: nil)
+            XCTAssertEqual(unreadable, .unreadableImage(freeScan: .unreported), "body \(body)")
+        }
+    }
+
+    // Every 422 is the same instruction to a capture screen — retake it — whatever the body says
+    // or fails to say, so the case alone is actionable and no payload is assumed to be there.
+    func testAny422ReadsAsAnImageWeCannotUseWithoutInspectingTheBody() async throws {
+        let bodies = [#"{"error":"unparseable_image","free_scan_charged":false}"#,
+                      #"{"error":"empty_receipt","free_scan_charged":false}"#, "{}", ""]
+        for body in bodies {
+            StubURLProtocol.reset()
+            stub(422, body)
+            let outcome = await makeClient().scan(image: Data([0x01]), mediaType: .jpeg, shopHint: nil)
+            guard case .unreadableImage = outcome else {
+                return XCTFail("expected .unreadableImage for \(body), got \(outcome)")
+            }
         }
     }
 
@@ -177,7 +267,9 @@ final class ScanClientTests: XCTestCase {
         XCTAssertTrue(StubURLProtocol.requests.isEmpty)
     }
 
-    func testTransportFailureIsNotTheUsersFault() async throws {
+    // A connection that dies after the request lands leaves the scan genuinely spent with no way
+    // to know it here, so this outcome carries no free-scan claim at all — the app re-reads it.
+    func testTransportFailureIsNotTheUsersFaultAndClaimsNothingAboutTheScan() async throws {
         StubURLProtocol.failure = URLError(.notConnectedToInternet)
         let outcome = await makeClient().scan(image: Data([0x01]), mediaType: .jpeg, shopHint: nil)
         XCTAssertEqual(outcome, .notReachable)
@@ -186,11 +278,11 @@ final class ScanClientTests: XCTestCase {
     // MARK: - The fake
 
     func testFakeRecordsCallsAndDrainsItsScript() async throws {
-        let fake = FakeScanBackend(outcomes: [.unreadableImage])
+        let fake = FakeScanBackend(outcomes: [.unreadableImage(freeScan: .refunded)])
         let first = await fake.scan(image: Data([0x01]), mediaType: .png, shopHint: "Aldi")
         let second = await fake.scan(image: Data([0x02]), mediaType: .jpeg, shopHint: nil)
 
-        XCTAssertEqual(first, .unreadableImage)
+        XCTAssertEqual(first, .unreadableImage(freeScan: .refunded))
         XCTAssertEqual(second, .notReachable)
         let calls = await fake.calls
         XCTAssertEqual(calls.count, 2)
