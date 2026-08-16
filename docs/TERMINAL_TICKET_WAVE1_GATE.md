@@ -1,4 +1,4 @@
-# TERMINAL_TICKET_WAVE1_GATE — now covers Waves 1 AND 2
+# TERMINAL_TICKET_WAVE1_GATE — now covers Waves 1, 2 AND 3
 
 > STATUS: open — written by cloud 2026-08-16. Blocked in cloud: the container's proxy denies
 > download.swift.org, so no Swift toolchain there. This machine has one.
@@ -36,6 +36,10 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
 - [ ] catalog.db shasum in Packages matches data/catalog/catalog.db
 - [ ] `swift test` green on Data — incl. incremental==rebuild equivalence, the
       crash-before-mark re-push test, and the deterministic fake-clock backoff tests
+- [ ] Wave 3: `supabase start && supabase db reset` then run `supabase/tests/rls.test.sql`
+      per its header on the REAL stack (the cloud run used a PG16 shim — 51/51 green, twice,
+      with a negative control proving the suite detects the seq-gap; the real stack is the
+      authoritative re-run). Deno-check the three functions
 - [ ] Log entry appended; pushed to main
 
 ## Log — append only
@@ -58,3 +62,15 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
   W2-P2 with matching tests; op schema gained seq bigserial + ON CONFLICT DO NOTHING as contract.
   Known P3s accepted and documented in code. GRDB 7 API spellings are from knowledge, never
   compiled — expect mechanical fix-ups here; the builder's report lists likely alternates.
+
+- **2026-08-16 · cloud (wave 3)** — Backend built (W3-P1) and attack-tested on an in-container
+  PG16 + Supabase shim. Critic W3-C1 ran live attacks: 3 HIGH proven (seq pulled past a
+  mid-commit batch = permanent op loss; idempotent push existed only as a comment — retried
+  batch 409s; free scans farmable via fresh anonymous sessions), 3 MED (evicted guest rejoins
+  with live token; token entropy client-controlled; webhook replay flips entitlement), 3 LOW.
+  All fixed in W3-P2: per-kitchen advisory-lock trigger (commit-ordered seq), push_ops RPC,
+  owner-only non-anonymous scanning, eviction revokes invites, server-minted 32-byte tokens,
+  plus_event_at replay fence, seq SELECT revoked, kitchen cap, last-owner guard. Suite now 51
+  checks, green twice, with a NEGATIVE CONTROL (trigger dropped → suite fails on exactly the
+  critic's repro). What only the real stack can prove: GoTrue is_anonymous rejection + owner
+  check in scan-receipt, and the Anthropic structured-output param spelling.

@@ -63,28 +63,65 @@ create policy member_delete on member
 
 revoke insert, update, truncate on member from anon, authenticated;
 
+-- A kitchen must never lose its last owner: the remaining data would be orphaned
+-- with guests inside. (Cascade from a kitchen DELETE is blocked too — v1 has none.)
+create function public.member_guard_last_owner()
+returns trigger
+language plpgsql security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if old.role = 'owner' and not exists (
+    select 1 from member
+    where kitchen_id = old.kitchen_id and role = 'owner' and user_id <> old.user_id
+  ) then
+    raise exception 'last_owner' using errcode = '55006';
+  end if;
+  return old;
+end;
+$$;
+
+create trigger member_guard_last_owner
+  before delete on member
+  for each row execute function public.member_guard_last_owner();
+
+-- Eviction IS eviction: removal without token rotation would let the removed
+-- guest walk straight back in. Any departure kills every live invite.
+create function public.member_revoke_invites()
+returns trigger
+language plpgsql security definer
+set search_path = public, pg_temp
+as $$
+begin
+  update invite set revoked_at = now()
+   where kitchen_id = old.kitchen_id and revoked_at is null;
+  return old;
+end;
+$$;
+
+create trigger member_revoke_invites
+  after delete on member
+  for each row execute function public.member_revoke_invites();
+
 ------------------------------------------------------------------------------
 -- invite: members only, in and out. NO anon path of any kind — joins go through
 -- join_kitchen() keyed on the exact token; capability URLs must not be enumerable.
+-- Tokens are SERVER-minted via create_invite(): no client INSERT, so no
+-- client-chosen (guessable) token can ever exist.
 ------------------------------------------------------------------------------
 create policy invite_select on invite
   for select to authenticated
   using (public.is_kitchen_member(kitchen_id));
-
-create policy invite_insert on invite
-  for insert to authenticated
-  with check (public.is_kitchen_member(kitchen_id));
 
 create policy invite_update on invite
   for update to authenticated
   using (public.is_kitchen_member(kitchen_id))
   with check (public.is_kitchen_member(kitchen_id));
 
-revoke delete, truncate on invite from anon, authenticated;
+revoke insert, delete, truncate on invite from anon, authenticated;
 
--- Trigger over a create_invite() wrapper: the one-live-token invariant then holds
--- for EVERY insert path (direct policy insert today, any future function), not
--- only for callers who remember to use the wrapper.
+-- Trigger, not only create_invite() logic: the one-live-token invariant then
+-- holds for EVERY insert path (any future function), not just the wrapper.
 create function public.invite_revoke_prior()
 returns trigger
 language plpgsql security definer
@@ -104,6 +141,24 @@ create trigger invite_single_live
   before insert on invite
   for each row execute function public.invite_revoke_prior();
 
+-- The ONLY way a token is minted: 256 bits server-side, base64url, priors revoked
+-- by the trigger above. `extensions` in the path: Supabase installs pgcrypto there.
+create function public.create_invite(p_kitchen uuid)
+returns text
+language plpgsql security definer
+set search_path = public, extensions, pg_temp
+as $$
+declare tok text;
+begin
+  if not public.is_kitchen_member(p_kitchen) then
+    raise exception 'not_a_member' using errcode = '42501';
+  end if;
+  tok := translate(encode(gen_random_bytes(32), 'base64'), '+/=', '-_');
+  insert into invite (kitchen_id, token) values (p_kitchen, tok);
+  return tok;
+end;
+$$;
+
 ------------------------------------------------------------------------------
 -- op: append-only log. Members read and insert into their own kitchen only
 -- (WITH CHECK evaluates the NEW row's kitchen_id — a member cannot address
@@ -118,6 +173,35 @@ create policy op_insert on op
   with check (public.is_kitchen_member(kitchen_id));
 
 revoke update, delete, truncate on op from anon, authenticated;
+
+-- Clients may draw seq (op_assign_seq runs as invoker) but never read the global
+-- counter: last_value is a cross-kitchen op-volume oracle.
+revoke all on sequence op_seq from anon, authenticated;
+grant usage on sequence op_seq to authenticated;
+
+-- THE push path. SECURITY INVOKER: RLS still decides every row. Batch-idempotent
+-- where bare .insert() is not — one redelivered duplicate 409s a whole PostgREST batch.
+create function public.push_ops(p_ops jsonb)
+returns int
+language plpgsql security invoker
+set search_path = public, pg_temp
+as $$
+declare r jsonb; inserted int; n int := 0;
+begin
+  if p_ops is null or jsonb_typeof(p_ops) <> 'array' then
+    raise exception 'invalid_ops' using errcode = '22023';
+  end if;
+  for r in select * from jsonb_array_elements(p_ops) loop
+    insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
+    values ((r->>'id')::uuid, (r->>'kitchen_id')::uuid, (r->>'device_id')::uuid,
+            (r->>'clock')::bigint, (r->>'wall_clock')::bigint, r->>'type', r->'payload')
+    on conflict (id) do nothing;
+    get diagnostics inserted = row_count;
+    n := n + inserted;
+  end loop;
+  return n;
+end;
+$$;
 
 ------------------------------------------------------------------------------
 -- entitlement: users read their own row only; ALL writes are service-role
@@ -154,6 +238,10 @@ begin
   end if;
   if p_name is null or length(btrim(p_name)) = 0 or length(p_name) > 80 then
     raise exception 'invalid_name' using errcode = '22023';
+  end if;
+  -- Nobody owns 20 kitchens for a real reason: cap stops scripted kitchen farming.
+  if (select count(*) from member where user_id = uid and role = 'owner') >= 20 then
+    raise exception 'kitchen_limit' using errcode = '54000';
   end if;
   insert into kitchen (name) values (btrim(p_name)) returning id into kid;
   insert into member (kitchen_id, user_id, role) values (kid, uid, 'owner');
@@ -219,6 +307,23 @@ begin
 end;
 $$;
 
+-- RevenueCat webhook apply, fenced by event time: a stale or replayed event
+-- (delivery is unordered) can never overwrite state from a NEWER event.
+create function public.apply_entitlement_event(
+  p_user uuid, p_is_plus boolean, p_event_at timestamptz)
+returns void
+language sql security definer
+set search_path = public, pg_temp
+as $$
+  insert into entitlement (user_id, is_plus, plus_event_at)
+  values (p_user, p_is_plus, p_event_at)
+  on conflict (user_id) do update
+    set is_plus = excluded.is_plus,
+        plus_event_at = excluded.plus_event_at,
+        updated_at = now()
+    where entitlement.plus_event_at < excluded.plus_event_at;
+$$;
+
 -- Compensation when the upstream parse fails after a free scan was consumed:
 -- a transient 502 must not burn one of only three free scans.
 create function public.refund_scan(p_user uuid)
@@ -237,11 +342,21 @@ $$;
 -- authenticated user could call consume_scan(p_user) and burn someone else's quota.
 revoke execute on function public.create_kitchen(text) from public, anon, authenticated;
 revoke execute on function public.join_kitchen(text) from public, anon, authenticated;
+revoke execute on function public.create_invite(uuid) from public, anon, authenticated;
+revoke execute on function public.push_ops(jsonb) from public, anon, authenticated;
 revoke execute on function public.consume_scan(uuid) from public, anon, authenticated;
 revoke execute on function public.refund_scan(uuid) from public, anon, authenticated;
+revoke execute on function public.apply_entitlement_event(uuid, boolean, timestamptz)
+  from public, anon, authenticated;
 revoke execute on function public.invite_revoke_prior() from public, anon, authenticated;
+revoke execute on function public.member_guard_last_owner() from public, anon, authenticated;
+revoke execute on function public.member_revoke_invites() from public, anon, authenticated;
+revoke execute on function public.op_assign_seq() from public, anon, authenticated;
 
 grant execute on function public.create_kitchen(text) to authenticated;
 grant execute on function public.join_kitchen(text) to authenticated;  -- anonymous-auth guests ARE `authenticated`
+grant execute on function public.create_invite(uuid) to authenticated;
+grant execute on function public.push_ops(jsonb) to authenticated;
 grant execute on function public.consume_scan(uuid) to service_role;
 grant execute on function public.refund_scan(uuid) to service_role;
+grant execute on function public.apply_entitlement_event(uuid, boolean, timestamptz) to service_role;

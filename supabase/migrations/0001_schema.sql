@@ -1,6 +1,8 @@
 -- Bagged schema (ARCHITECTURE.md §7). RLS is ENABLED for every table here;
 -- policies live in 0002_rls.sql — between the two, tables are default-deny, never open.
 
+create extension if not exists pgcrypto;  -- gen_random_bytes for invite tokens
+
 create table kitchen (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
@@ -29,11 +31,11 @@ create index invite_kitchen_idx on invite (kitchen_id);
 -- THE sync table. seq is the pull cursor: pull is
 --   WHERE kitchen_id = $1 AND seq > $2 ORDER BY seq
 -- (created_at commits out of order; a timestamp cursor loses ops).
--- Push is INSERT ... ON CONFLICT (id) DO NOTHING — idempotent by contract:
--- client re-delivery after crash-before-mark is the NORMAL case, not an error.
+-- The transport pushes via push_ops() (RPC, 0002) — NEVER bare .insert(): one
+-- redelivered duplicate would 409 the whole PostgREST batch. Push stays idempotent.
 create table op (
   id          uuid primary key,
-  seq         bigserial,
+  seq         bigint not null,  -- assigned by op_assign_seq below, never by clients
   kitchen_id  uuid not null references kitchen (id),
   device_id   uuid not null,
   clock       bigint not null,
@@ -43,13 +45,36 @@ create table op (
   created_at  timestamptz not null default now()
 );
 
+create sequence op_seq owned by op.seq;
+
 create index op_kitchen_seq_idx on op (kitchen_id, seq);
 
+-- Commit-ordered seq: the per-kitchen xact lock serializes op inserts and seq is
+-- drawn UNDER it, so no reader can ever see seq N+1 while N is still uncommitted.
+create function public.op_assign_seq()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  perform pg_advisory_xact_lock(hashtext(new.kitchen_id::text));
+  new.seq := nextval('public.op_seq');
+  return new;
+end;
+$$;
+
+create trigger op_assign_seq
+  before insert on op
+  for each row execute function public.op_assign_seq();
+
 create table entitlement (
-  user_id     uuid primary key,
-  is_plus     boolean not null default false,
-  scans_used  int not null default 0,
-  updated_at  timestamptz not null default now()
+  user_id       uuid primary key,
+  is_plus       boolean not null default false,
+  scans_used    int not null default 0,
+  -- Webhook ordering fence (its own column: consume_scan bumps updated_at, which
+  -- would mask a purchase event that fired just before a scan).
+  plus_event_at timestamptz not null default 'epoch',
+  updated_at    timestamptz not null default now()
 );
 
 -- Rate-limit ledger for scan-receipt: who and when, NEVER receipt content.

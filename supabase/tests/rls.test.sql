@@ -3,8 +3,12 @@
 --   supabase start && supabase db reset
 --   psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" \
 --        -v ON_ERROR_STOP=1 -f supabase/tests/rls.test.sql
--- Every check is a plpgsql ASSERT; the first failure aborts. Everything rolls back.
--- Requires the Supabase auth schema + roles (anon/authenticated) — not vanilla postgres.
+-- Or on vanilla PG16: create the shim first (roles anon/authenticated/service_role,
+-- Supabase default privileges, auth schema + auth.users + auth.uid() reading
+-- request.jwt.claims->>'sub'), then apply 0001+0002 and run this file as superuser.
+-- Every check is a plpgsql ASSERT; the first failure aborts. Everything rolls back
+-- EXCEPT section 12 (dblink concurrency needs real commits; it cleans up after itself).
+-- Section 12 requires the dblink extension (contrib; present on Supabase).
 
 begin;
 
@@ -18,10 +22,10 @@ insert into entitlement (user_id, is_plus, scans_used)
 values ('00000000-0000-0000-0000-00000000000a', true, 0);
 
 ------------------------------------------------------------------------------
--- 1. A creates a kitchen via create_kitchen, invites, writes ops; push is idempotent.
+-- 1. A creates a kitchen; invites are server-minted only; push_ops is idempotent.
 ------------------------------------------------------------------------------
 do $$
-declare kid uuid; n int;
+declare kid uuid; tok text; n int;
 begin
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims',
@@ -30,26 +34,48 @@ begin
   kid := public.create_kitchen('Kitchen A');
   perform set_config('test.kitchen_a', kid::text, true);
 
-  insert into invite (kitchen_id, token) values (kid, 'tok-a-1');
+  -- MED-2: a member cannot INSERT an invite row directly — no client-chosen tokens.
+  begin
+    insert into invite (kitchen_id, token) values (kid, 'evil-client-token');
+    raise exception 'member direct invite INSERT must be denied';
+  exception when insufficient_privilege then null;
+  end;
+
+  tok := public.create_invite(kid);
+  assert length(tok) >= 43, 'create_invite mints a 256-bit base64url token';
+  assert tok !~ '[+/=]', 'token is URL-safe';
+  perform set_config('test.tok1', tok, true);
 
   insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
   values ('11111111-1111-1111-1111-111111111111', kid,
           '22222222-2222-2222-2222-222222222222', 1, 1723800000000, 'add',
           '{"name":"milk"}'::jsonb);
-  -- crash-before-mark re-delivery: same id must be a silent no-op
-  insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
-  values ('11111111-1111-1111-1111-111111111111', kid,
-          '22222222-2222-2222-2222-222222222222', 1, 1723800000000, 'add',
-          '{"name":"milk"}'::jsonb)
-  on conflict (id) do nothing;
+
+  -- HIGH-2: crash-before-mark re-delivery via push_ops — duplicate is a counted no-op.
+  n := public.push_ops(jsonb_build_array(
+    jsonb_build_object('id', '11111111-1111-1111-1111-111111111111',
+      'kitchen_id', kid, 'device_id', '22222222-2222-2222-2222-222222222222',
+      'clock', 1, 'wall_clock', 1723800000000, 'type', 'add', 'payload', '{"name":"milk"}'::jsonb),
+    jsonb_build_object('id', '11111111-1111-1111-1111-222222222222',
+      'kitchen_id', kid, 'device_id', '22222222-2222-2222-2222-222222222222',
+      'clock', 2, 'wall_clock', 1723800000500, 'type', 'add', 'payload', '{"name":"eggs"}'::jsonb)));
+  assert n = 1, 'partial-overlap batch inserts only the new op';
+  n := public.push_ops(jsonb_build_array(
+    jsonb_build_object('id', '11111111-1111-1111-1111-111111111111',
+      'kitchen_id', kid, 'device_id', '22222222-2222-2222-2222-222222222222',
+      'clock', 1, 'wall_clock', 1723800000000, 'type', 'add', 'payload', '{"name":"milk"}'::jsonb),
+    jsonb_build_object('id', '11111111-1111-1111-1111-222222222222',
+      'kitchen_id', kid, 'device_id', '22222222-2222-2222-2222-222222222222',
+      'clock', 2, 'wall_clock', 1723800000500, 'type', 'add', 'payload', '{"name":"eggs"}'::jsonb)));
+  assert n = 0, 'identical batch re-push returns 0 and raises nothing';
 
   select count(*) into n from op where kitchen_id = kid;
-  assert n = 1, 'push is idempotent on op id';
+  assert n = 2, 'push is idempotent on op id';
   select count(*) into n from kitchen where id = kid;
   assert n = 1, 'A sees own kitchen';
   select count(*) into n from member where kitchen_id = kid and user_id = auth.uid() and role = 'owner';
   assert n = 1, 'create_kitchen wrote the owner member row atomically';
-  raise notice 'ok 1: A creates kitchen + invite + op; push idempotent';
+  raise notice 'ok 1: A creates kitchen; server-minted invite; push_ops idempotent';
 end $$;
 reset role;
 
@@ -79,7 +105,7 @@ reset role;
 -- 3. THE attack: B (authenticated, not a member) reads and writes kitchen A. All must fail.
 ------------------------------------------------------------------------------
 do $$
-declare ka uuid := current_setting('test.kitchen_a')::uuid; n int;
+declare ka uuid := current_setting('test.kitchen_a')::uuid; n int; t text;
 begin
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims',
@@ -98,6 +124,21 @@ begin
     insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
     values (gen_random_uuid(), ka, gen_random_uuid(), 1, 1, 'add', '{}'::jsonb);
     raise exception 'B must not INSERT an op into kitchen A';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- push_ops is SECURITY INVOKER: RLS must deny B exactly like the bare insert
+  begin
+    n := public.push_ops(jsonb_build_array(jsonb_build_object(
+      'id', gen_random_uuid(), 'kitchen_id', ka, 'device_id', gen_random_uuid(),
+      'clock', 1, 'wall_clock', 1, 'type', 'add', 'payload', '{}'::jsonb)));
+    raise exception 'B must not push_ops into kitchen A';
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    t := public.create_invite(ka);
+    raise exception 'B must not mint an invite for kitchen A';
   exception when insufficient_privilege then null;
   end;
 
@@ -121,18 +162,23 @@ end $$;
 reset role;
 
 ------------------------------------------------------------------------------
--- 4. Anon cannot enumerate invites, even with the exact token; anon cannot join.
+-- 4. Anon cannot enumerate invites, even with the exact token; anon cannot join or mint.
 ------------------------------------------------------------------------------
 do $$
-declare n int;
+declare n int; t text;
 begin
   perform set_config('role', 'anon', true);
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);
-  select count(*) into n from invite where token = 'tok-a-1';
+  select count(*) into n from invite where token = current_setting('test.tok1');
   assert n = 0, 'anon must not SELECT invite even by exact token';
   begin
-    perform public.join_kitchen('tok-a-1');
+    perform public.join_kitchen(current_setting('test.tok1'));
     raise exception 'anon must not execute join_kitchen';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    t := public.create_invite(current_setting('test.kitchen_a')::uuid);
+    raise exception 'anon must not execute create_invite';
   exception when insufficient_privilege then null;
   end;
   raise notice 'ok 4: no anon invite path';
@@ -148,12 +194,12 @@ begin
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims',
     '{"sub":"00000000-0000-0000-0000-00000000000b","role":"authenticated"}', true);
-  kid := public.join_kitchen('tok-a-1');
+  kid := public.join_kitchen(current_setting('test.tok1'));
   assert kid = ka, 'join_kitchen returns the kitchen id';
   select count(*) into n from kitchen where id = ka;
   assert n = 1, 'B sees kitchen A after joining';
   select count(*) into n from op where kitchen_id = ka;
-  assert n = 1, 'B pulls kitchen A ops after joining';
+  assert n = 2, 'B pulls kitchen A ops after joining';
   insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
   values ('33333333-3333-3333-3333-333333333333', ka,
           '44444444-4444-4444-4444-444444444444', 2, 1723800001000, 'check',
@@ -168,15 +214,16 @@ reset role;
 -- 6. A new invite revokes the old token's future joins; unknown tokens fail identically.
 ------------------------------------------------------------------------------
 do $$
-declare n int;
+declare tok text; n int;
 begin
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims',
     '{"sub":"00000000-0000-0000-0000-00000000000a","role":"authenticated"}', true);
-  insert into invite (kitchen_id, token)
-  values (current_setting('test.kitchen_a')::uuid, 'tok-a-2');
-  select count(*) into n from invite where token = 'tok-a-1' and revoked_at is not null;
-  assert n = 1, 'creating a new invite revoked the prior token';
+  tok := public.create_invite(current_setting('test.kitchen_a')::uuid);
+  perform set_config('test.tok2', tok, true);
+  select count(*) into n from invite
+   where token = current_setting('test.tok1') and revoked_at is not null;
+  assert n = 1, 'create_invite revoked the prior token';
   raise notice 'ok 6a: new invite revokes prior token';
 end $$;
 reset role;
@@ -188,7 +235,7 @@ begin
   perform set_config('request.jwt.claims',
     '{"sub":"00000000-0000-0000-0000-00000000000c","role":"authenticated"}', true);
   begin
-    kid := public.join_kitchen('tok-a-1');
+    kid := public.join_kitchen(current_setting('test.tok1'));
     raise exception 'revoked token must not join';
   exception when no_data_found then null;
   end;
@@ -197,17 +244,19 @@ begin
     raise exception 'unknown token must not join';
   exception when no_data_found then null;  -- same error as revoked: no oracle
   end;
-  kid := public.join_kitchen('tok-a-2');
+  kid := public.join_kitchen(current_setting('test.tok2'));
   assert kid = current_setting('test.kitchen_a')::uuid, 'current token joins C';
   raise notice 'ok 6b: revoked/unknown tokens 404 identically; live token joins';
 end $$;
 reset role;
 
 ------------------------------------------------------------------------------
--- 7. Membership lifecycle: guests cannot evict the owner; owner removes guests; leaving works.
+-- 7. Membership lifecycle: guests cannot evict the owner; owner removes guests;
+--    eviction revokes every live invite (the evicted token cannot walk back in);
+--    the last owner cannot self-delete.
 ------------------------------------------------------------------------------
 do $$
-declare ka uuid := current_setting('test.kitchen_a')::uuid; n int;
+declare ka uuid := current_setting('test.kitchen_a')::uuid; kid uuid; n int;
 begin
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims',
@@ -224,6 +273,18 @@ begin
   get diagnostics n = row_count;
   assert n = 1, 'owner A removes guest C';
 
+  -- MED-1: eviction is eviction — no live invite survives a departure
+  select count(*) into n from invite where kitchen_id = ka and revoked_at is null;
+  assert n = 0, 'removing a member revoked every live invite';
+
+  perform set_config('request.jwt.claims',
+    '{"sub":"00000000-0000-0000-0000-00000000000c","role":"authenticated"}', true);
+  begin
+    kid := public.join_kitchen(current_setting('test.tok2'));
+    raise exception 'evicted C must not rejoin with the pre-eviction token';
+  exception when no_data_found then null;
+  end;
+
   perform set_config('request.jwt.claims',
     '{"sub":"00000000-0000-0000-0000-00000000000b","role":"authenticated"}', true);
   delete from member where kitchen_id = ka and user_id = auth.uid();
@@ -231,7 +292,18 @@ begin
   assert n = 1, 'B leaves (deletes own row)';
   select count(*) into n from op where kitchen_id = ka;
   assert n = 0, 'after leaving, B reads nothing';
-  raise notice 'ok 7: membership lifecycle enforced';
+
+  -- LOW: the last owner cannot delete themselves out of a kitchen
+  perform set_config('request.jwt.claims',
+    '{"sub":"00000000-0000-0000-0000-00000000000a","role":"authenticated"}', true);
+  begin
+    delete from member where kitchen_id = ka and user_id = auth.uid();
+    raise exception 'last owner self-delete must be blocked';
+  exception when object_in_use then null;  -- 55006 'last_owner'
+  end;
+  select count(*) into n from member where kitchen_id = ka and role = 'owner';
+  assert n = 1, 'owner row survives the blocked delete';
+  raise notice 'ok 7: membership lifecycle enforced; eviction revokes tokens';
 end $$;
 reset role;
 
@@ -260,6 +332,132 @@ begin
 end $$;
 reset role;
 
-do $$ begin raise notice 'ALL RLS TESTS PASSED'; end $$;
+------------------------------------------------------------------------------
+-- 9. Webhook ordering fence: stale/replayed entitlement events are no-ops.
+------------------------------------------------------------------------------
+do $$
+declare ub uuid := '00000000-0000-0000-0000-00000000000b'; v boolean; n int;
+begin
+  perform set_config('role', 'service_role', true);
+  perform public.apply_entitlement_event(ub, true,  '2026-08-02T00:00:00Z');
+  perform public.apply_entitlement_event(ub, false, '2026-08-01T00:00:00Z');  -- stale replay
+  perform set_config('role', 'none', true); reset role;
+  select is_plus into v from entitlement where user_id = ub;
+  assert v = true, 'stale EXPIRATION replay must not undo a newer purchase';
+
+  perform set_config('role', 'service_role', true);
+  perform public.apply_entitlement_event(ub, false, '2026-08-03T00:00:00Z');  -- genuinely newer
+  perform set_config('role', 'none', true); reset role;
+  select is_plus into v from entitlement where user_id = ub;
+  assert v = false, 'newer event applies';
+  select scans_used into n from entitlement where user_id = ub;
+  assert n = 0, 'webhook path never touches scans_used';
+
+  -- clients cannot call the webhook apply
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    '{"sub":"00000000-0000-0000-0000-00000000000b","role":"authenticated"}', true);
+  begin
+    perform public.apply_entitlement_event(ub, true, now());
+    raise exception 'apply_entitlement_event must be service-role only';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'ok 9: event-time fence — replays are no-ops; service-role only';
+end $$;
+reset role;
+
+------------------------------------------------------------------------------
+-- 10. The op sequence is not readable: last_value is a cross-kitchen volume oracle.
+------------------------------------------------------------------------------
+do $$
+declare n bigint;
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    '{"sub":"00000000-0000-0000-0000-00000000000a","role":"authenticated"}', true);
+  begin
+    select last_value into n from public.op_seq;
+    raise exception 'op_seq SELECT must be denied for clients';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'ok 10: op_seq unreadable by clients (USAGE only)';
+end $$;
+reset role;
+
+------------------------------------------------------------------------------
+-- 11. create_kitchen caps at 20 owned kitchens.
+------------------------------------------------------------------------------
+do $$
+declare kid uuid; i int;
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    '{"sub":"00000000-0000-0000-0000-00000000000d","role":"authenticated"}', true);
+  for i in 1..20 loop
+    kid := public.create_kitchen('K' || i);
+  end loop;
+  begin
+    kid := public.create_kitchen('K21');
+    raise exception 'the 21st owned kitchen must be rejected';
+  exception when program_limit_exceeded then null;  -- 54000 'kitchen_limit'
+  end;
+  raise notice 'ok 11: kitchen farming capped at 20';
+end $$;
+reset role;
+
+do $$ begin raise notice 'ALL RLS TESTS PASSED (sections 1-11, rolled back)'; end $$;
 
 rollback;
+
+------------------------------------------------------------------------------
+-- 12. HIGH-1 commit-ordered seq, proven with two REAL concurrent transactions
+--     (dblink; runs outside the rollback — commits are the point — then cleans up).
+--     A kitchen-mate's op insert must BLOCK until the first insert commits, so no
+--     pull cursor can ever pass seq N+1 while N is still uncommitted (lost-op gap).
+------------------------------------------------------------------------------
+create extension if not exists dblink;
+do $$
+declare
+  conn text := 'dbname=' || current_database();
+  kt uuid := 'eeeeeeee-0000-0000-0000-000000000001';
+  s1 bigint; s2 bigint; n int;
+begin
+  perform dblink_exec(conn,
+    format('insert into kitchen (id, name) values (%L, ''seq-race-test'')', kt));
+  perform dblink_connect('c1', conn);
+  perform dblink_connect('c2', conn);
+
+  -- c1: open transaction, insert op, DO NOT commit — holds the per-kitchen lock
+  perform dblink_exec('c1', format(
+    'begin; insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload) '
+    || 'values (''eeeeeeee-0000-0000-0000-0000000000a1'', %L, gen_random_uuid(), 1, 1, ''add'', ''{}'')', kt));
+
+  -- c2: same kitchen, async — must block on the advisory lock
+  perform dblink_send_query('c2', format(
+    'insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload) '
+    || 'values (''eeeeeeee-0000-0000-0000-0000000000a2'', %L, gen_random_uuid(), 2, 2, ''add'', ''{}'')', kt));
+  perform pg_sleep(0.5);
+  assert dblink_is_busy('c2') = 1,
+    'second kitchen-mate insert must BLOCK until the first commits (critic repro)';
+
+  perform dblink_exec('c1', 'commit');
+  for n in 1..100 loop
+    exit when dblink_is_busy('c2') = 0;
+    perform pg_sleep(0.05);
+  end loop;
+  assert dblink_is_busy('c2') = 0, 'blocked insert proceeds once the lock holder commits';
+  perform t.r from dblink_get_result('c2') as t(r text);
+  perform t.r from dblink_get_result('c2') as t(r text);  -- drain
+
+  select seq into s1 from op where id = 'eeeeeeee-0000-0000-0000-0000000000a1';
+  select seq into s2 from op where id = 'eeeeeeee-0000-0000-0000-0000000000a2';
+  assert s1 < s2, 'seq order matches commit order — the cursor can never skip an op';
+
+  perform dblink_disconnect('c1');
+  perform dblink_disconnect('c2');
+  perform dblink_exec(conn, format('delete from op where kitchen_id = %L', kt));
+  perform dblink_exec(conn, format('delete from kitchen where id = %L', kt));
+  raise notice 'ok 12: seq is commit-ordered — concurrent kitchen-mate insert blocked';
+end $$;
+
+do $$ begin raise notice 'ALL RLS TESTS PASSED (including seq commit-ordering)'; end $$;

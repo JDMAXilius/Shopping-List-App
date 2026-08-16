@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     return json(401, { error: "unauthorized" });
   }
 
-  let event: { type?: unknown; app_user_id?: unknown };
+  let event: { type?: unknown; app_user_id?: unknown; event_timestamp_ms?: unknown };
   try {
     ({ event = {} } = await req.json());
   } catch {
@@ -48,6 +48,12 @@ Deno.serve(async (req) => {
   }
   const type = typeof event.type === "string" ? event.type : "UNKNOWN";
   const appUserId = typeof event.app_user_id === "string" ? event.app_user_id : "";
+  // Ordering fence input: RevenueCat delivery is unordered and retried. Fallback
+  // to now() keeps liveness if the field is ever absent (it is documented-always).
+  const eventMs =
+    typeof event.event_timestamp_ms === "number" && Number.isFinite(event.event_timestamp_ms)
+      ? event.event_timestamp_ms
+      : Date.now();
 
   if (!PLUS_ON.has(type) && !PLUS_OFF.has(type)) {
     console.log(`revenuecat-webhook: unhandled event type ${type}`);
@@ -63,11 +69,13 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
-  // Upsert touches only these columns — scans_used is preserved on conflict.
-  const { error } = await svc.from("entitlement").upsert(
-    { user_id: appUserId, is_plus: PLUS_ON.has(type), updated_at: new Date().toISOString() },
-    { onConflict: "user_id" },
-  );
+  // apply_entitlement_event (0002) upserts WHERE plus_event_at < excluded's:
+  // a stale or replayed event is a no-op; scans_used is never touched.
+  const { error } = await svc.rpc("apply_entitlement_event", {
+    p_user: appUserId,
+    p_is_plus: PLUS_ON.has(type),
+    p_event_at: new Date(eventMs).toISOString(),
+  });
   if (error) return json(500, { error: "storage" });
 
   return json(200, { ok: true });

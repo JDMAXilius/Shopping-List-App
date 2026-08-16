@@ -90,6 +90,10 @@ Deno.serve(async (req) => {
   if (userError || !userData?.user) return json(401, { error: "unauthenticated" });
   const userId = userData.user.id;
 
+  // PRODUCT: paywall the owner, never the joiner — scanning is owner-side. An
+  // anonymous session is recyclable; free quota must attach to a real account.
+  if (userData.user.is_anonymous) return json(403, { error: "owner_account_required" });
+
   let parsedBody: unknown;
   try {
     parsedBody = await req.json();
@@ -104,6 +108,17 @@ Deno.serve(async (req) => {
 
   // Service-role client: quota + audit live behind RLS that clients cannot reach.
   const svc = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+  // Only owners scan: a fresh non-owner account has no quota to farm.
+  const { data: ownerRow, error: ownerError } = await svc
+    .from("member")
+    .select("kitchen_id")
+    .eq("user_id", userId)
+    .eq("role", "owner")
+    .limit(1)
+    .maybeSingle();
+  if (ownerError) return json(502, { error: "upstream" });
+  if (!ownerRow) return json(403, { error: "owner_account_required" });
 
   const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
   const { count, error: countError } = await svc
