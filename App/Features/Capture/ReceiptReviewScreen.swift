@@ -16,7 +16,12 @@ struct ReceiptReviewScreen: View {
             VStack(alignment: .leading, spacing: 12) {
                 header
                 shopRow
-                if session.shopID == nil {
+                // The save button goes inert on a mismatch, and a button that stops working
+                // without saying why is the same silence as a wrong number.
+                if let printed = session.currencyMismatch {
+                    Notice("This receipt is in \(printed) and this kitchen keeps its prices in \(session.currencyCode). Saving it would mix two currencies into one total, so it can't be saved here.",
+                           tone: .attention, on: .paper)
+                } else if session.shopID == nil {
                     Notice("Pick a shop first — a price with no shop can't be compared with anything.",
                            tone: .attention, on: .paper)
                 }

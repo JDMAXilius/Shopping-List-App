@@ -143,8 +143,10 @@ final class ListStore {
         guard let shopID = activeShopID else { return }
         let itemID = item.itemID ?? ItemID()
         if item.itemID == nil {
-            // A price whose identity never landed would belong to nobody.
+            // A price whose identity never landed would belong to nobody — and an identity the
+            // catalog cannot name is nameless the moment this row is deleted, so teach it too.
             guard append(.edit(item.listItemID, [.itemID(itemID)])) else { return }
+            if itemID.catalogID == nil { append(.name(itemID, item.name)) }
         }
         append(.price(PriceObservation(itemID: itemID, shopID: shopID, date: Date(),
                                        amount: amount, source: .manual)))
