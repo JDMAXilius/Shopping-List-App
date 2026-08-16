@@ -36,6 +36,13 @@ final class RepositoryTests: XCTestCase {
                        file: file, line: line)
     }
 
+    private func allOps(_ database: AppDatabase) throws -> [Op] {
+        try database.pool.read { db in
+            try OpRecord.fetchAll(db, sql: "SELECT * FROM op ORDER BY clock, op_id")
+                .map { try OpCoding.op(from: $0) }
+        }
+    }
+
     private func stripped(_ item: ListItem) -> ListItem {
         var copy = item
         copy.updatedFields = [:]
@@ -96,6 +103,35 @@ final class RepositoryTests: XCTestCase {
         XCTAssertEqual(items.first?.listItemID, bread.listItemID, "earlier createdAt keeps identity")
         XCTAssertEqual(items.first?.note, "2%", "fields from both rows merge into the collapsed row")
         try assertRebuildEquivalent(database, repository)
+    }
+
+    func testDeletingACrossDeviceTwinHoldsThroughRebuild() throws {
+        let (_, remote) = try makeStack()
+        let (database, repository) = try makeStack()
+        let mine = ListItem(name: "Bread", createdAt: Date(msSince1970: 10_000))
+        let theirs = ListItem(name: " bread ", createdAt: Date(msSince1970: 20_000))
+        try repository.append(.add(mine), kitchenID: kitchenID)
+        try remote.append(.add(theirs), kitchenID: kitchenID)
+        let theirOps = try remote.unpushedOps()
+        try repository.applyRemote(theirOps, cursor: 1, kitchenID: kitchenID)
+        XCTAssertEqual(try repository.items().map(\.listItemID), [mine.listItemID],
+                       "the twin collapses into the canonical row")
+        try assertRebuildEquivalent(database, repository)
+
+        try repository.append(.delete(mine.listItemID), kitchenID: kitchenID)
+        XCTAssertTrue(try repository.items().isEmpty, "one delete removes the twin too")
+        try assertRebuildEquivalent(database, repository)
+
+        let again = ListItem(name: "Bread", createdAt: Date(msSince1970: 900_000))
+        try repository.append(.add(again), kitchenID: kitchenID)
+        XCTAssertEqual(try repository.items().map(\.listItemID), [again.listItemID],
+                       "a later add of the swept name resurrects it")
+        try assertRebuildEquivalent(database, repository)
+
+        let everyOp = try allOps(database)
+        let state = Merge.apply(everyOp, to: ListState())
+        XCTAssertEqual(try repository.items(), state.items.map(stripped),
+                       "the materialized list is exactly Core's projection")
     }
 
     func testDuplicatePriceLinesBothSurvive() throws {

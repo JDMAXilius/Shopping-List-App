@@ -173,6 +173,71 @@ final class ConflictHarnessTests: XCTestCase {
         XCTAssertEqual(row.createdAt, Date(timeIntervalSince1970: 900))
     }
 
+    // Two devices legitimately mint two "bread" rows; the app only ever sees the canonical id.
+    func testDeletingACollapsedRowRemovesTheCrossDeviceTwin() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let breadA = ListItem(name: "Bread", createdAt: Date(timeIntervalSince1970: 10))
+        let addA = a.op(.add(breadA))
+        let breadB = ListItem(name: " bread ", createdAt: Date(timeIntervalSince1970: 20))
+        let addB = b.op(.add(breadB))
+
+        let collapsed = Merge.apply([addA, addB], to: ListState())
+        XCTAssertEqual(collapsed.items.map { $0.listItemID }, [breadA.listItemID],
+                       "only the canonical id is reachable, so only it can be deleted")
+
+        a.receive(addB)
+        let delete = a.op(.delete(breadA.listItemID))
+        let state = assertConverges(shared: [], device1: [addA, delete], device2: [addB])
+        XCTAssertTrue(state.items.isEmpty, "one delete takes the whole name off the list")
+    }
+
+    func testLaterAddResurrectsANameAfterATwinDelete() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let breadA = ListItem(name: "Bread", createdAt: Date(timeIntervalSince1970: 10))
+        let addA = a.op(.add(breadA))
+        let breadB = ListItem(name: " bread ", createdAt: Date(timeIntervalSince1970: 20))
+        let addB = b.op(.add(breadB))
+        a.receive(addB)
+        let delete = a.op(.delete(breadA.listItemID))
+        b.receive(delete)
+        let breadAgain = ListItem(name: "bread", createdAt: Date(timeIntervalSince1970: 900))
+        let readd = b.op(.add(breadAgain))
+
+        let state = assertConverges(shared: [], device1: [addA, delete], device2: [addB, readd])
+        assertNoDuplicateNames(state)
+        XCTAssertEqual(state.items.map { $0.listItemID }, [breadAgain.listItemID],
+                       "a later-stamped add still brings a swept name back")
+        XCTAssertEqual(state.items.first?.createdAt, Date(timeIntervalSince1970: 900))
+        XCTAssertEqual(state.items.first?.checked, false, "a re-added item arrives unchecked")
+    }
+
+    func testDeleteDoesNotSweepARowRenamedIntoTheNameAfterwards() {
+        let kitchenID = KitchenID()
+        var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)
+        var b = SimDevice(kitchenID: kitchenID, byte: 0xBB, wallStart: 0)
+
+        let milk = ListItem(name: "Milk", createdAt: Date(timeIntervalSince1970: 10))
+        let rolls = ListItem(name: "Rolls", createdAt: Date(timeIntervalSince1970: 20))
+        let shared = [a.op(.add(milk)), a.op(.add(rolls))]
+        for op in shared { b.receive(op) }
+
+        let delete = a.op(.delete(milk.listItemID))
+        b.receive(delete)
+        let rename = b.op(.edit(rolls.listItemID, [.name("Milk")]))
+
+        let state = assertConverges(shared: shared, device1: [delete], device2: [rename])
+        assertNoDuplicateNames(state)
+        XCTAssertEqual(state.items.map { $0.listItemID }, [rolls.listItemID],
+                       "a rename after the delete is a new intent, not a swept twin")
+        XCTAssertEqual(state.items.map { $0.name }, ["Milk"])
+    }
+
     func testRenameIntoExistingNameShowsOneRow() {
         let kitchenID = KitchenID()
         var a = SimDevice(kitchenID: kitchenID, byte: 0xAA, wallStart: 100)

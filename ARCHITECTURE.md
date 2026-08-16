@@ -92,6 +92,11 @@ intents never observe stores — they read the database through `Repository`.** 
 - Op-log: `add / check / uncheck / edit / delete / price / shop`, client UUIDs, logical clock,
   last-write-wins per field, `add` idempotent on normalized name. **Not a CRDT** — a list is a
   set, not a sequence
+- **A `delete` removes the normalized-name GROUP its row held, not one row id.** Two devices can
+  each add "bread"; Merge collapses them for display, so a delete naming only the canonical id
+  would let the twin resurrect and one user intent would need N deletes. A later-stamped add
+  brings the name back (resurrection is by name, never by id — so an undo must mint a fresh
+  `ListItemID`, not reuse the deleted one)
 - Sync is invisible: no spinners, no alerts, one quiet `SyncStatus`
 
 ## 6. Navigation — deliberately boring

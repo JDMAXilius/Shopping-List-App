@@ -15,9 +15,8 @@ public struct ListState: Equatable, Sendable {
     // Rows resolve their own fields first (LWW), then collapse by normalized RESOLVED name.
     public var items: [ListItem] {
         var groups: [String: [(id: ListItemID, record: AddRecord, slots: [ListItemField: FieldSlot])]] = [:]
+        var groupTombstones: [String: OpStamp] = [:]
         for (id, record) in addRecords {
-            // A tombstone suppresses only adds stamped at or before it; a later add resurrects.
-            if let tombstone = deletes[id], record.stamp <= tombstone { continue }
             var slots: [ListItemField: FieldSlot] = [:]
             // An add contributes only name + unchecked; its other seed fields are unstamped fallbacks.
             ListState.keep(FieldSlot(write: .name(record.seed.name), stamp: record.stamp), in: &slots)
@@ -25,11 +24,24 @@ public struct ListState: Equatable, Sendable {
             for slot in fieldWrites[id, default: [:]].values {
                 ListState.keep(slot, in: &slots)
             }
-            guard case .name(let resolved)? = slots[.name]?.write else { continue }
-            groups[Merge.normalized(resolved), default: []].append((id, record, slots))
+            guard let nameSlot = slots[.name], case .name(let resolved) = nameSlot.write else { continue }
+            let key = Merge.normalized(resolved)
+            groups[key, default: []].append((id, record, slots))
+            // A tombstone sweeps the name its row held when the delete happened, not a later rename.
+            if let tombstone = deletes[id], nameSlot.stamp <= tombstone {
+                groupTombstones[key] = max(groupTombstones[key] ?? tombstone, tombstone)
+            }
         }
         var result: [ListItem] = []
-        for members in groups.values {
+        for (key, candidates) in groups {
+            // One delete means the name is off the list: it suppresses every row that held the
+            // name at or before it — twins included — while a later add still resurrects.
+            let members = candidates.filter { member in
+                if let tombstone = deletes[member.id], member.record.stamp <= tombstone { return false }
+                if let tombstone = groupTombstones[key], let slot = member.slots[.name],
+                   slot.stamp <= tombstone { return false }
+                return true
+            }
             let canonical = members.min { lhs, rhs in
                 if lhs.record.seed.createdAt != rhs.record.seed.createdAt {
                     return lhs.record.seed.createdAt < rhs.record.seed.createdAt
@@ -130,7 +142,7 @@ public enum Merge {
         return next
     }
 
-    // Dedup key for idempotent adds: lowercase, trimmed, whitespace collapsed.
+    // Dedup key for idempotent adds and for a delete's sweep: lowercase, trimmed, collapsed.
     public static func normalized(_ name: String) -> String {
         cleaned(name).lowercased()
     }
@@ -160,7 +172,7 @@ public enum Merge {
                 }
             }
         case .delete(let id):
-            // MAX tombstone per row: suppression compares add stamps against the latest delete.
+            // MAX tombstone per row; the projection widens it to that row's whole name group.
             if let existing = state.deletes[id], stamp <= existing { return }
             state.deletes[id] = stamp
         case .price(let observation):
