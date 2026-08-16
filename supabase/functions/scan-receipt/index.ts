@@ -4,10 +4,15 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk";
+import {
+  RECEIPT_SCHEMA,
+  validateBody,
+  validateLines,
+  validateOptionals,
+} from "./validation.ts";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const RATE_LIMIT_PER_HOUR = 10;
-const MEDIA_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 // ARCHITECTURE §7: Opus 5 is the beta accuracy baseline; the cost step-down
 // to a smaller model later is exactly this one line.
@@ -24,56 +29,11 @@ const INSTRUCTION_PREFIX =
   "discount-summary and payment lines from lines; put the printed grand total in total_minor. " +
   "currency is the ISO 4217 code. purchased_at is the printed date as ISO 8601, if present.";
 
-const RECEIPT_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["lines", "currency"],
-  properties: {
-    lines: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["raw_text", "amount_minor", "quantity", "confidence"],
-        properties: {
-          raw_text: { type: "string" },
-          amount_minor: { type: "integer" },
-          quantity: { type: "number" },
-          confidence: { enum: ["sure", "not_sure", "no_match"] },
-          match_hint: { type: "string" },
-        },
-      },
-    },
-    shop_name: { type: "string" },
-    total_minor: { type: "integer" },
-    currency: { type: "string" },
-    purchased_at: { type: "string" },
-  },
-} as const;
-
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
   });
-}
-
-interface ScanRequest {
-  image_base64: string;
-  media_type: string;
-  shop_hint?: string;
-}
-
-// Boundary validation by hand — the shape is too small to justify a dependency.
-function validateBody(body: unknown): ScanRequest | null {
-  if (typeof body !== "object" || body === null) return null;
-  const b = body as Record<string, unknown>;
-  if (typeof b.image_base64 !== "string" || b.image_base64.length === 0) return null;
-  if (typeof b.media_type !== "string" || !MEDIA_TYPES.has(b.media_type)) return null;
-  if (b.shop_hint !== undefined && (typeof b.shop_hint !== "string" || b.shop_hint.length > 100)) {
-    return null;
-  }
-  return { image_base64: b.image_base64, media_type: b.media_type, shop_hint: b.shop_hint as string | undefined };
 }
 
 Deno.serve(async (req) => {
@@ -92,7 +52,15 @@ Deno.serve(async (req) => {
 
   // PRODUCT: paywall the owner, never the joiner — scanning is owner-side. An
   // anonymous session is recyclable; free quota must attach to a real account.
-  if (userData.user.is_anonymous) return json(403, { error: "owner_account_required" });
+  //
+  // The two 403s below are NOT interchangeable, and the client's routing is pinned to
+  // these exact strings (PRODUCT §5: onboarding is contextual, so a refusal must name the
+  // step that is missing). Do not merge or rename them:
+  //   "sign_in_required" -> Sign in (screen 19)          — anonymous session, no account
+  //   "kitchen_required" -> Name your kitchen (sheet 17) — real account, owns no kitchen
+  // Sending a signed-in owner to a sign-in screen is a dead end; that is what one shared
+  // string caused. Same status (403) because both are the same refusal: not entitled yet.
+  if (userData.user.is_anonymous) return json(403, { error: "sign_in_required" });
 
   let parsedBody: unknown;
   try {
@@ -118,7 +86,7 @@ Deno.serve(async (req) => {
     .limit(1)
     .maybeSingle();
   if (ownerError) return json(502, { error: "upstream" });
-  if (!ownerRow) return json(403, { error: "owner_account_required" });
+  if (!ownerRow) return json(403, { error: "kitchen_required" });  // pinned above
 
   const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
   const { count, error: countError } = await svc
@@ -144,69 +112,106 @@ Deno.serve(async (req) => {
   if (!allowed) return json(402, { error: "quota_exhausted", scans_used });
   const freeScanConsumed = !is_plus;
 
-  const refund = async () => {
-    if (freeScanConsumed) await svc.rpc("refund_scan", { p_user: userId });
+  // EVERY failure below this line goes through failAfterQuota: the quota is already spent,
+  // so a bare `return json(...)` here would burn one of three free scans for nothing.
+  // The returned body says whether it really was spent — `free_scan_charged` is false when
+  // the scan was restored (or when a Plus scan spent nothing), true when the refund itself
+  // failed. It is never a guess in the user's favour: if we cannot restore it we say so.
+  // The field is present ONLY on failures after this point; its absence on a 400/401/403/
+  // 413/429/402 means the quota was never touched at all.
+  const failAfterQuota = async (status: number, error: string): Promise<Response> => {
+    if (!freeScanConsumed) return json(status, { error, free_scan_charged: false });
+    try {
+      const { error: refundError } = await svc.rpc("refund_scan", { p_user: userId });
+      return json(status, { error, free_scan_charged: refundError !== null });
+    } catch {
+      return json(status, { error, free_scan_charged: true });  // could not restore it: say so
+    }
   };
 
-  const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
-
-  const content: unknown[] = [
-    { type: "text", text: INSTRUCTION_PREFIX },
-    {
-      type: "image",
-      source: { type: "base64", media_type: input.media_type, data: input.image_base64 },
-    },
-  ];
-  if (input.shop_hint) {
-    content.push({ type: "text", text: `The shop is probably: ${input.shop_hint}` });
-  }
-
-  let responseText: string | undefined;
+  // Nothing between here and the response may throw its way past the refund: before this
+  // guard an unexpected exception became a 500 with the free scan silently spent.
   try {
-    // `output_config` spelling per spec; if the SDK ships structured outputs as
-    // `output_format: { type: "json_schema", schema }`, that rename is the only change (flagged P3).
-    const request = {
-      model: MODEL,
-      max_tokens: 2048,
-      output_config: { format: { type: "json_schema", schema: RECEIPT_SCHEMA } },
-      messages: [{ role: "user", content }],
-    };
-    // deno-lint-ignore no-explicit-any
-    const message = await anthropic.messages.create(request as any);
-    for (const block of message.content) {
-      if (block.type === "text") {
-        responseText = block.text;
-        break;
-      }
+    const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
+
+    const content: unknown[] = [
+      { type: "text", text: INSTRUCTION_PREFIX },
+      {
+        type: "image",
+        source: { type: "base64", media_type: input.media_type, data: input.image_base64 },
+      },
+    ];
+    if (input.shop_hint) {
+      content.push({ type: "text", text: `The shop is probably: ${input.shop_hint}` });
     }
-  } catch {
-    await refund();
-    return json(502, { error: "upstream" });  // never log the error body: it can echo input
-  }
-  if (!responseText) {
-    await refund();
-    return json(502, { error: "upstream" });
-  }
 
-  let receipt: Record<string, unknown>;
-  try {
-    receipt = JSON.parse(responseText);
-  } catch {
-    await refund();
-    return json(422, { error: "unparseable_image" });
-  }
-  if (!Array.isArray(receipt.lines) || typeof receipt.currency !== "string") {
-    await refund();
-    return json(422, { error: "unparseable_image" });
-  }
+    let responseText: string | undefined;
+    let stopReason: unknown;
+    try {
+      // `output_config` spelling per spec; if the SDK ships structured outputs as
+      // `output_format: { type: "json_schema", schema }`, that rename is the only change (flagged P3).
+      const request = {
+        model: MODEL,
+        max_tokens: 2048,
+        output_config: { format: { type: "json_schema", schema: RECEIPT_SCHEMA } },
+        messages: [{ role: "user", content }],
+      };
+      // deno-lint-ignore no-explicit-any
+      const message = await anthropic.messages.create(request as any);
+      stopReason = message.stop_reason;
+      for (const block of message.content) {
+        if (block.type === "text") {
+          responseText = block.text;
+          break;
+        }
+      }
+    } catch {
+      // never log the error body: it can echo input
+      return await failAfterQuota(502, "upstream");
+    }
+    if (!responseText) return await failAfterQuota(502, "upstream");
 
-  return json(200, {
-    lines: receipt.lines,
-    shop_name: receipt.shop_name ?? null,
-    total_minor: receipt.total_minor ?? null,
-    currency: receipt.currency,
-    purchased_at: receipt.purchased_at ?? null,
-    is_plus,
-    scans_used,
-  });
+    // Truncation is not a statement about the photo: max_tokens means WE cut the model off
+    // mid-receipt, so whatever lines arrived are missing their tail with no way to tell.
+    // Fail it as upstream (502), never as an unreadable image — a long receipt is not a bad one.
+    if (stopReason === "max_tokens") return await failAfterQuota(502, "upstream");
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(responseText);
+    } catch {
+      // Not JSON at all is the model declining rather than parsing — that IS an answer
+      // about the image, and 422 sends the user to retake it, which is the right move.
+      return await failAfterQuota(422, "unparseable_image");
+    }
+    // JSON.parse returns null, a number or an array just as happily as an object, and
+    // reaching for .lines on null throws — which would have been an unrefunded 500.
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return await failAfterQuota(422, "unparseable_image");
+    }
+    const receipt = parsed as Record<string, unknown>;
+    if (!Array.isArray(receipt.lines) || typeof receipt.currency !== "string" ||
+        receipt.currency.trim().length === 0) {
+      return await failAfterQuota(422, "unparseable_image");
+    }
+
+    // Past this point the model claimed a parse, so a schema violation is OUR upstream
+    // malfunctioning — not a bad photo. 502, never 422: telling someone their perfectly good
+    // receipt is unreadable would send them to retake it for a fault that is not theirs.
+    const lines = validateLines(receipt.lines);
+    const optionals = validateOptionals(receipt);
+    if (lines === null || optionals === null) return await failAfterQuota(502, "upstream");
+
+    return json(200, {
+      lines,
+      shop_name: optionals.shop_name,
+      total_minor: optionals.total_minor,
+      currency: receipt.currency,
+      purchased_at: optionals.purchased_at,
+      is_plus,
+      scans_used,
+    });
+  } catch {
+    return await failAfterQuota(502, "upstream");
+  }
 });

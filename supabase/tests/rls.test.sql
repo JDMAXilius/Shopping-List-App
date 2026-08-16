@@ -7,8 +7,8 @@
 -- Supabase default privileges, auth schema + auth.users + auth.uid() reading
 -- request.jwt.claims->>'sub'), then apply 0001+0002 and run this file as superuser.
 -- Every check is a plpgsql ASSERT; the first failure aborts. Everything rolls back
--- EXCEPT section 12 (dblink concurrency needs real commits; it cleans up after itself).
--- Section 12 requires the dblink extension (contrib; present on Supabase).
+-- EXCEPT section 13 (dblink concurrency needs real commits; it cleans up after itself).
+-- Section 13 requires the dblink extension (contrib; present on Supabase).
 
 begin;
 
@@ -405,12 +405,82 @@ begin
 end $$;
 reset role;
 
-do $$ begin raise notice 'ALL RLS TESTS PASSED (sections 1-11, rolled back)'; end $$;
+------------------------------------------------------------------------------
+-- 12. Quota round-trip — the ledger scan-receipt's refund path stands on.
+--     The function consumes a scan BEFORE calling Claude and refunds on every
+--     failure after that point (including the new 502 for a model response that
+--     violates RECEIPT_SCHEMA), and it reports `free_scan_charged` from the result.
+--     So: consume+refund must be an EXACT no-op, a refused scan must never charge,
+--     the refund must never mint quota, and Plus must never touch the free counter.
+------------------------------------------------------------------------------
+do $$
+declare
+  ue uuid := '00000000-0000-0000-0000-00000000000e';
+  r record; n int;
+begin
+  perform set_config('role', 'service_role', true);
+
+  select * into r from public.consume_scan(ue);
+  assert r.allowed and not r.is_plus and r.scans_used = 1,
+    'the first free scan is allowed and counted';
+
+  -- The compensation the function issues on a 502/422 restores it exactly.
+  perform public.refund_scan(ue);
+  select scans_used into n from entitlement where user_id = ue;
+  assert n = 0, 'consume + refund is an exact no-op — a failed parse costs no free scan';
+
+  perform public.consume_scan(ue);
+  perform public.consume_scan(ue);
+  select * into r from public.consume_scan(ue);
+  assert r.allowed and r.scans_used = 3, 'the third free scan is still allowed';
+
+  -- The 402 boundary: refused WITHOUT incrementing, so a paywalled call charges nothing
+  -- and needs no refund. Repeat it — a retry loop must not run the counter away either.
+  select * into r from public.consume_scan(ue);
+  assert not r.allowed and r.scans_used = 3, 'a refused scan does not increment';
+  select * into r from public.consume_scan(ue);
+  assert not r.allowed and r.scans_used = 3, 'repeated refusals still do not increment';
+
+  -- Refund floors at zero: it compensates, it never mints scans.
+  update entitlement set scans_used = 0 where user_id = ue;
+  perform public.refund_scan(ue);
+  select scans_used into n from entitlement where user_id = ue;
+  assert n = 0, 'refund floors at zero — it can never mint free scans';
+
+  -- Plus consumes no free quota, which is why the function reports free_scan_charged
+  -- = false for a Plus caller. Corollary, accepted and not a bug: if the RevenueCat
+  -- webhook flips is_plus between consume and refund, the refund no-ops — the user is
+  -- Plus by then, so the free counter no longer gates them.
+  update entitlement set is_plus = true, scans_used = 2 where user_id = ue;
+  select * into r from public.consume_scan(ue);
+  assert r.allowed and r.is_plus and r.scans_used = 2,
+    'a Plus scan is allowed and does not touch the free counter';
+  perform public.refund_scan(ue);
+  select scans_used into n from entitlement where user_id = ue;
+  assert n = 2, 'refund_scan is inert for a Plus user';
+
+  perform set_config('role', 'none', true); reset role;
+
+  -- Neither half of the ledger is client-callable: a user who could call refund_scan
+  -- would have infinite free scans.
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    '{"sub":"00000000-0000-0000-0000-00000000000e","role":"authenticated"}', true);
+  begin
+    perform public.refund_scan(ue);
+    raise exception 'refund_scan must be service-role only';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'ok 12: quota round-trip exact; refusals free; refund service-role only';
+end $$;
+reset role;
+
+do $$ begin raise notice 'ALL RLS TESTS PASSED (sections 1-12, rolled back)'; end $$;
 
 rollback;
 
 ------------------------------------------------------------------------------
--- 12. HIGH-1 commit-ordered seq, proven with two REAL concurrent transactions
+-- 13. HIGH-1 commit-ordered seq, proven with two REAL concurrent transactions
 --     (dblink; runs outside the rollback — commits are the point — then cleans up).
 --     A kitchen-mate's op insert must BLOCK until the first insert commits, so no
 --     pull cursor can ever pass seq N+1 while N is still uncommitted (lost-op gap).
@@ -457,7 +527,7 @@ begin
   perform dblink_disconnect('c2');
   perform dblink_exec(conn, format('delete from op where kitchen_id = %L', kt));
   perform dblink_exec(conn, format('delete from kitchen where id = %L', kt));
-  raise notice 'ok 12: seq is commit-ordered — concurrent kitchen-mate insert blocked';
+  raise notice 'ok 13: seq is commit-ordered — concurrent kitchen-mate insert blocked';
 end $$;
 
 do $$ begin raise notice 'ALL RLS TESTS PASSED (including seq commit-ordering)'; end $$;
