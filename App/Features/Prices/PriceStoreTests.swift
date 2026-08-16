@@ -270,11 +270,26 @@ final class PriceStoreTests: XCTestCase {
             observations: [], receipts: [receipt(9_000, shopA, now),
                                          receipt(10_800, shopA, lastMonth)],
             shops: shops, catalog: catalog, currencyCode: "USD", now: now)
-        XCTAssertEqual(month.deltaText, "$18.00 less than a usual month, day for day")
+        // One trip each side: the comparison is about money, so it says only that.
+        XCTAssertEqual(month.deltaText, "$18.00 less than a usual month, day for day.")
         // A fact, not a judgement: no colour word, no praise, no scolding.
         for word in ["good", "great", "under", "over budget", "saved", "🎉"] {
             XCTAssertFalse(month.deltaText?.contains(word) ?? false)
         }
+    }
+
+    /// A month with fewer captured trips than usual costs less ON PAPER. Left alone that
+    /// reads as spending less — the most reassuring direction to be wrong in.
+    func testADeltaBuiltOnFewerTripsSaysHowManyTripsItIsBuiltOn() {
+        let month = PriceDerivation.month(
+            observations: [],
+            receipts: [receipt(7_540, shopA, now),
+                       receipt(9_000, shopA, lastMonth), receipt(11_000, shopB, lastMonth),
+                       receipt(10_260, shopA, lastMonth)],
+            shops: shops, catalog: catalog, currencyCode: "USD", now: now)
+        XCTAssertEqual(month.deltaText,
+                       "$227.20 less than a usual month, day for day. "
+                       + "1 trip captured here against a usual 3.")
     }
 
     // MARK: - The store

@@ -424,25 +424,36 @@ enum PriceDerivation {
 
     /// Day for day: a month three days into itself is compared with the first three days of
     /// the months before it, never with their totals.
+    ///
+    /// Both sides are only as complete as the scanning was, so a month with fewer captured
+    /// trips than usual would otherwise read as a month that cost less. It says the trip
+    /// counts instead — the difference is stated, never explained away.
     private static func deltaVsUsual(_ receipts: [Receipt], paid: PaidSummary,
                                      currencyCode: String, now: Date) -> String? {
         guard paid.hasReceipts else { return nil }
         let calendar = Calendar.current
         let today = calendar.component(.day, from: now)
-        var buckets: [Date: Int] = [:]
+        var buckets: [Date: (total: Int, trips: Int)] = [:]
         for receipt in receipts {
             guard calendar.component(.day, from: receipt.capturedAt) <= today,
                   let start = calendar.dateInterval(of: .month, for: receipt.capturedAt)?.start,
                   let months = calendar.dateComponents([.month], from: start, to: now).month,
                   months > 0, months <= 6 else { continue }
-            buckets[start, default: 0] += receipt.totalMinor
+            let bucket = buckets[start] ?? (0, 0)
+            buckets[start] = (bucket.total + receipt.totalMinor, bucket.trips + 1)
         }
         guard !buckets.isEmpty else { return nil }
-        let usual = buckets.values.reduce(0, +) / buckets.count
+        let usual = buckets.values.reduce(0) { $0 + $1.total } / buckets.count
+        let usualTrips = Int((Double(buckets.values.reduce(0) { $0 + $1.trips })
+                              / Double(buckets.count)).rounded())
         let change = paid.total.minorUnits - usual
-        guard change != 0 else { return "the same as a usual month, day for day" }
         let money = Money(minorUnits: abs(change), currencyCode: currencyCode)
-        return "\(money.display) \(change > 0 ? "more" : "less") than a usual month, day for day"
+        let headline = change == 0
+            ? "The same as a usual month, day for day."
+            : "\(money.display) \(change > 0 ? "more" : "less") than a usual month, day for day."
+        guard usualTrips != paid.receiptCount else { return headline }
+        return headline + " \(paid.receiptCount) trip\(paid.receiptCount == 1 ? "" : "s") "
+            + "captured here against a usual \(usualTrips)."
     }
 
     // MARK: - Shared
