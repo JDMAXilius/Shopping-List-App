@@ -73,12 +73,13 @@ final class ListCatalog {
         return first.uppercased() + name.dropFirst()
     }
 
-    /// THE name order, in one place: the catalog's name → the name this kitchen taught → the
-    /// list row's name → the raw text. Every caller asks here; a fourth that re-derives it will
-    /// get it wrong.
+    /// THE name order, in one place: the list row's name → the name this kitchen taught → the
+    /// catalog's name → the raw text. People recognise their own words, so a row typed as "tj
+    /// oat milk" is called that in the price book too; a till line with no row of its own still
+    /// gets the catalog's name rather than "TJ ORG BABY SPNC". Every caller asks here.
     func displayName(for itemID: ItemID, kitchenNames: [ItemID: String], listName: String?,
                      fallback: String) -> String {
-        item(for: itemID)?.name ?? kitchenNames[itemID] ?? listName ?? fallback
+        listName ?? kitchenNames[itemID] ?? item(for: itemID)?.name ?? fallback
     }
 
     /// The catalog item behind an id we hold with no text — a remembered alias, a stored row.

@@ -2,7 +2,7 @@ import Foundation
 import GRDB
 
 public final class AppDatabase: Sendable {
-    public static let schemaVersion = 4
+    public static let schemaVersion = 5
 
     let pool: DatabasePool
     // Receipt photos live beside the database, so they land in the App Group container too.

@@ -16,6 +16,7 @@ struct ReceiptReviewScreen: View {
             VStack(alignment: .leading, spacing: 12) {
                 header
                 shopRow
+                totalRow
                 // The save button goes inert on a mismatch, and a button that stops working
                 // without saying why is the same silence as a wrong number.
                 if let printed = session.currencyMismatch {
@@ -75,6 +76,44 @@ struct ReceiptReviewScreen: View {
                 isPickingShop = true
             }
         }
+    }
+
+    /// The user is the last check on the money, and until now they were shown no total at all.
+    /// A total the receipt never printed is said in words, in the muted tier — nothing computed
+    /// ever stands where the till's own figure would.
+    private var totalRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                SectionLabel("TOTAL PRINTED ON THIS RECEIPT")
+                Spacer(minLength: 8)
+                if let printed = session.printedTotal {
+                    Text(printed.display)
+                        .font(Typography.total)
+                        .foregroundStyle(Palette.ink.color)
+                } else {
+                    Text("not read")
+                        .font(Typography.body)
+                        .foregroundStyle(Palette.muted.color)
+                }
+            }
+            Text(Self.totalNote(printed: session.printedTotal, recorded: session.recordedTotal))
+                .font(Typography.footnote)
+                .foregroundStyle(Palette.muted.color)
+        }
+    }
+
+    /// Two numbers that must never be confusable: what the till charged, and what the lines you
+    /// are keeping add up to. The second one says whose it is.
+    static func totalNote(printed: Money?, recorded: Money) -> String {
+        guard let printed else {
+            return "This receipt's total wasn't read, so none is saved. The lines you keep add "
+                + "up to \(recorded.display) — that is ours, not what the till charged."
+        }
+        guard recorded.minorUnits < printed.minorUnits else {
+            return "The lines you keep add up to \(recorded.display)."
+        }
+        return "The lines you keep add up to \(recorded.display) of it — the rest is tax, "
+            + "deposits and lines nothing was matched to."
     }
 
     // MARK: - One line

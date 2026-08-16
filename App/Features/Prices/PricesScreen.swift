@@ -193,10 +193,13 @@ struct PricesScreen: View {
                                 .foregroundStyle(Palette.muted.color)
                         }
                         Spacer(minLength: 12)
-                        // The till's own total, not a sum of lines — it is not a price tier.
-                        Text(row.total.display)
+                        // The till's own total when it was read, and when it wasn't, what this
+                        // receipt put in the book — which is not what the shop charged.
+                        Text(row.isPrinted ? row.total.display
+                                           : "\(row.total.display) in prices")
                             .font(Typography.price)
-                            .foregroundStyle(Palette.ink.color)
+                            .foregroundStyle(row.isPrinted ? Palette.ink.color
+                                                           : Palette.muted.color)
                     }
                     .frame(minHeight: 52)
                     .accessibilityElement(children: .combine)

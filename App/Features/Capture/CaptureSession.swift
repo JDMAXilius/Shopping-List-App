@@ -54,8 +54,8 @@ final class CaptureSession {
     var shopID: ShopID?
 
     /// The KITCHEN's currency, never the last receipt's: a kitchen shops in one, and every
-    /// price typed or scanned here is in it.
-    private(set) var currencyCode: String
+    /// price typed or scanned here is in it. The list holds it, so there is one reading of it.
+    var currencyCode: String { store.currencyCode }
     /// What this receipt printed, when that is not what the kitchen shops in — the one case
     /// where two currencies could reach one total, so it stops the commit instead.
     private(set) var currencyMismatch: String?
@@ -70,10 +70,6 @@ final class CaptureSession {
         self.store = store
         self.catalog = catalog
         self.backend = backend
-        // The kitchen is the ONLY source of a currency here — it took the device's locale when
-        // it was created. With no kitchen row there is no claim to make, so USD stands.
-        currencyCode = ((try? repository.kitchens()) ?? [])
-            .first { $0.id == kitchenID }?.currencyCode ?? "USD"
         shopID = store.activeShopID
         resume()
     }
@@ -291,6 +287,22 @@ final class CaptureSession {
     // MARK: - The commit, which is the only write
 
     var acceptedCount: Int { lines.filter(\.isPriced).count }
+
+    /// What the till printed as its own total, and nil when the model read none. It is never
+    /// computed: SUBTOTAL, TAX, TOTAL, CASH and CHANGE are all lines, and adding the lines up
+    /// makes a number nobody was charged.
+    var printedTotal: Money? {
+        printedTotalMinor.map { Money(minorUnits: $0, currencyCode: lineCurrency) }
+    }
+
+    /// Ours, and never labelled as the till's: the lines being kept, added up as they printed.
+    var recordedTotal: Money {
+        Money(minorUnits: lines.filter(\.isPriced).reduce(0) { $0 + $1.amount.minorUnits },
+              currencyCode: lineCurrency)
+    }
+
+    private var lineCurrency: String { printedCurrency ?? currencyCode }
+
     // A receipt in another currency cannot be committed at all: its lines would sum with the
     // kitchen's own prices under one label, and that total would be a lie about money.
     var canCommit: Bool { stage == .review && shopID != nil && currencyMismatch == nil }
@@ -321,8 +333,7 @@ final class CaptureSession {
     @discardableResult
     func commit() -> Bool {
         guard canCommit, let pending = scan, let shopID else { return false }
-        let date = purchasedAt ?? pending.capturedAt
-        let total = printedTotalMinor ?? lines.reduce(0) { $0 + $1.amount.minorUnits }
+        let date = CaptureSession.honestDate(purchasedAt ?? pending.capturedAt)
         var ops: [Op.Kind] = []
         for line in lines {
             if let alias = line.alias {
@@ -337,8 +348,11 @@ final class CaptureSession {
             ops.append(.price(PriceObservation(itemID: match.itemID, shopID: shopID, date: date,
                                                amount: line.unitAmount, source: .receipt)))
         }
+        // The till's total or nothing, and beside it what this receipt actually recorded. A
+        // receipt with no printed total is stored with none — never with a sum wearing its name.
         guard (try? repository.commitScan(pending.id, shopID: shopID, lineCount: lines.count,
-                                          totalMinor: total, ops: ops,
+                                          totalMinor: printedTotalMinor,
+                                          recordedMinor: recordedTotal.minorUnits, ops: ops,
                                           kitchenID: kitchenID)) != nil else { return false }
         result = CaptureResult(lines: lines)
         scan = nil
@@ -356,10 +370,9 @@ final class CaptureSession {
     func record(_ line: CaptureLine, shopID: ShopID, date: Date) -> Bool {
         guard line.isPriced, let match = line.match, line.amount.minorUnits > 0,
               line.amount.currencyCode == currencyCode else { return false }
-        // Never forward: a future-dated observation would outrank every real one for 90 days.
         let observation = PriceObservation(itemID: match.itemID, shopID: shopID,
-                                           date: min(date, Date()), amount: line.unitAmount,
-                                           source: .typed)
+                                           date: CaptureSession.honestDate(date),
+                                           amount: line.unitAmount, source: .typed)
         guard (try? repository.append(.price(observation), kitchenID: kitchenID)) != nil else {
             return false
         }
@@ -377,6 +390,11 @@ final class CaptureSession {
         Haptics.play(.add)
         return true
     }
+
+    /// Never forward, whichever path wrote it: a future-dated observation reads as `trusted`,
+    /// prints as "today", outranks every real price for 90 days and lands in a month that has
+    /// not happened. A till with a mis-set clock produces one with no OCR error at all.
+    static func honestDate(_ date: Date, now: Date = Date()) -> Date { min(date, now) }
 
     /// Back to the viewfinder. A queued photo stays queued: it is still a promise to read it,
     /// and letting go of it is what puts it back among the waiting.

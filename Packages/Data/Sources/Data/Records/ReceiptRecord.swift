@@ -8,24 +8,31 @@ public struct Receipt: Hashable, Sendable {
     public let shopID: ShopID
     public let capturedAt: Date
     public let lineCount: Int
-    public let totalMinor: Int
+    /// What the till printed as its own total, and nil when no total was read off it. Never a
+    /// sum of lines: SUBTOTAL, TAX, TOTAL, CASH and CHANGE are all lines, and adding them up
+    /// makes a number nobody paid.
+    public let totalMinor: Int?
+    /// Ours, not the till's: the lines this receipt turned into prices, added up as printed.
+    /// nil for rows written before the column existed — never 0, which means "priced nothing".
+    public let recordedMinor: Int?
     public let photoPath: String?
 
     // A typed or hand-entered receipt has no photo; a photo-backed one can only come from
     // Repository.promoteScan, so no caller can mint a second reference to a file Data owns.
     public init(id: UUID = UUID(), shopID: ShopID, capturedAt: Date, lineCount: Int,
-                totalMinor: Int) {
+                totalMinor: Int?, recordedMinor: Int? = nil) {
         self.init(id: id, shopID: shopID, capturedAt: capturedAt, lineCount: lineCount,
-                  totalMinor: totalMinor, photoPath: nil)
+                  totalMinor: totalMinor, recordedMinor: recordedMinor, photoPath: nil)
     }
 
-    init(id: UUID, shopID: ShopID, capturedAt: Date, lineCount: Int, totalMinor: Int,
-         photoPath: String?) {
+    init(id: UUID, shopID: ShopID, capturedAt: Date, lineCount: Int, totalMinor: Int?,
+         recordedMinor: Int?, photoPath: String?) {
         self.id = id
         self.shopID = shopID
         self.capturedAt = capturedAt
         self.lineCount = lineCount
         self.totalMinor = totalMinor
+        self.recordedMinor = recordedMinor
         self.photoPath = photoPath
     }
 }
@@ -62,7 +69,8 @@ struct ReceiptRecord: Codable, FetchableRecord, PersistableRecord {
     var shopID: String
     var capturedAt: Int64
     var lineCount: Int
-    var totalMinor: Int
+    var totalMinor: Int?
+    var recordedMinor: Int?
     var photoPath: String?
 
     enum CodingKeys: String, CodingKey {
@@ -71,6 +79,7 @@ struct ReceiptRecord: Codable, FetchableRecord, PersistableRecord {
         case capturedAt = "captured_at"
         case lineCount = "line_count"
         case totalMinor = "total_minor"
+        case recordedMinor = "recorded_minor"
         case photoPath = "photo_path"
     }
 
@@ -80,13 +89,14 @@ struct ReceiptRecord: Codable, FetchableRecord, PersistableRecord {
         capturedAt = receipt.capturedAt.msSince1970
         lineCount = receipt.lineCount
         totalMinor = receipt.totalMinor
+        recordedMinor = receipt.recordedMinor
         photoPath = receipt.photoPath
     }
 
     func receipt() throws -> Receipt {
         Receipt(id: try requireUUID(id), shopID: ShopID(try requireUUID(shopID)),
                 capturedAt: Date(msSince1970: capturedAt), lineCount: lineCount,
-                totalMinor: totalMinor, photoPath: photoPath)
+                totalMinor: totalMinor, recordedMinor: recordedMinor, photoPath: photoPath)
     }
 }
 
