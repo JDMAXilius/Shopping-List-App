@@ -1,5 +1,5 @@
 import XCTest
-import DesignKit
+@testable import DesignKit   // reaches InputBar.micFill; the colour math stays in one file
 
 // The gate's "verified, not assumed" (PRODUCT.md §2): pure WCAG 2.x relative-luminance
 // math over Palette's raw components. Deliberately no SwiftUI import.
@@ -61,6 +61,16 @@ final class ContrastTests: XCTestCase {
         }
         XCTAssertGreaterThanOrEqual(ratio(desaturated(Palette.ink), Palette.card), 4.5)    // 17.90
         XCTAssertGreaterThanOrEqual(ratio(desaturated(Palette.muted), Palette.card), 4.5)  // 5.35
+    }
+
+    // W5-P4 fix 2: the disabled mic drops the action colour for muted. Muted keeps the
+    // white glyph legible (5.35) — a disabled control must read as unavailable, never as
+    // broken — and the disc itself clears the 3:1 non-text floor against the bar's card.
+    func testDisabledMicRemainsLegibleOnceItIsNoLongerPersimmon() {
+        let disabled = InputBar.micFill(isEnabled: false)
+        XCTAssertNotEqual(disabled, Palette.persimmon)
+        XCTAssertGreaterThanOrEqual(ratio(Palette.card, disabled), 4.5)   // measures 5.35
+        XCTAssertGreaterThanOrEqual(ratio(disabled, Palette.card), 3.0)   // the disc's own edge
     }
 
     // Ink must survive on every aisle tint — glyph strokes and text sit on the tiles.

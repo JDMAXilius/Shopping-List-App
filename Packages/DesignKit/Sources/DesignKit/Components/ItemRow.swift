@@ -45,7 +45,9 @@ public struct ItemRow: View {
     }
 
     public var body: some View {
-        HStack(spacing: 12) {
+        // Spacing 0 + the body's own leading inset: the 12pt gutter belongs to a target
+        // rather than to a dead zone between them. Same pixels, no unresponsive strip.
+        HStack(spacing: 0) {
             tick
             rowBody
         }
@@ -105,6 +107,7 @@ public struct ItemRow: View {
                 .saturation(isChecked ? 0 : 1)
         }
         .frame(minHeight: 44)
+        .padding(.leading, 12)
         .contentShape(Rectangle())
         // Whole-row toggle (W4-C1 fix 9) unless the caller claimed the body. The tick is
         // a Button, so its own taps never reach this gesture either way.
