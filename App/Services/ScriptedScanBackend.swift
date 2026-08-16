@@ -7,6 +7,12 @@ import Foundation
 /// so review, the line resolver and the coupon rule all get exercised on screen.
 struct ScriptedScanBackend: ScanBackend {
     static let isRequested = CommandLine.arguments.contains("--uitest-scripted-scan")
+        || isOfflineFirst
+    /// First scan answers "not reachable" (the photo queues, the offline promise renders),
+    /// every later one succeeds — so the retry path is walkable on screen.
+    static let isOfflineFirst = CommandLine.arguments.contains("--uitest-scripted-scan-offline")
+
+    @MainActor private static var callCount = 0
 
     private static let receiptJSON = """
         {"lines":[
@@ -19,6 +25,11 @@ struct ScriptedScanBackend: ScanBackend {
 
     func scan(image: Foundation.Data, mediaType: ScanMediaType,
               shopHint: String?) async -> ScanOutcome {
+        let calls = await MainActor.run {
+            Self.callCount += 1
+            return Self.callCount
+        }
+        if Self.isOfflineFirst && calls == 1 { return .notReachable }
         guard let receipt = try? JSONDecoder()
             .decode(ScanReceipt.self, from: Foundation.Data(Self.receiptJSON.utf8)) else {
             return .unexpected(status: 0)

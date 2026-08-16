@@ -537,3 +537,12 @@ scope, building its features is not.
   before numeric units); both are contract edits.
 > HANDOFF → cloud: rule on the numeric-unit collision above (QuantityText.label vs
   catalog default_unit vocabulary).
+
+**2026-08-16 · terminal · T9 continued — offline promise + barcode primer on screen.**
+- `ScriptedScanBackend` gained an `--uitest-scripted-scan-offline` variant: first scan answers
+  `.notReachable`, later ones succeed. Two new UI tests (3/3 in the file, green first run):
+  offline → **"Photo kept · Works offline — reads when you're back"** → "Try reading it now"
+  → the SAME queued photo lands in review (the retry loop proven through the UI, not just
+  CaptureSessionTests); and the barcode screen's primer ("One item, off the packet" + the
+  on-phone privacy sentence) — all the simulator can honestly show without a camera.
+  Screenshots `design/built/22–24`.

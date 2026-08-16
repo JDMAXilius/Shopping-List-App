@@ -79,4 +79,49 @@ final class ReceiptFlowUITests: XCTestCase {
         shoot(app, "18-capture-result")
         app.buttons["Done"].firstMatch.tap()
     }
+
+    /// The offline promise, on screen: an unreachable server queues the photo ("Photo kept ·
+    /// works offline"), and the same photo reads successfully on retry.
+    @MainActor
+    func testOfflineQueuesThenRetryReads() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitest-reset", "--uitest-scripted-scan-offline"]
+        app.launch()
+
+        app.buttons["Capture"].firstMatch.tap()
+        let scanOption = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'scan a receipt'")).firstMatch
+        XCTAssertTrue(scanOption.waitForExistence(timeout: 4))
+        scanOption.tap()
+        let testShutter = app.buttons["Use test photo"].firstMatch
+        XCTAssertTrue(testShutter.waitForExistence(timeout: 3))
+        testShutter.tap()
+
+        XCTAssertTrue(app.staticTexts["Photo kept"].firstMatch.waitForExistence(timeout: 5),
+                      "unreachable server did not show the queued state")
+        XCTAssertTrue(app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'works offline'")).firstMatch.exists)
+        shoot(app, "22-offline-queued")
+
+        app.buttons["Try reading it now"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["MILK 1L"].firstMatch.waitForExistence(timeout: 5),
+                      "retry did not read the queued photo into review")
+        shoot(app, "23-retry-review")
+    }
+
+    /// The barcode screen's no-camera story — all the simulator can honestly show.
+    @MainActor
+    func testBarcodeScreenPrimer() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--uitest-reset"]
+        app.launch()
+        app.buttons["Capture"].firstMatch.tap()
+        let barcode = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'barcode'")).firstMatch
+        XCTAssertTrue(barcode.waitForExistence(timeout: 4))
+        barcode.tap()
+        XCTAssertTrue(app.staticTexts["One item, off the packet"].firstMatch
+            .waitForExistence(timeout: 4), "barcode primer did not render")
+        shoot(app, "24-barcode-primer")
+    }
 }
