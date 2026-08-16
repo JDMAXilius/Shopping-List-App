@@ -474,3 +474,18 @@ final class ListStoreTests: XCTestCase {
         XCTAssertNil(ItemID().catalogID)   // a minted id is nobody's catalog row
     }
 }
+
+extension ListStoreTests {
+    /// The catalog gives butter `default_unit: "250 g"`, so the old rule rendered quantity 1 as
+    /// "1 250 g" — which reads as 1250 g. Any unit opening with a digit collided the same way.
+    func testAPackSizeIsNeverGluedToTheCountThatWouldChangeIt() {
+        XCTAssertEqual(QuantityText.label(quantity: 1, unit: "250 g"), "250 g")
+        XCTAssertEqual(QuantityText.label(quantity: 2, unit: "250 g"), "×2 · 250 g")
+        XCTAssertEqual(QuantityText.label(quantity: 0.5, unit: "500 ml"), "×½ · 500 ml")
+        // A measure unit is unchanged: it cannot be misread as part of the number.
+        XCTAssertEqual(QuantityText.label(quantity: 2, unit: "lb"), "2 lb")
+        XCTAssertEqual(QuantityText.label(quantity: 1, unit: "dozen"), "1 dozen")
+        XCTAssertEqual(QuantityText.label(quantity: 1, unit: nil), nil)
+        XCTAssertEqual(QuantityText.label(quantity: 3, unit: nil), "×3")
+    }
+}

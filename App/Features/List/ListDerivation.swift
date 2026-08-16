@@ -85,7 +85,11 @@ enum QuantityText {
     static func label(quantity: Double, unit: String?) -> String? {
         let unit = unit?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !unit.isEmpty else { return quantity == 1 ? nil : "×\(number(quantity))" }
-        return "\(number(quantity)) \(unit)"
+        // A unit that opens with a digit is a pack size, not a measure — the catalog gives butter
+        // "250 g" — and "1 250 g" reads as 1250 g. The count takes its own mark and its own side
+        // of a separator, or is dropped when it is one and the pack already says the amount.
+        guard unit.first?.isNumber == true else { return "\(number(quantity)) \(unit)" }
+        return quantity == 1 ? unit : "×\(number(quantity)) · \(unit)"
     }
 
     static func number(_ value: Double) -> String {
