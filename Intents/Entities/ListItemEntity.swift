@@ -77,8 +77,18 @@ struct ListItemEntityQuery: EntityStringQuery {
         guard exact.isEmpty else { return exact }
         let contained = rows.filter { Merge.normalized($0.item.name).contains(key) }
         guard contained.isEmpty else { return contained }
-        // Last: what was SAID contains a row's name. People say "the milk"; `Merge.normalized`
-        // folds whitespace and case and nothing else, so without this the row is unfindable.
-        return rows.filter { key.contains(Merge.normalized($0.item.name)) }
+        // Last: what was SAID contains a row's name — people say "the milk". On WHOLE WORDS
+        // only: an unanchored substring made "check off steak" find Tea, and check it off, with
+        // no ask and no confirmation, because "tea" is inside "steak" and one match is not an
+        // ambiguity. "champagne" found Ham; "tin foil" found Oil.
+        let said = key.split(separator: " ").map(String.init)
+        return rows.filter { row in
+            let name = Merge.normalized(row.item.name).split(separator: " ").map(String.init)
+            guard !name.isEmpty else { return false }
+            return said.indices.contains { start in
+                start + name.count <= said.count
+                    && Array(said[start..<(start + name.count)]) == name
+            }
+        }
     }
 }

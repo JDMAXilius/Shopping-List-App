@@ -1,3 +1,4 @@
+import Core
 import Foundation
 import GRDB
 
@@ -14,6 +15,19 @@ public enum AppGroup {
     /// database is worse than no database.
     public static func containerURL() -> URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: identifier)
+    }
+
+    /// Which shop the phone is pointed at. The rule, not just the key: a saved id that names no
+    /// surviving shop falls back to the first, and so does no saved id at all — `createShop`
+    /// deliberately makes a shop without switching to it, so a kitchen whose only shop was born
+    /// in the capture flow has never written the key. The app, the widget and the intents each
+    /// had their own version of this; the widget's had no fallback, so on exactly that kitchen it
+    /// found no shop, matched no observation, and quietly demoted every measured price on the
+    /// tile to an estimate.
+    public static func activeShopID(_ defaults: UserDefaults, shops: [Shop]) -> ShopID? {
+        let saved = defaults.string(forKey: activeShopKey)
+            .flatMap(UUID.init(uuidString:)).map(ShopID.init)
+        return shops.first { $0.id == saved }?.id ?? shops.first?.id
     }
 
     public static func databaseURL(in container: URL) throws -> URL {

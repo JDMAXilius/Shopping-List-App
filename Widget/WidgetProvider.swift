@@ -12,7 +12,6 @@ enum WidgetStore {
     /// Must equal the App Group entitlement on every target and `BaggedApp.appGroupID`.
     static let appGroupID = AppGroup.identifier
     /// Written by `ListStore` under this key; only the App Group can see it.
-    private static let activeShopKey = AppGroup.activeShopKey
 
     /// What this process can honestly do with the file right now — every failure named.
     enum Access {
@@ -72,8 +71,11 @@ enum WidgetStore {
     }
 
     /// The shop the app is shopping at: a measured price is that shop's own (`PriceLookup`).
-    static func activeShopID(_ defaults: UserDefaults?) -> ShopID? {
-        defaults?.string(forKey: activeShopKey).flatMap(UUID.init(uuidString:)).map(ShopID.init)
+    /// `AppGroup` owns the rule, fallback included — this had its own copy with no fallback,
+    /// which is how the tile could find no shop and demote a whole basket to estimates.
+    static func activeShopID(_ defaults: UserDefaults?, shops: [Shop]) -> ShopID? {
+        guard let defaults else { return shops.first?.id }
+        return AppGroup.activeShopID(defaults, shops: shops)
     }
 }
 
@@ -159,17 +161,18 @@ struct WidgetProvider: TimelineProvider {
     }
 
     @MainActor private static func entry(for family: WidgetFamily) -> ListEntry {
-        ListEntry(date: Date(),
-                  state: WidgetProvider.state(WidgetStore.shared(),
-                                              shopID: WidgetStore.activeShopID(
-                                                  UserDefaults(suiteName: WidgetStore.appGroupID)),
-                                              limit: limit(family)))
+        ListEntry(date: Date(), state: state(WidgetStore.shared(), limit: limit(family)))
     }
 
     /// Four honest states and no fifth: no database, a schema this build disagrees with, no
     /// kitchen, or the list itself (empty included). Never a spinner, never a blank tile.
+    /// The shop is resolved HERE, not by the caller: the fallback needs the kitchen's shops, and
+    /// only this branch has a repository to ask. Resolving it earlier is what produced a nil shop
+    /// and a whole basket of estimates on a kitchen whose shop was made in the capture flow.
     @MainActor
-    static func state(_ access: WidgetStore.Access, shopID: ShopID?, limit: Int) -> WidgetState {
+    static func state(_ access: WidgetStore.Access, limit: Int,
+                      defaults: UserDefaults? = UserDefaults(suiteName: AppGroup.identifier))
+        -> WidgetState {
         switch access {
         case .unreachable: return .unreachable
         case .needsApp: return .needsApp
@@ -177,8 +180,9 @@ struct WidgetProvider: TimelineProvider {
         case .ready(let repository, let kitchenID):
             guard let items = try? repository.items(),
                   let observations = try? repository.priceObservations() else { return .unreachable }
+            let shops = (try? repository.shops()) ?? []
             return .list(WidgetSnapshot.list(items: items, observations: observations,
-                                             shopID: shopID,
+                                             shopID: WidgetStore.activeShopID(defaults, shops: shops),
                                              catalog: catalog(repository, kitchenID),
                                              limit: limit))
         }

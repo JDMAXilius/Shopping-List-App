@@ -70,7 +70,11 @@ struct ListWidgetView: View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 title
                 Spacer(minLength: 4)
-                Text("\(list.remaining) left ·")
+                // The separator belongs to the money, not to the count: this family drops the
+                // figure whenever its qualifier will not fit, and a trailing "·" pointing at
+                // nothing is its own small lie about there being more to read.
+                Text(showsMoney(list.summary) ? "\(list.remaining) left ·"
+                                              : "\(list.remaining) left")
                     .font(Typography.subtitle)
                     .foregroundStyle(Palette.muted.color)
                 total(list.summary)
@@ -95,11 +99,17 @@ struct ListWidgetView: View {
     /// and no room for "5 no price yet" — and `≈ $12.40` alone, for a basket that will cost
     /// thirty, is read at a glance by someone who will not open the app to check. So this family
     /// shows the count and no money. The small tile has the room, so it shows both.
+    /// One rule, read by the header's separator and by the figure itself, so a "·" can never
+    /// point at nothing.
+    private func showsMoney(_ summary: PriceSummary) -> Bool {
+        !summary.hasPricedItems || summary.breakdown == nil || family == .systemSmall
+    }
+
     @ViewBuilder private func total(_ summary: PriceSummary) -> some View {
-        if !summary.hasPricedItems {
-            PriceLabel(PriceDisplay.none, size: .small)
-        } else if summary.breakdown != nil, family != .systemSmall {
+        if !showsMoney(summary) {
             EmptyView()
+        } else if !summary.hasPricedItems {
+            PriceLabel(PriceDisplay.none, size: .small)
         } else {
             VStack(alignment: .trailing, spacing: 0) {
                 Text(summary.display)

@@ -43,11 +43,7 @@ struct IntentContext {
     }
 
     var activeShopID: ShopID? {
-        let shops = (try? repository.shops()) ?? []
-        // ListStore's own key in the shared defaults; the two must not drift.
-        let saved = UserDefaults.appGroup().string(forKey: AppGroup.activeShopKey)
-            .flatMap(UUID.init(uuidString:)).map(ShopID.init)
-        return shops.first { $0.id == saved }?.id ?? shops.first?.id
+        AppGroup.activeShopID(UserDefaults.appGroup(), shops: (try? repository.shops()) ?? [])
     }
 
     func items() throws -> [ListItem] {

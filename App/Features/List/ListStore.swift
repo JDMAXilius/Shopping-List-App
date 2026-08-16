@@ -48,9 +48,7 @@ final class ListStore {
         deviceHistory = defaults.stringArray(forKey: ListStore.historyKey) ?? []
         currencyCode = ((try? repository.kitchens()) ?? [])
             .first { $0.id == kitchenID }?.currencyCode ?? "USD"
-        let saved = defaults.string(forKey: ListStore.activeShopKey)
-            .flatMap(UUID.init(uuidString:)).map(ShopID.init)
-        activeShopID = observedShops.value.first { $0.id == saved }?.id ?? observedShops.value.first?.id
+        activeShopID = AppGroup.activeShopID(defaults, shops: observedShops.value)
         loadAisleOrder()
     }
 
@@ -221,6 +219,18 @@ final class ListStore {
         observedItems.refresh()
         observedShops.refresh()
         observedPrices.refresh()
+        adoptActiveShop()
+    }
+
+    /// The defaults key is the shared truth about where this phone is shopping, and an intent can
+    /// move it — "add milk at Trader Joe's". Without this the app was told it had moved and went
+    /// on quoting the old shop's prices in the old shop's aisle order, while the widget, which
+    /// re-reads the key every pass, had already moved. Three surfaces, two shops.
+    private func adoptActiveShop() {
+        let resolved = AppGroup.activeShopID(defaults, shops: observedShops.value)
+        guard resolved != activeShopID else { return }
+        activeShopID = resolved
+        loadAisleOrder()
     }
 
     // MARK: - Plumbing
