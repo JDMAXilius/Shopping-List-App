@@ -86,15 +86,6 @@ enum QuantityText {
         return String(format: "%g", value)
     }
 
-    /// ItemRow's `×N` slot takes an Int, so anything it cannot state exactly (1.5, or any
-    /// quantity carrying a unit) renders as 1 — showing nothing beats "×2" for 1.5 lb.
-    static func rowCount(quantity: Double, unit: String?) -> Int {
-        guard let text = label(quantity: quantity, unit: unit), text.hasPrefix("×"),
-              quantity == quantity.rounded(), quantity > 1
-        else { return 1 }
-        return Int(quantity)
-    }
-
     private static let fractions: [Double: String] = [0.25: "¼", 0.5: "½", 0.75: "¾"]
 }
 

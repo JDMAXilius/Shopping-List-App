@@ -144,7 +144,10 @@ struct ListScreen: View {
                     .foregroundStyle(Palette.persimmon.color)
                 // The prompt promises the tap: the body opens the price, the tick still checks off.
                 ForEach(store.unpriced) { row in
-                    ItemRow(name: row.item.name, quantity: quantity(row), glyph: row.category,
+                    ItemRow(name: row.item.name,
+                            quantity: QuantityText.label(quantity: row.item.quantity,
+                                                         unit: row.item.unit),
+                            glyph: row.category,
                             price: row.price, prompt: "tap to set what you paid",
                             isChecked: row.item.checked,
                             onToggle: { store.toggle(row.item) },
@@ -166,7 +169,10 @@ struct ListScreen: View {
             AisleHeader(title: aisle.title, prices: aisle.prices,
                         doneCount: aisle.doneCount, isCollapsed: aisle.isCollapsed)
             ForEach(aisle.rows) { row in
-                ItemRow(name: row.item.name, quantity: quantity(row), glyph: row.category,
+                ItemRow(name: row.item.name,
+                        quantity: QuantityText.label(quantity: row.item.quantity,
+                                                     unit: row.item.unit),
+                        glyph: row.category,
                         price: row.price, isChecked: row.item.checked,
                         onToggle: { store.toggle(row.item) })
                 .contextMenu {
@@ -248,7 +254,10 @@ struct ListScreen: View {
                     // Checked items sink, they never vanish — and they keep an aisle row's
                     // affordances exactly: pricing one must not cost an uncheck first.
                     ForEach(done) { row in
-                        ItemRow(name: row.item.name, quantity: quantity(row), glyph: row.category,
+                        ItemRow(name: row.item.name,
+                                quantity: QuantityText.label(quantity: row.item.quantity,
+                                                             unit: row.item.unit),
+                                glyph: row.category,
                                 price: row.price, isChecked: true,
                                 onToggle: { store.toggle(row.item) })
                         .contextMenu {
@@ -361,9 +370,5 @@ struct ListScreen: View {
         Capsule()
             .fill(Palette.card.color)
             .overlay(Capsule().strokeBorder(Palette.line.color, lineWidth: 1))
-    }
-
-    private func quantity(_ row: ListRow) -> Int {
-        QuantityText.rowCount(quantity: row.item.quantity, unit: row.item.unit)
     }
 }

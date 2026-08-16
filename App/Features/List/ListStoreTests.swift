@@ -304,10 +304,9 @@ final class ListStoreTests: XCTestCase {
         XCTAssertEqual(QuantityText.label(quantity: 2, unit: nil), "×2")
         XCTAssertEqual(QuantityText.label(quantity: 1.5, unit: "lb"), "1.5 lb")
         XCTAssertEqual(QuantityText.label(quantity: 0.5, unit: "dozen"), "½ dozen")
-        // The row's Int slot never rounds a lie into place: 1.5 lb is not "×2".
-        XCTAssertEqual(QuantityText.rowCount(quantity: 1.5, unit: "lb"), 1)
-        XCTAssertEqual(QuantityText.rowCount(quantity: 0.5, unit: nil), 1)
-        XCTAssertEqual(QuantityText.rowCount(quantity: 3, unit: nil), 3)
+        // One of something WITH a unit is worth saying, and the row can say it now (W5-P9):
+        // the Int slot it replaced dropped "1 lb" and rounded "1.5 lb" into a lie.
+        XCTAssertEqual(QuantityText.label(quantity: 1, unit: "lb"), "1 lb")
     }
 
     func testDetailSheetCommitsOnlyWhatChanged() {
