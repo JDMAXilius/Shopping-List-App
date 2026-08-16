@@ -5,6 +5,7 @@ import Foundation
 import XCTest
 
 /// Four honest states, one ordering rule, and a tile that never claims a price it does not hold.
+@MainActor
 final class WidgetProviderTests: XCTestCase {
     private let shopID = ShopID()
 
@@ -18,7 +19,7 @@ final class WidgetProviderTests: XCTestCase {
     private func snapshot(_ items: [ListItem], _ observations: [PriceObservation] = [],
                           shopID: ShopID? = nil, limit: Int = 3) -> WidgetList {
         WidgetSnapshot.list(items: items, observations: observations,
-                            shopID: shopID ?? self.shopID, limit: limit)
+                            shopID: shopID ?? self.shopID, catalog: ListCatalog(), limit: limit)
     }
 
     // MARK: - The four states
@@ -47,14 +48,14 @@ final class WidgetProviderTests: XCTestCase {
         try database.migrate()
         try Repository(database: database).saveKitchen(Kitchen(name: "Home"))
 
-        let state = WidgetProvider.state(WidgetStore.connect(url).0, shopID: nil, limit: 3)
+        let state = WidgetProvider.state(WidgetStore.connect(url).0, limit: 3)
         guard case .list(let list) = state else { return XCTFail("a kitchen with no rows is a list") }
         XCTAssertEqual(list.total, 0)
         XCTAssertEqual(list.remaining, 0)
     }
 
     func testAVersionMismatchRendersNoRowsAtAll() {
-        guard case .needsApp = WidgetProvider.state(.needsApp, shopID: nil, limit: 3) else {
+        guard case .needsApp = WidgetProvider.state(.needsApp, limit: 3) else {
             return XCTFail("a mismatch must not resolve to rows")
         }
     }
