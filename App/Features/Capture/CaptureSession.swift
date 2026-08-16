@@ -415,3 +415,6 @@ final class CaptureSession {
         stage = .idle
     }
 }
+
+// Object identity is the sheet identity: one session, one presentation.
+extension CaptureSession: Identifiable {}

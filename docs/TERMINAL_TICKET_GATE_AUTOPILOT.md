@@ -222,9 +222,9 @@ here for three things, so use it for those: the HTML design concepts in `design/
 Supabase dashboard while you are testing RLS, and reading Apple/GRDB documentation when a compile
 error is unfamiliar. Do not report a Chrome session as having tested the app.
 
-- [ ] App launches in the simulator
-- [ ] Screenshots committed to `design/built/` next to their `design/app/` counterparts
-- [ ] Parity notes in the Log — what matches, what does not, per screen
+- [x] App launches in the simulator
+- [x] Screenshots committed to `design/built/` next to their `design/app/` counterparts
+- [x] Parity notes in the Log — what matches, what does not, per screen
 
 ### T7 — The config check that does not exist yet
 
@@ -404,3 +404,35 @@ scope, building its features is not.
 - Four waves of critics found P1s in this code that only executed proofs caught. If a wave-7 test
   fails on your machine, **assume the test is right until you can show otherwise** — that has been
   the correct call every time so far.
+**2026-08-16 · terminal · T6 complete — walkthrough automated, TWO REAL BUGS found and fixed.**
+- App builds, installs and launches on the iPhone 17 simulator (`app.bagged`). Walkthrough is
+  a `BaggedUITests` UI test (add via chip · add by typing · check off · context-menu remove ·
+  undo · `+` → enter by hand → catalog match → create shop → price → save). Screenshots for
+  every stage exported to `design/built/01…10.png`.
+- **Bug 1 (would ship broken): the `+` never opened capture.** `sheet(item: $sheet)` evaluated
+  its content against pre-tap state, so `capture` read nil and every tap showed the
+  "Capture couldn't start" apology. Fix: the capture sheet now presents via
+  `.sheet(item: $capture)` — presentation and session are one value (CaptureSession:
+  Identifiable). Regression pin: `CaptureOnlyUITests.testTapCaptureImmediately`.
+- **Bug 2 (P1-class freeze): 100% CPU forever after an enter-by-hand save.** Minimal trigger,
+  found by bisection (probes A–G): a checked row + an unchecked row on the list + save. The
+  spin was LazyVStack size-estimation looping (sampled: `LazyHVStack.lengthAndSpacing` /
+  `EstimationCache` / `initializeWithCopy for AisleSection`) while the sheet's keyboard resized
+  the ScrollView under it. Fix: `ListScreen.listCard` is a plain VStack — the list is bounded,
+  laziness bought nothing. Regression pin: `CaptureOnlyUITests.testG_twoItemsCheckSave`.
+- Layout fix (design parity): the tab pill overlapped the bottom card — TabView swallows
+  safeAreaPadding/safeAreaInset on iOS 26, so the pages now carry plain 72pt bottom padding
+  and the pill sits below the card as `design/app/01-list.png` draws it.
+- Parity notes vs `design/app/`: 01 list (empty + full) matches — warm paper, card, chips,
+  double-rule TOTAL, `I need…` bar, pill+`+` below. 20 capture-chooser matches (Add prices,
+  three options with detail lines). 07 enter-by-hand matches (typed-price notice, SEARCH,
+  catalog matches, persimmon Create). Undo bar wording `Undo · Oat milk back on the list` and
+  `✓ DAIRY & EGGS · done (1) · ≈ $5.00` collapsed aisle all render per contract. Deviations:
+  no shop chip sub-line ("5 of 7 left · Mara is shopping" needs kitchen data, wave 9);
+  NO PRICE YET promoted section not exercised in this walkthrough.
+- Walkthrough finding, not a bug: check-off has no undo by design (the tick unchecks);
+  the undo in the flow is removal's. Enter-by-hand writes a PriceObservation, never a list row.
+- UI tests reset state via a DEBUG-only `--uitest-reset` launch argument (wipes the App Group
+  db + defaults; unreachable in release).
+- Full suite on simulator: **BaggedTests 91/91** (33 CaptureSession · 26 ListStore · 20
+  ScanClient · 12 snapshots) + **BaggedUITests 3/3**. TEST SUCCEEDED.

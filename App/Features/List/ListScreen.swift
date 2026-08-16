@@ -128,8 +128,11 @@ struct ListScreen: View {
 
     // MARK: - The list
 
+    // Plain VStack, deliberately: a shopping list is bounded, and LazyVStack's size
+    // estimation loops at 100% CPU when the capture sheet's keyboard resizes this
+    // ScrollView with a collapsed aisle on screen (see GATE_AUTOPILOT log, 2026-08-16).
     private var listCard: some View {
-        LazyVStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 16) {
             if store.rows.isEmpty {
                 emptyList
             } else {

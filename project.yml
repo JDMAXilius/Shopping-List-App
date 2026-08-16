@@ -62,9 +62,22 @@ targets:
       - path: App
         includes:
           - "**/*Tests.swift"
+        excludes:
+          - "UITests/**"
     dependencies:
       - target: Bagged
       - package: SnapshotTesting
+  BaggedUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.bagged.uitests
+        GENERATE_INFOPLIST_FILE: YES
+    sources:
+      - path: App/UITests
+    dependencies:
+      - target: Bagged
 schemes:
   Bagged:
     build:
@@ -73,3 +86,4 @@ schemes:
     test:
       targets:
         - BaggedTests
+        - BaggedUITests

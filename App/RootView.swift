@@ -25,11 +25,17 @@ struct RootView: View {
             TabPill(selection: $tab, onAdd: { presentCapture() })
                 .padding(.bottom, 8)
         }
-        // Released after the dismissal, not during it: the flow keeps its state to the last frame.
+        .sheet(item: $sheet) { presented in
+            sheetContent(presented)
+        }
+        // The capture sheet is driven by the session itself: presentation and state are one
+        // value, so the sheet can never render before the session exists (sheet(item: $sheet)
+        // evaluated its content against the pre-tap state and showed the apology instead).
+        // Released by the dismissal, not during it: the flow keeps its state to the last frame.
         // A capture that landed wrote prices and a receipt, and the receipt index is not
         // observed — the book re-reads on the way out, not on the next launch.
-        .sheet(item: $sheet, onDismiss: { capture = nil; priceStore?.refresh() }) { presented in
-            sheetContent(presented)
+        .sheet(item: $capture, onDismiss: { priceStore?.refresh() }) { session in
+            CaptureChooserSheet(session: session)
         }
         .onChange(of: scenePhase) { _, phase in
             // The widget and App Intents write to the same file while we're backgrounded.
@@ -47,7 +53,6 @@ struct RootView: View {
         else { return }
         capture = CaptureSession(repository: repository, kitchenID: kitchenID, store: listStore,
                                  catalog: catalog, backend: scanBackend)
-        sheet = .capture
     }
 
     @ViewBuilder private var content: some View {
@@ -132,14 +137,12 @@ struct RootView: View {
             case .shopSwitcher, .firstShop:
                 ShopSwitcherSheet(store: listStore)
             case .capture:
-                if let capture {
-                    CaptureChooserSheet(session: capture)
-                } else {
-                    EmptyState(
-                        glyph: .other,
-                        message: "Capture couldn't start on this device. Reopening the app usually fixes it.")
-                        .presentationDetents([.medium])
-                }
+                // Unreachable today — capture presents through `.sheet(item: $capture)` —
+                // but the case stays total for any later wave that sets it.
+                EmptyState(
+                    glyph: .other,
+                    message: "Capture couldn't start on this device. Reopening the app usually fixes it.")
+                    .presentationDetents([.medium])
             // Neither screen exists yet (wave 9), and a sheet the user can only escape by
             // guessing is worse than one that says so.
             case .invite:

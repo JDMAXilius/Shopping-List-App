@@ -17,6 +17,13 @@ struct BaggedApp: App {
     private let scanBackend: any ScanBackend
 
     init() {
+        #if DEBUG
+        // UI tests launch with a clean slate; unreachable in a release build.
+        if CommandLine.arguments.contains("--uitest-reset"), let url = try? BaggedApp.databaseURL() {
+            try? FileManager.default.removeItem(at: url)
+            UserDefaults.appGroup().removePersistentDomain(forName: BaggedApp.appGroupID)
+        }
+        #endif
         let opened = try? BaggedApp.openStore()
         // A catalog built before the kitchen was read would price its seeds in a guessed
         // currency; without a database there is no kitchen, and the device's own is all there is.
