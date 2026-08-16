@@ -53,9 +53,18 @@ final class ListCatalog {
             if let base = hit.baseAmount, estimateCache[hit.id] == nil {
                 estimateCache[hit.id] = .some(money(PriceEstimate.rounded(base * multiplier)))
             }
-            return Match(itemID: .catalog(hit.id), name: hit.canonicalName,
+            return Match(itemID: .catalog(hit.id), name: display(hit.canonicalName),
                          unit: hit.defaultUnit, category: glyph)
         }
+    }
+
+    /// The catalog stores names lowercase because that is how it matches. Casing is fixed HERE,
+    /// once, so what gets written to the list is exactly what the user was shown — the widget
+    /// and the CSV need no display rule of their own. Only the first character moves, so a
+    /// user's own "2% milk" or "TJ" survives untouched.
+    private func display(_ name: String) -> String {
+        guard let first = name.first else { return name }
+        return first.uppercased() + name.dropFirst()
     }
 
     /// The catalog item behind an id we hold with no text — a remembered alias, a stored row.
@@ -66,7 +75,7 @@ final class ListCatalog {
         let match = database.item(catalogID).map { item in
             let glyph = CategoryGlyph(rawValue: item.categoryID) ?? .other
             categoryCache[item.id] = glyph
-            return Match(itemID: .catalog(item.id), name: item.canonicalName,
+            return Match(itemID: .catalog(item.id), name: display(item.canonicalName),
                          unit: item.defaultUnit, category: glyph)
         }
         itemCache[catalogID] = .some(match)
