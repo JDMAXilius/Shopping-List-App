@@ -39,9 +39,20 @@ final class MoneyTests: XCTestCase {
     }
 
     func testMinorUnitExponentPerCurrencyClass() {
-        for code in ["JPY", "KRW", "CLP", "ISK", "VND"] {
+        for code in ["JPY", "KRW", "CLP", "ISK", "VND", "XAF", "XOF", "XPF", "UGX", "RWF"] {
             XCTAssertEqual(Money.minorUnitExponent(for: code), 0, code)
         }
+        // A kitchen created on a Kuwaiti phone: 1.500 KWD is 1500 minor units, not 150.
+        for code in ["KWD", "BHD", "JOD", "OMR", "TND", "IQD", "LYD"] {
+            XCTAssertEqual(Money.minorUnitExponent(for: code), 3, code)
+        }
+        // The grid stays coarse in every class — an estimate must never read as looked up.
+        XCTAssertEqual(Money.estimate(from: Money(minorUnits: 1437, currencyCode: "KWD")),
+                       Money(minorUnits: 1500, currencyCode: "KWD"))
+        XCTAssertEqual(Money.estimate(from: Money(minorUnits: 437, currencyCode: "USD")),
+                       Money(minorUnits: 450, currencyCode: "USD"))
+        XCTAssertEqual(Money.estimate(from: Money(minorUnits: 437, currencyCode: "JPY")),
+                       Money(minorUnits: 450, currencyCode: "JPY"))
         for code in ["USD", "EUR", "GBP", "BRL", "CAD", "AUD", "MXN"] {
             XCTAssertEqual(Money.minorUnitExponent(for: code), 2, code)
         }
