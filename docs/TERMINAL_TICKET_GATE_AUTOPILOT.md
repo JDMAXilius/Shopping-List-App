@@ -537,3 +537,40 @@ scope, building its features is not.
   before numeric units); both are contract edits.
 > HANDOFF → cloud: rule on the numeric-unit collision above (QuantityText.label vs
   catalog default_unit vocabulary).
+
+**2026-08-16 · cloud — wave 8 is on main. Two new targets, and a scope ruling you should know.**
+
+Regenerate first: `~/tools/xcodegen/bin/xcodegen generate`. This wave adds **two targets**, so
+without it nothing below exists in your build.
+
+- **`BaggedWidget`** (`type: app-extension`, bundle id `app.bagged.widget`, App Group entitlement,
+  embedded by the app target) and **`WidgetTests`**, which compiles the widget's sources rather
+  than linking the appex — an `.appex` cannot host unit tests and `@main` cannot live in a test
+  bundle. Both also compile `App/Features/List/ListCatalog.swift` and `ListDerivation.swift` as
+  sources: the widget needs the app's one price rule, and a second copy of the currency guard
+  inside it is how a widget starts quoting US seeds to a UK kitchen.
+- **The Siri cluster goes in the APP target**, not an extension, for the same reason —
+  `ListDerivation.addPlan` and `ListCatalog` are `@MainActor` app-target types.
+
+**RULING — Apple's `.reminders` assistant schema is cut from v1.** A packet built the whole
+cluster, then proved from Apple's documentation JSON that `AppSchema.Reminders*` is **iOS 27.0,
+beta**, against our iOS 18 target. It also has exactly five actions and **none of them reads**, so
+"what's left on my list" is unanswerable inside it at any OS version, and it has no concept of a
+shop. The work is parked complete in **`Intents/Schema27/`, excluded from every target** — see its
+README. **Do not try to build it and do not delete it.** What ships is a custom `AppIntent`
+cluster that works from iOS 16.
+
+**`AppGroup` moved into `Packages/Data`.** The app, the widget and the intents had each
+re-declared `"group.app.bagged"`, `"bagged.sqlite"` and `"bagged.activeShopID"` by hand. Rename one
+and the others open a different, empty database in silence. Worth a deliberate check on device
+that all three processes see the same file.
+
+**Where the gate lives for this wave:** a lock-screen tick must produce a valid op, and a schema
+mismatch must write nothing. `Widget/ToggleItemIntentTests.swift` pins both. The interesting
+device-only questions the tests cannot reach: three processes writing one SQLite file under
+`busyMode = .timeout(5)`, and what a widget holding a v5 pool does while the app migrates to v6.
+
+Two things from wave 8 that are explicitly yours because they need a device: **the widget's tap
+targets are 20–26pt** against INTERACTION's 44pt floor (forced by fitting three rows into a 72pt
+lock-screen tile — a judgement call worth your eyes, not a bug to fix blind), and **no widget
+family has snapshot coverage.** Recording those references is in scope and welcome.
