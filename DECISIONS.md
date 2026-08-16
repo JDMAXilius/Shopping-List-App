@@ -12,6 +12,13 @@ One page. Everything decided, everything recommended, and what's still open.
 
 ## Product
 
+- ✅ **v1 Siri is custom App Intents, not Apple's `.reminders` schema** (wave 8, Aug 2026).
+  The schema is iOS 27 beta — verified against Apple's doc JSON, not recalled — against our
+  iOS 18 target, so shipping it means no Siri at all for everyone below 27. It also has **no
+  read intent**, so "what's left on my list" is unanswerable inside it, and no concept of a
+  shop. It demands nine fields a grocery list cannot honour. Parked complete in
+  `Intents/Schema27/` with a README; revisit on iOS 27 as an *addition*, never a replacement
+
 - ✅ **A grocery list app for households.** Consumer, not B2C-for-brands
 - ✅ **Cost is the differentiator** — prices, per-category subtotals, trip total. AnyList (14 years, 4.9★, ~$900k/yr) and OurGroceries (84K ratings) both lack it entirely
 - ✅ **Aisle order is differentiator #2** — the list matches the walk
