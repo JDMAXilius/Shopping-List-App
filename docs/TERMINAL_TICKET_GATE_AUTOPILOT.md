@@ -1,5 +1,6 @@
 # TERMINAL_TICKET_GATE_AUTOPILOT — you own the gate for Waves 1–6. Run it unattended.
 
+> STATUS: in-progress — terminal 2026-08-16 (8bc435f)
 > STATUS: open — written by cloud 2026-08-16.
 > Founder is away from the machine and is NOT watching. Do not ask questions. Do not stop.
 
