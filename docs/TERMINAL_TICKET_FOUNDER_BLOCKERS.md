@@ -91,3 +91,28 @@ Both predate the code and neither has been done. They gate quality, not compilat
 ## Log
 
 <!-- Terminal: append what you discover that belongs on this list. -->
+
+## 7. Two App Review blockers found while building wave 9
+
+Both are structural, not cosmetic, and both will fail submission rather than merely look bad.
+
+- [ ] **In-app account deletion.** Once sign-in ships, **App Review 5.1.1(v) requires an account
+      to be deletable from inside the app.** `Repository` has no wipe API and there is no
+      account-deletion call on the server, so `DataPrivacyScreen` states the truth today —
+      deleting the app takes the database, the photos and the pins; a shared kitchen is a support
+      email. That is honest and it is not sufficient for review. Needs a `Repository` wipe **and**
+      a server-side delete; it is a packet, not a checkbox, and it is on the critical path to
+      submission rather than to launch.
+- [ ] **A paywall must carry Terms and Privacy links.** `SupportURL`, `PrivacyPolicyURL` and
+      `TermsURL` are read from Info.plist the way the scan endpoint is, and none of the three is
+      declared — because the domain is not owned (item 2). About says so plainly rather than
+      showing dead rows, but a paywall without those links is rejected. **The domain blocks the
+      paywall, not just the branding.**
+
+## 8. RevenueCat is not in the binary
+
+`SubscriptionStore.purchase`/`restore` are seamed and always answer `.unavailable`; the paywall
+renders its honest not-on-sale state and **cannot sell anything**. That is correct for today — no
+key is committed and none should be — but it means the entire purchase path is unexercised. Adding
+the dependency is a deliberate act (`project.yml` `packages:`), and it should happen at the same
+time as the account and the products, not before.
