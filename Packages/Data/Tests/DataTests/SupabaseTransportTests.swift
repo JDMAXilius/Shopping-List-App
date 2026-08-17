@@ -253,6 +253,43 @@ final class SupabaseTransportTests: XCTestCase {
         XCTAssertEqual(stored.count, 1)
     }
 
+    /// A 4xx that is about TIMING is not a refusal. This stopped being cosmetic when W10-P1 made
+    /// `.rejected` mean "quarantine it, and after three of these hold it for good": a rate limiter
+    /// answering 429 would otherwise strand real edits permanently, which is the exact failure
+    /// quarantining exists to prevent. Every one of these must reach the engine's backoff instead.
+    func testARateLimitIsRetriedRatherThanTreatedAsARefusal() async throws {
+        for status in [408, 423, 425, 429] {
+            let server = await signedInServer()
+            await server.failNextPushes(1, status: status, code: "PGRST999")
+            let transport = makeTransport(server)
+            do {
+                try await transport.push([op("Milk", kitchenID: kitchenA, clock: 1)])
+                XCTFail("\(status) is a failure")
+            } catch let error as SupabaseTransportError {
+                XCTAssertEqual(error, .server(status: status),
+                               "\(status) must be retryable — a refusal would quarantine the op")
+            }
+            // And it really is retryable: the same push succeeds once the limiter lets go.
+            try await transport.push([op("Milk", kitchenID: kitchenA, clock: 1)])
+            let stored = await server.storedOpIDs
+            XCTAssertEqual(stored.count, 1)
+        }
+    }
+
+    /// The other side of the same line: a 4xx about PERMISSION stays a refusal, or the wedge this
+    /// whole mechanism exists for comes straight back.
+    func testAPermissionFailureIsStillARefusal() async throws {
+        let server = await signedInServer()
+        await server.failNextPushes(1, status: 403, code: "42501")
+        let transport = makeTransport(server)
+        do {
+            try await transport.push([op("Milk", kitchenID: kitchenA, clock: 1)])
+            XCTFail("a 403 is a refusal")
+        } catch let error as SupabaseTransportError {
+            XCTAssertEqual(error, .rejected(status: 403, code: "42501"))
+        }
+    }
+
     // MARK: - Round trip through the repository
 
     func testAnOpArrivingTwiceFromTheServerChangesNothing() async throws {

@@ -27,6 +27,8 @@ actor FakeSupabaseServer: SupabaseHTTP {
     private var knownOpIDs: Set<String> = []
     private var nextSeq: Int64 = 0
     private var pushFailures = 0
+    private var pushFailureStatus = 503
+    private var pushFailureCode = "53300"
     private var failedPushNumbers: Set<Int> = []
     private var shufflesPages = false
 
@@ -50,8 +52,13 @@ actor FakeSupabaseServer: SupabaseHTTP {
         memberships[userID]?.remove(kitchenID.rawValue)
     }
 
-    func failNextPushes(_ count: Int) {
+    /// The status matters, not just the failure: since W10-P1 a refused push is quarantined and
+    /// eventually held for good, so which statuses count as "refused" is now a correctness
+    /// question rather than a cosmetic one. A rate limiter must not be able to strand an edit.
+    func failNextPushes(_ count: Int, status: Int = 503, code: String = "53300") {
         pushFailures = count
+        pushFailureStatus = status
+        pushFailureCode = code
     }
 
     /// Fail one specific call — how a multi-batch push lands its first batch and loses its
@@ -106,7 +113,7 @@ actor FakeSupabaseServer: SupabaseHTTP {
         pushCount += 1
         if pushFailures > 0 {
             pushFailures -= 1
-            return json(503, ["code": "53300"])
+            return json(pushFailureStatus, ["code": pushFailureCode])
         }
         if failedPushNumbers.contains(pushCount) {
             return json(503, ["code": "53300"])

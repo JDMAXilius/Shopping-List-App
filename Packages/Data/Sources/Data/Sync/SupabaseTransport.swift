@@ -195,9 +195,24 @@ public struct SupabaseTransport: SyncTransport {
 
     /// A 4xx that is not 401 is a refusal: RLS said no, or the body was malformed. Retrying it
     /// forever is how a queue wedges, so it is reported as its own kind.
+    ///
+    /// EXCEPT the four that are a 4xx about *timing* rather than about permission. Since W10-P1 a
+    /// `.rejected` push is quarantined and, after three refusals, held for good — so calling a 429
+    /// "refused" would let a rate limiter permanently strand real edits. Retrying these IS the
+    /// correct behaviour, which is what `.server` means to the engine's backoff.
+    static let retryableClientStatuses: Set<Int> = [
+        408,  // request timeout
+        423,  // locked
+        425,  // too early
+        429,  // rate limited — PostgREST, Cloudflare, or the project's own limits
+    ]
+
     static func failure(_ response: SupabaseResponse) -> SupabaseTransportError {
         let code = (try? JSONDecoder().decode(PostgrestError.self, from: response.body))?.code
         if response.status == 401 { return .unauthenticated }
+        if retryableClientStatuses.contains(response.status) {
+            return .server(status: response.status)
+        }
         if (400..<500).contains(response.status) {
             return .rejected(status: response.status, code: code)
         }
