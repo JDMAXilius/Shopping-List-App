@@ -97,6 +97,18 @@ Say this in the Log so nobody "fixes" it later:
 - **No Sign in with Apple capability yet** — `KitchenAuth.signInWithApple` refuses on an anonymous
   session by design; email is the shipping path.
 
+### A4b. One thing IS in this build on purpose: the screens panel
+
+`BAGGED_SCREENS_PANEL` is set in Release (`project.yml`), so the archive carries the testing panel at
+About → "Open a screen directly". That is deliberate — a TestFlight build is a Release build, and it
+is how a tester reaches a screen that would otherwise cost a real receipt.
+
+- [ ] Confirm it appears in the installed TestFlight build, and that it is the sandbox-receipt path
+      doing it rather than a Debug accident.
+- [ ] Tell testers what it is in the same note as the two missing features below.
+- [ ] **It comes out before submission, and the removal is one line** — see
+      `TERMINAL_TICKET_FOUNDER_BLOCKERS` §10.
+
 ### A5. Build, archive, export
 
 - [ ] `xcodebuild -scheme Bagged -destination 'generic/platform=iOS' -configuration Release archive`

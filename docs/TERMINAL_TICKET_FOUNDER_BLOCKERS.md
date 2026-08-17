@@ -134,6 +134,27 @@ because it is about their money.
 
 - [ ] An entitlement refresh that works without scanning
 
+## 10. The screens panel must leave the binary before submission
+
+Written down here because it is the only category of thing that gets forgotten: a temporary panel
+that works fine.
+
+`App/Features/You/ScreensPanel.swift` opens ~25 screens directly for testing, reached from
+About → "Open a screen directly". It is deliberately in **Release** builds, because TestFlight is a
+Release build and testers are the point of it. Two locks stand between it and the App Store — the
+runtime one shows it only for a `sandboxReceipt`, and `BAGGED_SCREENS_PANEL` decides whether it is
+compiled at all — and the second is the one to use.
+
+- [ ] Before any App Store submission, **delete `BAGGED_SCREENS_PANEL` from the Release line in
+      `project.yml`** and regenerate. That is the whole removal: the panel, its row in About and its
+      tests all vanish from the binary. Confirm by grepping the built product's strings for
+      "Open a screen directly" — absent is the pass.
+
+The founder asked for the panel as scaffolding and said so at the time — *"we wanted to actually
+make it properly later"*. The real navigation decision (where account, join and the budget screen
+belong) is still open and unmade; five mockups exist and none has been chosen. **The panel is not
+that decision and must not become it.**
+
 ---
 
 ## Log

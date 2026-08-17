@@ -1,3 +1,7 @@
+// Same flag as the panel: when the panel is not compiled there is nothing here to test, and a
+// suite that referenced a type the app no longer has would fail to build.
+#if BAGGED_SCREENS_PANEL
+
 import Core
 import Foundation
 import XCTest
@@ -150,3 +154,5 @@ final class ScreensPanelTests: XCTestCase {
         }
     }
 }
+
+#endif

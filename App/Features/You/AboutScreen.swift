@@ -57,7 +57,12 @@ struct AboutScreen: View {
                 identity
                 links
                 attribution
+                // Testing scaffolding. Not `#if DEBUG`: TestFlight is a Release build. Dropping
+                // BAGGED_SCREENS_PANEL from project.yml removes this line's effect too, so the
+                // panel leaves the binary without a second edit here.
+                #if BAGGED_SCREENS_PANEL
                 ScreensPanelRow()
+                #endif
                 Text("Made for the weekly shop.")
                     .font(Typography.footnote)
                     .foregroundStyle(Palette.muted.color)

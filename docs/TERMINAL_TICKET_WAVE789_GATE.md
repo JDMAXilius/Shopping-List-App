@@ -347,3 +347,58 @@ the method that has now found four bugs nothing else caught:
   (Note for the next person: leaving the simulator at an AX content size makes the capture UI
   tests fail — they assert on layout-sensitive controls. `simctl ui booted content_size medium`
   resets it.)
+
+---
+
+### V9 — The screens panel, and one trap in how it arrives (cloud, 2026-08-17)
+
+A testing-only panel landed on the You tab: **About → "Open a screen directly"** opens one list
+that constructs ~25 screens directly, so a screen that normally costs a real receipt or a real
+invite to reach is one tap away. `App/Features/You/ScreensPanel.swift` + `ScreensPanelTests.swift`.
+The founder asked for it explicitly as scaffolding — *"keep in mind that we wanted to actually make
+it properly later"* — so treat it as temporary, and do not build on it.
+
+**Read this before you run anything, because the failure is silent:**
+
+- [ ] **Regenerate first.** `Bagged.xcodeproj/project.pbxproj` lists sources individually and it
+      does NOT contain `ScreensPanel`. Without `xcodegen generate` the panel is not in the app
+      target **and its 9 tests are not in `BaggedTests`** — you would run a green suite that never
+      compiled either file and report it as a pass. `git grep -c ScreensPanel
+      Bagged.xcodeproj/project.pbxproj` must be non-zero before you believe a green run.
+- [ ] **Confirm the test count went UP by 9** against your last recorded `BaggedTests` number
+      (252 at V8). A count that did not move means the file is still not in the bundle. This is the
+      whole reason the check exists — state both numbers in the Log.
+- [ ] **It has never been compiled.** I checked every initialiser it calls against the real
+      declarations (all 20 match, `ListItem.itemID` and every `@Entry` are optional as it assumes),
+      but I cannot build iOS here. Expect mechanical errors and fix them; report anything that is
+      not mechanical instead of fixing it.
+- [ ] **Open it on the simulator and walk the list.** Every row must either open a screen or say in
+      one sentence why it cannot. Four rows refuse on purpose — Receipt review, Line resolver,
+      Receipt saved, First receipt — because each needs a receipt a real scan parsed, and a
+      fabricated one would write invented prices into the price book as `source: .receipt`. **Do
+      not "fix" those four by making one up.** If you want them reachable, that needs
+      `CaptureSession` to expose a test seam, which is a packet and a cloud ruling, not a patch.
+- [ ] Three screens are handed `sheet: .constant(nil)` (You, Kitchen, Price history), so rows
+      *inside* them that open a sheet do nothing from the panel. Each says so. Verify the wording
+      is there rather than assuming it.
+
+**A new build flag, `BAGGED_SCREENS_PANEL`.** `project.yml` now sets
+`SWIFT_ACTIVE_COMPILATION_CONDITIONS` explicitly for both configs — `DEBUG BAGGED_SCREENS_PANEL`
+in Debug, `BAGGED_SCREENS_PANEL` in Release — and the panel, its row in About and its tests are all
+inside `#if BAGGED_SCREENS_PANEL`. Two things follow, and both are yours to verify:
+
+- [ ] **`DEBUG` still reaches the compiler.** Naming that key replaces the value XcodeGen would
+      have injected, and I spelled `DEBUG` back in by hand. If I got it wrong, `#if DEBUG` blocks
+      go quiet **without breaking the build** — `--uitest-reset` stops working and
+      `ScriptedScanBackend.isRequested` is never consulted, so the capture UI tests would fail or
+      start hitting the real backend path. Check a Debug build actually honours `--uitest-reset`.
+- [ ] **The panel is visible in Debug.** If the flag does not reach the compiler the failure mode is
+      soft: everything stays green and the panel is simply absent. Seeing the row in About on the
+      simulator is the only proof.
+
+Why a flag rather than `#if DEBUG`: **a TestFlight build is a Release build**, so DEBUG-only would
+hide the panel from the one place a tester needs it. There is also a runtime lock (`sandboxReceipt`
+only, App Store never), but a runtime boolean in a shipping binary is one edit away from being
+wrong, and the flag means the code is not there at all. **Deleting the token from the Release line
+is the entire removal** — no file to remember. That deletion is now a submission blocker in
+`TERMINAL_TICKET_FOUNDER_BLOCKERS` §10.

@@ -11,6 +11,20 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     PRODUCT_BUNDLE_IDENTIFIER: app.bagged
     CODE_SIGN_STYLE: Automatic
+  configs:
+    # BAGGED_SCREENS_PANEL compiles the testing-only screens panel
+    # (App/Features/You/ScreensPanel.swift, its row in About, and its tests). It is on in Release
+    # because a TestFlight build IS a Release build and the panel exists for testers.
+    #
+    # >>> DELETE THE TOKEN FROM Release BEFORE ANY APP STORE SUBMISSION. <<<
+    # Without it the panel, its row and its tests are not compiled at all — no file to remember to
+    # delete, no runtime boolean standing between a temporary panel and a shipping binary.
+    #
+    # DEBUG is spelled out here because naming this key replaces the value XcodeGen would inject.
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG BAGGED_SCREENS_PANEL
+    Release:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: BAGGED_SCREENS_PANEL
 packages:
   Core:
     path: Packages/Core

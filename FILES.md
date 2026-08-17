@@ -129,7 +129,11 @@ Bagged/
 │   │       ├── DataPrivacyScreen.swift# what leaves, what doesn't · the barcode switch
 │   │       ├── AboutScreen.swift      # credits only what ships · WhyItWorksThisWay.swift
 │   │       ├── PaywallScreen.swift    # $2.99/mo · $29.99/yr · zero dark patterns
-│   │       └── SubscriptionStore.swift# a joiner is never paywalled
+│   │       ├── SubscriptionStore.swift# a joiner is never paywalled
+│   │       └── ScreensPanel.swift     # TEMPORARY testing scaffolding, behind
+│   │                                  # BAGGED_SCREENS_PANEL. Owns no Route/Sheet case;
+│   │                                  # drop the flag from project.yml's Release line and
+│   │                                  # it leaves the binary (BLOCKERS §10)
 │   │
 │   └── Services/                      # thin wrappers returning plain values
 │       ├── VisionService.swift        # barcode + printed text

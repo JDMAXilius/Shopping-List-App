@@ -1,3 +1,8 @@
+// The whole file is behind the flag, so a build without `BAGGED_SCREENS_PANEL` does not merely
+// hide the panel — it never compiles it. Removing the token from `project.yml`'s Release config is
+// the whole removal; see the comment there.
+#if BAGGED_SCREENS_PANEL
+
 import Core
 import Data
 import DesignKit
@@ -47,7 +52,10 @@ struct ScreensPanel: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .sheet(item: $presented) { view($0, list, subscription) }
-        .sheet(item: $capture) { captureView($0) }
+        // The refresh is not optional politeness: a capture started here writes real prices and a
+        // real receipt, and the price book's index does not notice on its own (`RootView` does the
+        // same). Without it the panel would look like the scan lost the prices it just saved.
+        .sheet(item: $capture, onDismiss: { priceStore?.refresh() }) { captureView($0) }
     }
 
     private func content(_ list: ListStore) -> some View {
@@ -468,9 +476,11 @@ extension ScreensPanel {
 
 extension ScreensPanel {
 
-    /// The one build test. `#if DEBUG` alone would hide the panel from TestFlight — a Release
-    /// build — which is the one place a tester needs it; a TestFlight install carries a sandbox
-    /// receipt and an App Store install carries a real one.
+    /// The second of two locks, and the weaker one. `BAGGED_SCREENS_PANEL` decides whether this
+    /// code exists at all; this decides whether it shows in a build that has it. It is here for the
+    /// case the flag is still set when a Release build reaches the store: a TestFlight install
+    /// carries a sandbox receipt and an App Store install carries a real one. `#if DEBUG` could not
+    /// have done this job — a TestFlight build IS a Release build.
     static var isAllowedInThisBuild: Bool {
         isAllowed(receiptName: Bundle.main.appStoreReceiptURL?.lastPathComponent,
                   isDebugBuild: isDebugBuild)
@@ -523,3 +533,5 @@ struct ScreensPanelRow: View {
         }
     }
 }
+
+#endif
