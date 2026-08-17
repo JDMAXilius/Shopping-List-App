@@ -13,6 +13,8 @@ struct InviteSheet: View {
     let store: KitchenStore
 
     @State private var isNaming = false
+    @State private var isSigningIn = false
+    @State private var isUnavailable = false
     @State private var copied = false
 
     var body: some View {
@@ -44,6 +46,9 @@ struct InviteSheet: View {
                     .font(Typography.footnote)
                     .foregroundStyle(Palette.muted.color)
                     .frame(maxWidth: .infinity, minHeight: 44)
+            } else if isUnavailable {
+                Notice("Sharing isn't switched on in this copy of Bagged. Your list is safe on "
+                       + "this phone.", on: .paper)
             } else if let message = store.message {
                 Notice(message, on: .paper)
             } else {
@@ -61,6 +66,11 @@ struct InviteSheet: View {
         .sheet(isPresented: $isNaming) {
             NameKitchenSheet(store: store) { Task { await store.refreshInvite() } }
         }
+        // Sign-in is a step of THIS moment (the owner's kitchen has to outlive the phone),
+        // which is why it lives here and never in front of the list.
+        .sheet(isPresented: $isSigningIn) {
+            SignInScreen(store: store) { Task { await prepare() } }
+        }
         .task { await prepare() }
         .onDisappear { store.forgetInvite() }
     }
@@ -73,9 +83,10 @@ struct InviteSheet: View {
             if store.inviteURL == nil { await store.refreshInvite() }
         case .name:
             isNaming = true
-        case .signIn, .unavailable:
-            // Both are somebody else's screen: the caller routes, this sheet says nothing false.
-            break
+        case .signIn:
+            isSigningIn = true
+        case .unavailable:
+            isUnavailable = true
         }
     }
 
