@@ -221,3 +221,12 @@ exactly the pre-W10-P1 behaviour. Then ran the suite. Result, per the ticket's l
 - V4b's two open findings (a signed-in joiner classified `.owner` when the roster read fails, and
   the unclamped wall-clock grace window) were read and left alone: both are recorded as wave-11
   packets with rulings already written, and neither is a mechanical fix.
+
+**2026-08-17 · terminal · The screens panel rendered (V9/W10's `ScreensPanel`, never seen).**
+`ScreensPanelUITests` reaches it the way a tester would — You → About → "Open a screen directly" —
+and it holds up: the entry disclaims itself in its own subtitle ("For testing. Not part of the
+app."), the panel repeats it at the top, and every row that cannot work yet is greyed with the
+REASON rather than left to fail ("Put something on the list first", "Add a shop first",
+"Nothing named yet: add an item or record a price first"). The test pins the disclaimer, so the
+panel cannot quietly start looking like a feature. Screenshot `design/built/33-screens-panel.png`.
+Full sweep after: BaggedTests 284/284 · WidgetTests 23/23 · UI **12/12** · packages 59/57/69/89.
