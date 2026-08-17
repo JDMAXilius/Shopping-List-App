@@ -178,6 +178,15 @@ an organization (`OPS.md` §3).*
 
 - ❓ **Quantity placement in the list row** — the chip truncates long names, and it collides with the Dynamic Type requirement
 - ❓ **Which 100 items get photos first** — the frequency ranking doesn't exist yet
+- ❓ **Is Plus a person or a household?** Found by W10-P2 arguing against itself. Entitlement is
+  keyed on `user_id`, so a guest in a kitchen whose owner pays is still told "More than one shop is
+  part of Plus. You joined this kitchen, so the list, its prices and sharing stay yours — free,
+  forever." That sentence is true and it is also slightly absurd when the household has already
+  bought the thing. PRODUCT §6 says joiners are free forever, which settles the *free tier* and says
+  nothing about whether a paid kitchen's Plus reaches the people in it. Deciding "household" means a
+  server-side entitlement lookup through kitchen membership and a rule for what happens when the
+  payer leaves; deciding "person" means the current behaviour is correct and only the copy might
+  need softening. **Decide before the paywall goes live, not after someone asks support.**
 - ❓ Opt-in anonymous price pooling between households
 - ❓ Opt-in reporting of unmatched search terms
 - ❓ Whether the operating entity is Brazilian, which decides the privacy-policy scope

@@ -117,6 +117,15 @@ key is committed and none should be — but it means the entire purchase path is
 the dependency is a deliberate act (`project.yml` `packages:`), and it should happen at the same
 time as the account and the products, not before.
 
+**One thing must land in the same change as the SDK, or it is a live bug about someone's money.**
+`purchase()` sets `isPlus` locally the instant StoreKit succeeds, but the server's `is_plus` only
+moves when the RevenueCat webhook fires — so an entitlement read in that window would revoke Plus
+from someone who paid seconds ago. A 15-minute local-purchase grace period holds that door shut
+today. **The ruling for when the SDK arrives: `isPlus` belongs to RevenueCat's customer info —
+StoreKit-backed, works offline — and the server read is reduced to the quota (`scans_used`), which
+is the only half the server owns.** That dissolves the race instead of timing it. Do it as part of
+adding the dependency, not afterwards.
+
 ## 9. Entitlement reaches a device ONLY by scanning on it
 
 Found by W9-P7 arguing against its own work, and it is a correctness gap that has to close
@@ -138,7 +147,28 @@ customer-info sync once the SDK is in the binary. **Do not ship a purchase witho
 someone who has paid being shown a sales card is the worst version of this app's honesty problem,
 because it is about their money.
 
-- [ ] An entitlement refresh that works without scanning
+- [x] **An entitlement refresh that works without scanning** — W10-P2, 2026-08-17. `GET
+      /rest/v1/entitlement` behind the existing `KitchenBackend` seam, read on launch, on every
+      foreground and after a join. Three answers, not two: a found row, an absent row (a user who
+      has never scanned has none, and the server would grant them three), and unavailable — which
+      writes nothing, because a network fact is never an entitlement fact.
+- [ ] **Still open, and it is the second bullet above: a guest in a household whose owner pays.**
+      Entitlement is keyed on `user_id`, so a guest reads their own absent row no matter what the
+      owner bought. Closing it needs an entitlement lookup **through kitchen membership** on the
+      server — and first a product ruling on whether Plus is a person or a household, which is now
+      in `DECISIONS.md` → "Still genuinely open".
+- [ ] **Verify it on a device.** Nothing proves the wiring: every build in this repo has no
+      `SupabaseURL`, so the reader is nil and the refresh is a no-op, and no unit test can reach
+      `scenePhase`. The check is three steps and belongs on TestFlight — buy on device one,
+      foreground device two signed in as the same account, watch the sales card go.
+
+Two limits of that fix, both deliberate and both written into the code rather than left to be
+rediscovered: it only works **between devices signed in as the same user** (an anonymous session
+has its own user id, so entitlement genuinely cannot travel for a device that has never signed in),
+and **`isPlus` will belong to RevenueCat, not to this read, the moment the SDK lands** — the server
+owns the quota, StoreKit owns whether someone paid. Until then a local purchase wins for 15 minutes
+so that a foreground read cannot revoke Plus from someone who paid seconds ago while the webhook is
+still in flight.
 
 ## 10. The screens panel must leave the binary before submission
 
