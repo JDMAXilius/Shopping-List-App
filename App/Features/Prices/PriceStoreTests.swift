@@ -214,11 +214,12 @@ final class PriceStoreTests: XCTestCase {
             observations: [observation(400, shopA, now, quantity: 1)],
             receipts: [receipt(1_000, shopA, now)],
             shops: shops, catalog: catalog, currencyCode: "USD", now: now)
-        // The sentence stopped naming causes it cannot separate (f945ce9): observations carry
-        // no quantity, so "tax, deposits, fees" was a claim the month screen could not back.
+        // W9-P2 (da503a8) restored the causes WITH the backing: quantities exist on every
+        // matched price here (uncounted == 0), so naming tax/deposits/fees is now a claim
+        // the month screen can stand behind.
         XCTAssertEqual(short.coverageText,
-                       "$4.00 of the $10.00 is matched to individual items. The rest is "
-                       + "everything a single item's price can't account for.")
+                       "$4.00 of the $10.00 is matched to items. The rest is tax, deposits, "
+                       + "fees and lines nothing could be matched to.")
 
         // Prices recorded by hand can exceed the receipts. That is not tax — say the truth.
         let over = PriceDerivation.month(
@@ -494,8 +495,8 @@ extension PriceStoreTests {
     func testACentOfRoundingIsNotCalledMoneyRecordedWithoutAReceipt() {
         let paid = PaidSummary([ReceiptTotal(printedOnReceipt: Money(minorUnits: 399))],
                                in: "August", currencyCode: "USD")
-        let matched = PriceSummary([PriceLine(PriceDisplay(amount: Money(minorUnits: 200),
-                                                           confidence: .trusted), quantity: 2)])
+        let matched = PriceSummary([PriceDisplay(amount: Money(minorUnits: 200),
+                                                 confidence: .trusted).line(quantity: 2)])
         let sentence = PriceDerivation.coverage(paid: paid, matched: matched, uncounted: 0)
         XCTAssertTrue(sentence.contains("give or take the rounding"), sentence)
         XCTAssertFalse(sentence.contains("without a receipt"), sentence)
@@ -506,8 +507,8 @@ extension PriceStoreTests {
     func testMoneyWellAboveTheReceiptsIsStillNamedAsSuch() {
         let paid = PaidSummary([ReceiptTotal(printedOnReceipt: Money(minorUnits: 399))],
                                in: "August", currencyCode: "USD")
-        let matched = PriceSummary([PriceLine(PriceDisplay(amount: Money(minorUnits: 900),
-                                                           confidence: .trusted), quantity: 1)])
+        let matched = PriceSummary([PriceDisplay(amount: Money(minorUnits: 900),
+                                                 confidence: .trusted).line(quantity: 1)])
         let sentence = PriceDerivation.coverage(paid: paid, matched: matched, uncounted: 0)
         XCTAssertFalse(sentence.contains("give or take"), sentence)
     }
