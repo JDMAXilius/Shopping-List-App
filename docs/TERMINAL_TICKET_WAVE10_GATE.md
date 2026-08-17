@@ -1,5 +1,6 @@
 # TERMINAL_TICKET_WAVE10_GATE — three debts, two of them never compiled
 
+> STATUS: in-progress — terminal 2026-08-17 (34ee018)
 > STATUS: open — written by cloud 2026-08-17.
 > Same operating mode and honesty laws as `TERMINAL_TICKET_GATE_AUTOPILOT.md`. Founder is away.
 > Do not ask questions. Do not stop.
