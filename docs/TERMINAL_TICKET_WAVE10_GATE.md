@@ -36,7 +36,7 @@ endpoint. That is not a thing to work around; it is why this ticket exists.
 - [x] The full ladder with real counts, against V8's last numbers (DesignKit 89 · BaggedTests 252 ·
       WidgetTests 23 · UI 10). BaggedTests should rise by roughly 19 (16 from W10-P2, 3 from the
       sync sentence) **plus** the 9 from V9's panel if those are still not in the bundle.
-- [ ] The RLS suite: `sections 1-20 pass`, final notice exactly
+- [x] The RLS suite: `sections 1-20 pass`, final notice exactly
       `ALL RLS TESTS PASSED (including seq commit-ordering, invites and account deletion)`.
       It now runs on any cluster, not just one on libpq's default socket — see the note at the end.
 
@@ -178,3 +178,19 @@ exactly the pre-W10-P1 behaviour. Then ran the suite. Result, per the ticket's l
 - The three sentence tests: reverting `SyncCoordinator` to `140225c~1` does not compile
   `KitchenStoreTests` (`SyncCoordinator.sentence` did not exist as a static then), so those three
   are compile-blocked rather than behaviourally provable. Recorded as such rather than claimed.
+
+**2026-08-17 · terminal · V1 closed — the RLS suite including account deletion, on real Postgres.**
+- Fresh database, shim, 0001, 0002, **0003_delete_account**, then the suite, on Postgres 17.11:
+  **all 20 sections pass**, final notice exactly
+  `ALL RLS TESTS PASSED (including seq commit-ordering, invites and account deletion)`.
+  The deletion sections are the interesting ones and they all hold: a solo kitchen and everything
+  attached to it goes while a bystander is untouched (15); a shared kitchen SURVIVES and the
+  longest-standing member inherits usable ownership (16); no id to spoof, anon refused (17); one
+  call across three kitchens gives three different correct outcomes (18); identical `joined_at`
+  promotes exactly one, deterministically (19); replay is an all-zero no-op and the last-owner
+  guard is still armed (20).
+- `deno check delete-account/index.ts` passes — the function W10-P3 left unrun now at least
+  type-checks; join-kitchen, revenuecat-webhook and scan-receipt still check, and
+  `deno test scan-receipt/` is **27/27**.
+- Not claimed: the function has still never served a request. That needs a deployed project
+  (FOUNDER_BLOCKERS item 1).
