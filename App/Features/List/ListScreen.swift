@@ -59,23 +59,14 @@ struct ListScreen: View {
         .padding(.top, 8)
     }
 
+    // DesignKit's Chip, not a hand-composed copy (W8 ruling): the copy truncated the shop
+    // name at AX sizes, and which shop's prices are quoted is the one fact every price on
+    // this screen depends on. Chip wraps by contract.
     private var shopChip: some View {
-        Button { sheet = .shopSwitcher } label: {
-            HStack(spacing: 6) {
-                Text(store.activeShop?.name ?? "Pick a shop")
-                    .font(Typography.body)
-                    .foregroundStyle(Palette.ink.color)
-                    .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.system(.footnote, weight: .semibold))
-                    .foregroundStyle(Palette.muted.color)
-            }
-            .padding(.horizontal, 14)
-            .frame(minHeight: 44)
-            .background(capsuleSurface)
+        Chip(store.activeShop?.name ?? "Pick a shop", on: .paper, opensPicker: true,
+             accessibilityLabel: "Shopping at \(store.activeShop?.name ?? "no shop yet"). Change shop.") {
+            sheet = .shopSwitcher
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Shopping at \(store.activeShop?.name ?? "no shop yet"). Change shop.")
     }
 
     private var isOffline: Bool { store.syncStatus == .offline || store.syncStatus == .stuck }
