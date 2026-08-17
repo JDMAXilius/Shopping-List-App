@@ -321,6 +321,44 @@ final class KitchenStoreTests: XCTestCase {
         XCTAssertFalse(coordinator.isSharing)
         XCTAssertEqual(coordinator.sentence, "On this phone only.")
     }
+
+    /// W10-P1 gave the engine a state nothing was being attempted for. Until this, the screen
+    /// answered "Still trying to reach your kitchen." over edits that would never be tried again —
+    /// a sentence that is false in the one situation where a person most needs a true one.
+    func testAScreenNeverSaysItIsStillTryingOverAChangeNothingWillRetry() {
+        let sentence = SyncCoordinator.sentence(status: .stuck, pending: 0, refused: 3)
+
+        XCTAssertFalse(sentence.contains("Still trying"), sentence)
+        XCTAssertEqual(sentence, "3 changes your kitchen wouldn't take. They're safe on this phone.")
+    }
+
+    func testARefusedChangeIsCountedApartFromOneStillQueued() {
+        XCTAssertEqual(SyncCoordinator.sentence(status: .stuck, pending: 2, refused: 1),
+                       "1 change your kitchen wouldn't take. It's safe on this phone. "
+                           + "2 changes still to send.")
+        // Nothing refused: the old sentence is still the right one, because something IS being
+        // tried — that is the whole difference between the two states.
+        XCTAssertEqual(SyncCoordinator.sentence(status: .stuck, pending: 0, refused: 0),
+                       "Still trying to reach your kitchen.")
+    }
+
+    /// Every sentence with a number in it, read out loud. "1 change haven't sent yet" was shipped.
+    func testTheSingularReadsLikeEnglish() {
+        for status in [SyncStatus.offline, .stuck] {
+            for (pending, refused) in [(1, 0), (1, 1), (0, 1)] {
+                let sentence = SyncCoordinator.sentence(status: status, pending: pending,
+                                                        refused: refused)
+                XCTAssertFalse(sentence.contains("1 changes"), sentence)
+                XCTAssertFalse(sentence.contains("1 change haven't"), sentence)
+                XCTAssertFalse(sentence.contains("changes hasn't"), sentence)
+            }
+        }
+        // The offline singular is already good English and stays exactly as it was.
+        XCTAssertEqual(SyncCoordinator.sentence(status: .offline, pending: 1, refused: 0),
+                       "No signal — 1 change will send when it's back.")
+        XCTAssertEqual(SyncCoordinator.sentence(status: .stuck, pending: 1, refused: 0),
+                       "1 change hasn't sent yet. It's safe on this phone.")
+    }
 }
 
 final class KitchenLinkTests: XCTestCase {

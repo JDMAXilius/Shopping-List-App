@@ -22,6 +22,10 @@ final class SyncCoordinator {
     private(set) var status: SyncStatus = .local
     /// Ops this kitchen still owes the server. A queue that has not drained is not "synced".
     private(set) var pending = 0
+    /// Ops the server REFUSED and the engine is holding. Separate from `pending` because nothing
+    /// is being attempted for them: folding the two together is how a screen ends up saying it is
+    /// still trying over an edit nothing will ever retry.
+    private(set) var refused = 0
 
     init(repository: Repository?, kitchenID: KitchenID?, transport: (any SyncTransport)?) {
         guard let repository, let kitchenID, let transport else {
@@ -36,6 +40,13 @@ final class SyncCoordinator {
     /// What a screen can say without inventing a state. Never "failed": an offline phone with
     /// a queue is a phone that is working exactly as designed.
     var sentence: String {
+        SyncCoordinator.sentence(status: status, pending: pending, refused: refused)
+    }
+
+    /// A pure function of the three numbers, so every sentence this app says about sync can be
+    /// tested without a database, a server or a running app — the instance property is only the
+    /// three current values passed in.
+    static func sentence(status: SyncStatus, pending: Int, refused: Int) -> String {
         switch status {
         case .local: return "On this phone only."
         case .syncing: return "Catching up…"
@@ -43,13 +54,30 @@ final class SyncCoordinator {
         case .offline:
             return pending == 0
                 ? "No signal — everything still works."
-                : "No signal — \(pending) change\(pending == 1 ? "" : "s") will send when it's back."
+                : "No signal — \(SyncCoordinator.count(pending)) will send when it's back."
         case .stuck:
+            // A refused change is not a change that is still being tried, so "still trying" is a
+            // lie the moment one exists. The phone does not know WHY the kitchen refused it — an
+            // eviction and a broken session look identical from here — so it says the two things
+            // it does know: the kitchen would not take them, and they are still here.
+            if refused > 0 {
+                let held = "\(SyncCoordinator.count(refused)) your kitchen wouldn't take"
+                let safe = refused == 1 ? "It's safe on this phone." : "They're safe on this phone."
+                return pending == 0
+                    ? "\(held). \(safe)"
+                    : "\(held). \(safe) \(SyncCoordinator.count(pending)) still to send."
+            }
             return pending == 0
                 ? "Still trying to reach your kitchen."
-                : "\(pending) change\(pending == 1 ? "" : "s") haven't sent yet. They're safe on this phone."
+                : "\(SyncCoordinator.count(pending)) \(pending == 1 ? "hasn't" : "haven't") sent yet. "
+                    + "\(pending == 1 ? "It's" : "They're") safe on this phone."
         }
     }
+
+    /// "1 change" / "3 changes". Its own function because the singular used to be read out with a
+    /// plural verb — "1 change haven't sent yet" — which is the kind of thing that makes a person
+    /// distrust the number beside it.
+    static func count(_ n: Int) -> String { "\(n) change\(n == 1 ? "" : "s")" }
 
     /// Called on foreground, after a local write, and on the poll. Cheap when there is nothing
     /// to do: the engine's own backoff window makes an early kick a no-op.
@@ -79,5 +107,6 @@ final class SyncCoordinator {
     private func adopt(from engine: SyncEngine) async {
         status = await engine.status
         pending = await engine.pending
+        refused = await engine.refused
     }
 }
