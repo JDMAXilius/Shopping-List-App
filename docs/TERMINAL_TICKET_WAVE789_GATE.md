@@ -348,6 +348,26 @@ the method that has now found four bugs nothing else caught:
   tests fail — they assert on layout-sensitive controls. `simctl ui booted content_size medium`
   resets it.)
 
+**2026-08-17 · terminal · Two more paths executed for the first time: the export, and the month chart.**
+- **CSV export had never been run.** `ExportUITests` now drives it on real content: two items on
+  the list → You → Data & privacy → "Export everything (CSV)". The screen answers **"3 files
+  ready — share or save"**, and the files are really on disk in the app container. Contents
+  checked by hand against what the copy promises:
+  `bagged-list.csv` carries both rows with their catalog units (`Butter,1,250 g,…`),
+  `bagged-prices.csv` and `bagged-receipts.csv` carry their headers with no rows (nothing was
+  priced), every amount column is `amount_minor` + `minor_unit_exponent` so nothing is rounded
+  on the way out, and the `quantity` column is BLANK rather than 1 — exactly the v6 promise
+  ("a count nobody recorded is left blank"). Screenshot `design/built/32-export-ready.png`.
+- **Month spend re-checked after W8-P5 and W9-P2 changed the money rules**, and the screen is
+  honest end to end: no receipts → `—` with "No receipts captured in August, so there is no
+  total to state", the coverage line says the prices were recorded by hand, and "How real is
+  this? 0 of 1 matched price came from a receipt".
+  One defect found and fixed: the aisle breakdown pinned its label to a fixed 92pt with
+  `lineLimit(1)`, so **"Dairy & Eggs" rendered as "Dairy & Eg…"** — an aisle the reader has to
+  guess at, while the bar beside it had slack. The column stays fixed (that alignment is what
+  makes the bars readable as a chart) and the label now takes two lines, wrapped at the word.
+- DesignKit component snapshot coverage confirmed complete: every component in
+  `Components/` has a reference except `OptionalFocus`, which is a helper, not a view.
 ---
 
 ### V9 — The screens panel, and one trap in how it arrives (cloud, 2026-08-17)
