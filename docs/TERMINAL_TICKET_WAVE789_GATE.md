@@ -72,7 +72,7 @@ install that runs v5 and then dies before v6 commits will claim to be v6 while h
 and the widget and the intents both trust that number to decide whether they may write. **Change it
 to a literal `5` when you are in that file**, and log it.
 
-- [ ] v3 → **v6** upgrade in place, with real data, verified
+- [x] v3 → **v6** upgrade in place, with real data, verified
 - [x] `user_version` pragma in v5 changed to a literal — **done by cloud**, and
       `MigrationTests` now asserts a database stopped at v5 reads 5
 
@@ -239,3 +239,17 @@ names short); product_name_en exists and is selectable. Working V2 next.
   lock screen will mis-tap. My eyes say the honest fix is the ticket's own suggestion: two rows
   on `accessoryRectangular`, ~36pt each. That is a design change, not a mechanical fix —
 > HANDOFF → cloud: rule on 3 rows @ ~24pt vs 2 rows @ ~36pt for the lock-screen tile.
+
+**2026-08-16 · terminal · v6 gated: the old ops still mean what they meant, proven on a real database.**
+- The same real v3 seed database (old-tree Repository, a genuine pre-quantity `.price` op)
+  planted and migrated in place by this build: `user_version` **6**, and the pre-v6 observation
+  reads `amount_minor=350, quantity_milli=NULL` — no silent default, still exactly one unit.
+  On screen: identical to the v5 run — Milk ×4 at $3.50, $14.00 subtotal, ≈ $14.00 total.
+- Two mechanical fixes on W9-P2's never-compiled tests: `PriceLine(_:quantity:)` is internal by
+  design (a line is made solely by `PriceDisplay.line(quantity:)`) — calls rewritten to the
+  sanctioned API, values untouched. And the coverage-sentence expectation moved forward again:
+  W9-P2 restored "tax, deposits, fees" WITH the backing (`uncounted == 0` guard), so the
+  sentence I had aligned to f945ce9's cause-free wording is superseded; expectation now pins
+  the guarded causes sentence, citation in place.
+- Full sweep after the merge: Core 59/59 · Data 41/41 · BaggedTests 171/171 · WidgetTests 23/23
+  · UI 9/9. TEST SUCCEEDED.
