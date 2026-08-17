@@ -451,7 +451,11 @@ final class KitchenClientEntitlementTests: XCTestCase {
         let read = await harness.client.entitlement()
 
         XCTAssertEqual(read, .found(isPlus: true, scansUsed: 3))
-        let request = try XCTUnwrap(await harness.http.requests.last)
+        // Hoisted, not inlined: XCTUnwrap takes an @autoclosure that is not async, so an await
+        // inside it does not compile — and one file that does not compile takes the whole test
+        // target with it, including every test that would have caught something.
+        let requests = await harness.http.requests
+        let request = try XCTUnwrap(requests.last)
         XCTAssertEqual(request.method, "GET")
         XCTAssertEqual(request.url.path, "/rest/v1/entitlement")
         XCTAssertEqual(request.headers["authorization"], "Bearer jwt-abc")

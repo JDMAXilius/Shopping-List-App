@@ -273,7 +273,10 @@ final class SubscriptionStoreTests: XCTestCase {
         XCTAssertEqual(store.scansUsed, 2)
     }
 
-    func testAnAbsentRowIsFreeWithNoScansUsedAndIsNotAFailedRead() async throws {
+    /// The expectation here was inverted on purpose after W10-P2-REFUTE: it used to assert that an
+    /// absent row takes Plus away, which was the P1. A row that is not there is the server saying
+    /// it has never heard of this user — not a statement that they are not Plus.
+    func testAnAbsentRowSetsTheQuotaAndNeverTakesPlusAway() async throws {
         let absent = try makeStore(entitlement: { .absent })
         let failed = try makeStore(entitlement: { .unavailable })
         for store in [absent, failed] { store.record(try scanned(isPlus: true, scansUsed: 3)) }
@@ -282,13 +285,72 @@ final class SubscriptionStoreTests: XCTestCase {
         await failed.refreshEntitlement()
 
         // `consume_scan` creates the row lazily, so no row is a user the server would give three
-        // free scans to — a real answer, and the app says the same thing.
-        XCTAssertFalse(absent.isPlus)
+        // free scans to. The quota is the server's and it is written.
         XCTAssertEqual(absent.scansUsed, 0)
         XCTAssertEqual(absent.freeScansLeft, 3)
-        // The same shape of answer with the opposite permission to write.
+        // The money is not. A purchase made before signing in is attributed to a RevenueCat alias
+        // the webhook skips, so no row is ever written — and this line used to take Plus from
+        // someone who had paid, then offer to sell it to her again. A genuine lapse cannot arrive
+        // this way: both consume_scan and apply_entitlement_event CREATE the row first.
+        XCTAssertTrue(absent.isPlus, "an absent row revoked Plus from a paying subscriber")
+        // The failed read still writes nothing at all, which is a different rule from this one.
         XCTAssertTrue(failed.isPlus)
         XCTAssertEqual(failed.scansUsed, 3)
+    }
+
+    /// The other side of it: absence must not INVENT Plus either. It only ever leaves it alone.
+    func testAnAbsentRowLeavesAFreeAccountFree() async throws {
+        let store = try makeStore(entitlement: { .absent })
+        store.record(try scanned(isPlus: false, scansUsed: 2))
+
+        await store.refreshEntitlement()
+
+        XCTAssertFalse(store.isPlus)
+        XCTAssertEqual(store.freeScansLeft, 3)
+    }
+
+    /// A lapse still has to work, and it arrives the only way a lapse can: as a row that says so.
+    func testALapseStillRevokesPlusBecauseItArrivesAsARowNotAsAnAbsence() async throws {
+        let store = try makeStore(entitlement: { .found(isPlus: false, scansUsed: 0) })
+        store.record(try scanned(isPlus: true, scansUsed: 0))
+
+        await store.refreshEntitlement()
+
+        XCTAssertFalse(store.isPlus, "a server that says false is still obeyed")
+    }
+
+    /// A foreground that arrives while a read is out used to be dropped on the floor — one slow
+    /// read swallowing the very foreground the packet exists to honour. Driven from inside the
+    /// reader, which is genuinely "while the first read is in flight" and needs no clock and no
+    /// second task to be deterministic.
+    func testAForegroundArrivingDuringAReadIsTakenAfterwardsRatherThanDropped() async throws {
+        let box = ReaderBox()
+        let store = try makeStore(entitlement: {
+            box.reads += 1
+            if box.reads == 1 { await box.store?.refreshEntitlement() }
+            return .absent
+        })
+        box.store = store
+
+        await store.refreshEntitlement()
+
+        XCTAssertEqual(box.reads, 2, "the foreground was swallowed by a read already in flight")
+    }
+
+    /// And it stops: the queued ask is cleared before the read it queued, so one re-entrant
+    /// foreground buys exactly one more read rather than a loop that never returns.
+    func testAQueuedForegroundDoesNotBecomeAnEndlessLoop() async throws {
+        let box = ReaderBox()
+        let store = try makeStore(entitlement: {
+            box.reads += 1
+            if box.reads <= 2 { await box.store?.refreshEntitlement() }
+            return .absent
+        })
+        box.store = store
+
+        await store.refreshEntitlement()
+
+        XCTAssertEqual(box.reads, 3, "each in-flight arrival buys one more read, not a cascade")
     }
 
     func testTheServersHigherScanCountWinsOverThisDevicesLowerOne() async throws {
@@ -506,4 +568,12 @@ final class SubscriptionStoreTests: XCTestCase {
         XCTAssertTrue(store.isPlus)
         XCTAssertEqual(store.gate(.priceHistory), .allowed)
     }
+}
+
+/// Lets a reader closure call back into the store it belongs to, which is how "a foreground
+/// arrived while a read was in flight" is reproduced without a clock or a second task.
+@MainActor
+private final class ReaderBox {
+    var reads = 0
+    var store: SubscriptionStore?
 }

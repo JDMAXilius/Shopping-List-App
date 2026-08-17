@@ -143,6 +143,9 @@ final class SubscriptionStore {
     /// One read at a time: launch and the first foreground can both fire, and the second of them
     /// would put an identical request on the wire for nothing.
     private var isReading = false
+    /// A foreground that arrived while a read was already out. It is not dropped: it is the next
+    /// read, taken as soon as the current one lands.
+    private var wantsAnotherRead = false
     /// Counts every write to entitlement state. A read that left before one of them is older
     /// than it, whatever the clock says — see `refreshEntitlement()`.
     private var writes = 0
@@ -231,11 +234,29 @@ final class SubscriptionStore {
     /// signed in with email or Apple — entitlement is per `user_id`, so an anonymous session on
     /// device two proves nothing.)
     func refreshEntitlement() async {
-        guard let readEntitlement, !isReading else { return }
+        guard let readEntitlement else { return }
+        // A second caller does not put an identical request on the wire — but it does not vanish
+        // either. It asks the reader in flight to go again when it lands, because the foreground
+        // it arrived on is exactly the moment a purchase made on another device must be honoured.
+        // Dropping it outright meant one slow read swallowed the next foreground entirely, which
+        // is the bug this whole packet exists to fix, reintroduced by its own guard.
+        guard !isReading else {
+            wantsAnotherRead = true
+            return
+        }
         isReading = true
+        defer { isReading = false }
+        // A loop rather than a spawned Task: the queued read is part of this call, so it has no
+        // lifetime of its own to reason about and a test can watch it happen without a clock.
+        repeat {
+            wantsAnotherRead = false
+            await readOnce(readEntitlement)
+        } while wantsAnotherRead
+    }
+
+    private func readOnce(_ readEntitlement: EntitlementReader) async {
         let before = writes
         let read = await readEntitlement()
-        isReading = false
         // A scan answered — or a purchase completed — while this read was in flight. That answer
         // is newer than this request, which left before it, so the read is dropped rather than
         // allowed to reverse it. This is what stops a spent free scan reappearing.
@@ -248,8 +269,18 @@ final class SubscriptionStore {
             apply(isPlus: keptPlus(serverSays: isPlus), scansUsed: scansUsed)
         case .absent:
             // No row is what a user who has never scanned looks like, and the server would grant
-            // them three scans. A real answer, so it is allowed to write.
-            apply(isPlus: keptPlus(serverSays: false), scansUsed: 0)
+            // them three scans — so the QUOTA is written. Plus is not: an absent row is the server
+            // saying it has never heard of this user, which is not the same statement as "this
+            // user is not Plus". Both `consume_scan` and `apply_entitlement_event` CREATE the row,
+            // so a genuine lapse always arrives as `.found(false)`; absence only ever means
+            // nothing has been attributed to this user id yet.
+            //
+            // Revoking on it was a P1 with a real chain behind it (W10-P2-REFUTE): a purchase made
+            // before signing in is attributed to a RevenueCat alias, the webhook skips any
+            // `app_user_id` that is not a uuid, no row is ever written — and then this line took
+            // Plus away from someone who had paid for it, and offered to sell it to her again.
+            // Absence of evidence is not evidence, least of all about someone's money.
+            apply(isPlus: isPlus, scansUsed: 0)
         case .unavailable:
             break
         }

@@ -11,7 +11,14 @@ final class AppSession {
     private(set) var list: ListStore?
     private(set) var prices: PriceStore?
     private(set) var kitchen: KitchenStore?
-    private(set) var subscription: SubscriptionStore?
+    /// ONE per process, and deliberately not rebuilt with the rest. Entitlement and the free-scan
+    /// quota belong to a USER, not to a kitchen — only `role` is per kitchen, and `adopt(_:)`
+    /// moves that. A second store over the same App Group defaults is how a read still in flight
+    /// against a discarded one writes its stale number back after the live one has moved on: the
+    /// `writes` guard that drops such a read is per instance, while the state it guards is shared.
+    /// Found by W10-P2-REFUTE, which traced it to a spent free scan reappearing and to a purchase
+    /// being undone at the next launch.
+    let subscription: SubscriptionStore
     private(set) var sync: SyncCoordinator?
     private(set) var kitchenID: KitchenID?
     private(set) var catalog: ListCatalog
@@ -30,6 +37,14 @@ final class AppSession {
         catalog = opened?.catalog ?? ListCatalog()
         services = KitchenServices.make()
         scanBackend = AppSession.makeScanBackend(auth: services?.auth)
+        // Entitlement reaches this device by being asked for, not only by scanning on it. The read
+        // goes through `KitchenBackend` like every other server call; the store is handed a
+        // closure, so nothing about Supabase reaches it. Built here — before the guard — because
+        // a phone with no database still has a person with a subscription.
+        subscription = SubscriptionStore(defaults: .appGroup(),
+                                         entitlement: { [backend = services?.backend] in
+                                             await backend?.entitlement() ?? .unavailable
+                                         })
         guard let repository, let opened else { return }
         adopt(opened.kitchen)
         // Arriving switches the list to that shop so the prices and the walk are already right.
@@ -38,10 +53,8 @@ final class AppSession {
         kitchen = KitchenStore(repository: repository, kitchen: opened.kitchen,
                                backend: services?.backend,
                                onKitchenChange: { [weak self] id in self?.rebuild(id) },
-                               // Read at the moment of sign-out, not captured: `adopt` replaces
-                               // the store whenever the kitchen changes.
-                               onSignOut: { [weak self] in
-                                   self?.subscription?.forgetEntitlement()
+                               onSignOut: { [subscription] in
+                                   subscription.forgetEntitlement()
                                })
     }
 
@@ -57,13 +70,6 @@ final class AppSession {
         kitchenID = kitchen.id
         sync = SyncCoordinator(repository: repository, kitchenID: kitchen.id,
                                transport: services?.transport)
-        // Entitlement reaches this device by being asked for, not only by scanning on it. The
-        // read goes through `KitchenBackend` like every other server call; the store is handed a
-        // closure, so nothing about Supabase reaches it.
-        subscription = SubscriptionStore(defaults: .appGroup(),
-                                         entitlement: { [backend = self.services?.backend] in
-                                             await backend?.entitlement() ?? .unavailable
-                                         })
     }
 
     private func rebuild(_ kitchenID: KitchenID) {
@@ -75,10 +81,10 @@ final class AppSession {
         sync?.kick()
         // A joiner is never paywalled: sharing is the growth loop, and the owner already paid.
         // Only a known answer moves the role; RootView adopts again when the roster lands.
-        if let isGuest = self.kitchen?.isGuest { subscription?.adopt(isGuest ? .guest : .owner) }
+        if let isGuest = self.kitchen?.isGuest { subscription.adopt(isGuest ? .guest : .owner) }
         // Joining signs this phone in as a different user, so the cached entitlement may not be
         // this user's at all. Asked now rather than at the next foreground.
-        Task { [store = self.subscription] in await store?.refreshEntitlement() }
+        Task { [subscription] in await subscription.refreshEntitlement() }
     }
 
     private static func open()
