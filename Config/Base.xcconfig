@@ -1,5 +1,6 @@
 // Committed base config. Real values live in Secrets.xcconfig (gitignored) —
 // copy Secrets.xcconfig.template beside it and fill it in.
 SCAN_RECEIPT_ENDPOINT =
+SUPABASE_URL =
 SUPABASE_ANON_KEY =
 #include? "Secrets.xcconfig"
