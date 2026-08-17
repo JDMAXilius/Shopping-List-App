@@ -45,7 +45,8 @@ final class MigrationTests: XCTestCase {
             try Row.fetchAll(db, sql: "PRAGMA table_info(op)").map { $0["name"] as String }
         }
         XCTAssertEqual(Set(opColumns), ["op_id", "kitchen_id", "device_id", "clock", "wall_clock",
-                                        "type", "payload", "origin", "pushed_at"])
+                                        "type", "payload", "origin", "pushed_at",
+                                        "quarantined_at", "quarantine_count"])
     }
 
     func testPendingScanAndAliasArriveInV2() throws {
@@ -266,7 +267,57 @@ extension MigrationTests {
             XCTAssertFalse(columns.contains("wake_enabled"))
             XCTAssertTrue(columns.contains("name"))
         }
-        XCTAssertEqual(try database.installedSchemaVersion(), 7)
-        XCTAssertEqual(AppDatabase.schemaVersion, 7)
+        XCTAssertEqual(try database.installedSchemaVersion(), AppDatabase.schemaVersion,
+                       "a fully migrated database stamps the version it actually has")
+    }
+
+    /// W10 RULING 1: an op the server refuses permanently leaves the queue and NOTHING else —
+    /// the row, the payload and the NULL pushed_at all stay, because "pushed" would lose an edit
+    /// the household made and a queued refusal wedges every op behind it.
+    func testTheQuarantineColumnsArriveInV8AndQuarantineNoExistingOp() throws {
+        let database = try makeDatabase()
+        try Migrations.migrator.migrate(database.pool, upTo: "v7")
+        XCTAssertEqual(try database.installedSchemaVersion(), 7,
+                       "a database stopped at v7 must not claim to be v8")
+        let opID = UUID().uuidString
+        try database.pool.write { db in
+            try db.execute(sql: """
+                INSERT INTO op (op_id, kitchen_id, device_id, clock, wall_clock, type, payload, \
+                origin, pushed_at) \
+                VALUES (?, ?, ?, 4, 1755300000000, 'add', '{"name":"Milk"}', 'local', NULL)
+                """, arguments: [opID, UUID().uuidString, UUID().uuidString])
+        }
+
+        try database.migrate()
+
+        XCTAssertEqual(try database.installedSchemaVersion(), AppDatabase.schemaVersion)
+        let columns = try database.pool.read { db in
+            try Row.fetchAll(db, sql: "PRAGMA table_info(op)")
+        }
+        let held = try XCTUnwrap(columns.first { ($0["name"] as String) == "quarantined_at" })
+        XCTAssertEqual(held["notnull"] as Int, 0, "an op nobody refused has no date")
+        XCTAssertNil(held["dflt_value"] as String?,
+                     "a default here would quarantine the entire existing log")
+        let count = try XCTUnwrap(columns.first { ($0["name"] as String) == "quarantine_count" })
+        XCTAssertEqual(count["notnull"] as Int, 1)
+        XCTAssertEqual(count["dflt_value"] as String?, "0", "nobody has refused these ops yet")
+
+        let rows = try database.pool.read { db in try Row.fetchAll(db, sql: "SELECT * FROM op") }
+        let row = try XCTUnwrap(rows.first)
+        XCTAssertEqual(rows.count, 1, "the v7 → v8 upgrade preserves the op log")
+        XCTAssertEqual(row["op_id"] as String, opID)
+        XCTAssertEqual(row["payload"] as String, #"{"name":"Milk"}"#, "the edit is untouched")
+        XCTAssertNil(row["pushed_at"] as Int64?, "and it is still owed to the server")
+        XCTAssertNil(row["quarantined_at"] as Int64?)
+        XCTAssertEqual(row["quarantine_count"] as Int, 0)
+
+        // The queue predicate `unpushedOps()` uses: an existing op is still pushable after v8.
+        let queued = try database.pool.read { db in
+            try Int.fetchOne(db, sql: """
+                SELECT COUNT(*) FROM op \
+                WHERE origin = 'local' AND pushed_at IS NULL AND quarantined_at IS NULL
+                """)
+        }
+        XCTAssertEqual(queued, 1)
     }
 }

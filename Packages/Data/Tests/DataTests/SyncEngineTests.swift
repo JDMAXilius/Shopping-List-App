@@ -202,6 +202,208 @@ final class SyncEngineTests: XCTestCase {
         XCTAssertEqual(drained, 0)
     }
 
+    // MARK: - Quarantine (W10: a 403 was a poison pill)
+
+    /// THE bug. RLS refuses a whole batch with 42501 → 403 when this device's session is no longer
+    /// a member, and before quarantine those ops stayed unpushed forever with every later op
+    /// queued behind them: one refusal and the kitchen stopped syncing for good.
+    func testARefusedOpDoesNotBlockAnOpMadeAfterIt() async throws {
+        let transport = FakeTransport()
+        let (_, repository) = try makeStack()
+        let refused = try repository.append(.add(ListItem(name: "Milk")), kitchenID: kitchenID)
+        await transport.setRefusedOpIDs([refused.opID])
+        let clock = FakeClock()
+        let engine = SyncEngine(repository: repository, transport: transport,
+                                kitchenID: kitchenID, now: { clock.now })
+
+        await engine.kick()
+        let afterRefusal = await transport.storedOps
+        XCTAssertTrue(afterRefusal.isEmpty, "the server took nothing")
+
+        let later = try repository.append(.add(ListItem(name: "Eggs")), kitchenID: kitchenID)
+        await engine.kick()
+
+        let stored = await transport.storedOps
+        XCTAssertEqual(stored.map(\.opID), [later.opID],
+                       "the op made after the refusal reaches the server")
+        XCTAssertTrue(try repository.unpushedOps().isEmpty, "and the queue drained")
+    }
+
+    /// RULING 1: quarantine, never discard. Marking a refused op pushed would lose a real edit —
+    /// the one outcome worse than the wedge.
+    func testAQuarantinedOpIsStillInTheDatabaseWithItsPayload() async throws {
+        let transport = FakeTransport()
+        let (database, repository) = try makeStack()
+        let refused = try repository.append(.add(ListItem(name: "Sourdough")), kitchenID: kitchenID)
+        await transport.setRefusedOpIDs([refused.opID])
+        let engine = SyncEngine(repository: repository, transport: transport, kitchenID: kitchenID)
+
+        await engine.kick()
+
+        let held = try repository.quarantinedOps(kitchenID: kitchenID)
+        XCTAssertEqual(held, [refused], "the refused op is still here, byte for byte")
+        let pushedAt = try database.pool.read { db in
+            try Int64.fetchOne(db, sql: "SELECT pushed_at FROM op WHERE op_id = ?",
+                               arguments: [refused.opID.rawValue.uuidString])
+        }
+        XCTAssertNil(pushedAt, "nobody accepted it, so nothing may say they did")
+        XCTAssertEqual(try repository.items().map(\.name), ["Sourdough"],
+                       "and the household's own list never lost the edit")
+    }
+
+    /// RULING 6: "synced" must never be shown while anything is quarantined — not even after a
+    /// later op has drained cleanly and the queue is empty.
+    func testStatusIsNeverSyncedWhileAnythingIsQuarantined() async throws {
+        let transport = FakeTransport()
+        let (_, repository) = try makeStack()
+        let refused = try repository.append(.add(ListItem(name: "Rice")), kitchenID: kitchenID)
+        await transport.setRefusedOpIDs([refused.opID])
+        let engine = SyncEngine(repository: repository, transport: transport, kitchenID: kitchenID)
+
+        await engine.kick()
+        let afterRefusal = await engine.status
+        XCTAssertEqual(afterRefusal, .stuck, "a refusal nothing retries is not an outage")
+
+        try repository.append(.add(ListItem(name: "Beans")), kitchenID: kitchenID)
+        await engine.kick()
+        let afterCleanDrain = await engine.status
+        XCTAssertEqual(afterCleanDrain, .stuck,
+                       "a queue that drained does not make the refused edit agreed")
+        XCTAssertTrue(try repository.unpushedOps().isEmpty)
+    }
+
+    /// RULING 5: the count is not allowed to lie. Quarantined ops are not pending — nothing is
+    /// being attempted for them — and they are not saved either, so they are their own number.
+    func testPendingExcludesQuarantinedOpsAndRefusedCountsThem() async throws {
+        let transport = FakeTransport()
+        let (_, repository) = try makeStack()
+        let refused = try repository.append(.add(ListItem(name: "Oats")), kitchenID: kitchenID)
+        try repository.append(.add(ListItem(name: "Tea")), kitchenID: kitchenID)
+        await transport.setRefusedOpIDs([refused.opID])
+        let engine = SyncEngine(repository: repository, transport: transport, kitchenID: kitchenID)
+
+        // Both ops travelled in one batch, and a 403 says nothing about which op offended.
+        await engine.kick()
+        let pendingAfterRefusal = await engine.pending
+        let refusedAfterRefusal = await engine.refused
+        XCTAssertEqual(pendingAfterRefusal, 0, "nothing is on its way")
+        XCTAssertEqual(refusedAfterRefusal, 2, "and both held ops are stated, not hidden")
+        XCTAssertEqual(try repository.unpushedOps().count, 0)
+        XCTAssertEqual(try repository.quarantinedOps(kitchenID: kitchenID).count, 2)
+
+        try repository.append(.add(ListItem(name: "Salt")), kitchenID: kitchenID)
+        await engine.kick()
+        let pending = await engine.pending
+        let stillRefused = await engine.refused
+        XCTAssertEqual(pending, 0, "the new op drained")
+        XCTAssertEqual(stillRefused, 2, "and the refused ones are still refused, still counted")
+    }
+
+    /// RULING: ordinary backoff is untouched. `unreachable`/`server`/`unauthenticated` all mean
+    /// "try again" — quarantining any of them would take an op out of a queue that still works.
+    func testRetryableFailuresQuarantineNothing() async throws {
+        let transport = FakeTransport()
+        let (_, repository) = try makeStack()
+        try repository.append(.add(ListItem(name: "Flour")), kitchenID: kitchenID)
+        let clock = FakeClock()
+        let engine = SyncEngine(repository: repository, transport: transport,
+                                kitchenID: kitchenID, now: { clock.now })
+
+        for error in [SupabaseTransportError.unreachable, .server(status: 502),
+                      .unauthenticated, .malformedResponse] {
+            await transport.setPushError(error)
+            await engine.kick()
+            let status = await engine.status
+            let refused = await engine.refused
+            let pending = await engine.pending
+            XCTAssertEqual(status, .offline, "\(error) is not a refusal")
+            XCTAssertEqual(refused, 0, "\(error) quarantines nothing")
+            XCTAssertEqual(pending, 1, "\(error) leaves the op in the queue")
+            XCTAssertTrue(try repository.quarantinedOps(kitchenID: kitchenID).isEmpty, "\(error)")
+            XCTAssertEqual(try repository.unpushedOps().count, 1, "\(error)")
+            clock.advance(by: 61)
+        }
+
+        await transport.setPushError(nil)
+        await engine.kick()
+        let stored = await transport.storedOps
+        XCTAssertEqual(stored.count, 1, "and the op ships the moment the outage ends")
+        let status = await engine.status
+        XCTAssertEqual(status, .synced)
+    }
+
+    /// RULING 3: quarantine is reversible and a successful pull is what reverses it — the pull
+    /// proves this session can still read the kitchen, so membership is real again.
+    func testASuccessfulPullReleasesQuarantinedOps() async throws {
+        let transport = FakeTransport()
+        let (_, repository) = try makeStack()
+        let refused = try repository.append(.add(ListItem(name: "Butter")), kitchenID: kitchenID)
+        await transport.setRefusedOpIDs([refused.opID])
+        let clock = FakeClock()
+        let engine = SyncEngine(repository: repository, transport: transport,
+                                kitchenID: kitchenID, now: { clock.now })
+        await engine.kick()
+        XCTAssertEqual(try repository.quarantinedOps(kitchenID: kitchenID).count, 1)
+
+        // Re-invited an hour later: the server stops refusing, and the pull that answers is the
+        // proof. The wait is the point — three pushes 20s apart would end the story before this.
+        await transport.setRefusedOpIDs([])
+        await engine.kick()
+        XCTAssertEqual(try repository.quarantinedOps(kitchenID: kitchenID).count, 1,
+                       "inside the hour the held op is not pushed again")
+        clock.advance(by: 3601)
+        await engine.kick()
+
+        XCTAssertTrue(try repository.quarantinedOps(kitchenID: kitchenID).isEmpty,
+                      "the held op got its retry")
+        let stored = await transport.storedOps
+        XCTAssertEqual(stored.map(\.opID), [refused.opID], "and the edit reached the server")
+        let status = await engine.status
+        let count = await engine.refused
+        XCTAssertEqual(status, .synced, "nothing is held any more")
+        XCTAssertEqual(count, 0)
+        XCTAssertTrue(try repository.unpushedOps().isEmpty)
+    }
+
+    /// The other half of RULING 3: the release is BOUNDED. `quarantine_count` survives the
+    /// release, so a server that keeps refusing gets `refusalLimit` pushes for that op and then
+    /// none, ever — no doomed batch on every 20-second poll for the life of the install.
+    func testTheReleaseIsBoundedSoARefusalCannotRetryForever() async throws {
+        let transport = FakeTransport()
+        let (database, repository) = try makeStack()
+        let refused = try repository.append(.add(ListItem(name: "Yeast")), kitchenID: kitchenID)
+        await transport.setRefusedOpIDs([refused.opID])
+        let clock = FakeClock()
+        let engine = SyncEngine(repository: repository, transport: transport, kitchenID: kitchenID,
+                                refusalLimit: 3, retryRefusedAfter: 3600, now: { clock.now })
+
+        // Eight kicks over eight hours: every one of them is free to retry, and only three do.
+        for _ in 0..<8 {
+            await engine.kick()
+            clock.advance(by: 3601)
+        }
+
+        let attempts = await transport.pushAttempts
+        XCTAssertEqual(attempts, 3, "three refusals and then the op is held for good")
+        let refusalCount = try database.pool.read { db in
+            try Int.fetchOne(db, sql: "SELECT quarantine_count FROM op WHERE op_id = ?",
+                             arguments: [refused.opID.rawValue.uuidString])
+        }
+        XCTAssertEqual(refusalCount, 3, "the bound is persisted, so a relaunch does not reset it")
+        XCTAssertEqual(try repository.quarantinedOps(kitchenID: kitchenID), [refused],
+                       "still here, still unpushed, still carrying the edit")
+        let status = await engine.status
+        let count = await engine.refused
+        XCTAssertEqual(status, .stuck, "and never reported as synced")
+        XCTAssertEqual(count, 1)
+
+        // A held-for-good op still must not block the kitchen.
+        let later = try repository.append(.add(ListItem(name: "Sugar")), kitchenID: kitchenID)
+        await engine.kick()
+        let stored = await transport.storedOps
+        XCTAssertEqual(stored.map(\.opID), [later.opID])
+    }
+
     func testRemoteOpsAreNeverRePushed() async throws {
         let transport = FakeTransport()
         let (_, repoA) = try makeStack()

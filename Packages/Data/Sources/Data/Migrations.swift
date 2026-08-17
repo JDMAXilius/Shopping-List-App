@@ -186,6 +186,22 @@ enum Migrations {
             }
             try db.execute(sql: "PRAGMA user_version = 7")
         }
+        migrator.registerMigration("v8") { db in
+            // Quarantine: where an op the server refuses PERMANENTLY (RLS 42501 → 403) waits.
+            // It leaves the push queue without leaving the database — marking it pushed would
+            // lose a real edit, and leaving it queued wedged every op made after it forever.
+            // Nullable with no default: an op nobody has refused is not quarantined, and a
+            // default here would quarantine the entire existing log.
+            //
+            // quarantine_count survives release (only quarantined_at is cleared): it is the
+            // bound that stops "pull ok → release → push 403 → release …" from pushing a doomed
+            // batch on every poll for the life of the install.
+            try db.alter(table: "op") { t in
+                t.add(column: "quarantined_at", .integer)
+                t.add(column: "quarantine_count", .integer).notNull().defaults(to: 0)
+            }
+            try db.execute(sql: "PRAGMA user_version = 8")
+        }
         return migrator
     }
 }

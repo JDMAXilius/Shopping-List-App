@@ -124,20 +124,55 @@ public final class Repository: Sendable {
 
     // MARK: - Sync support
 
+    /// The push queue. Quarantined ops are NOT in it: the server has refused them and nothing is
+    /// being attempted for them, so counting them as owed would describe a queue that is moving.
+    /// They are still here — `quarantinedOps(kitchenID:)` — and still unpushed.
     public func unpushedOps() throws -> [Op] {
         try database.pool.read { db in
             try OpRecord.fetchAll(db, sql: """
                 SELECT * FROM op WHERE origin = 'local' AND pushed_at IS NULL \
-                ORDER BY clock, op_id
+                AND quarantined_at IS NULL ORDER BY clock, op_id
                 """).map { try OpCoding.op(from: $0) }
+        }
+    }
+
+    /// Refused by the server and held: still in the database, payload untouched, still unpushed —
+    /// out of the queue only so the ops made after them can drain. Kitchen-scoped where the queue
+    /// is not, because a refusal is a statement about THIS kitchen's membership and nothing else.
+    /// `refusedFewerThan` and `refusedBefore` are the release bound: how many times an op may be
+    /// refused at all, and how stale its last refusal must be before it is worth another push.
+    public func quarantinedOps(kitchenID: KitchenID, refusedFewerThan refusals: Int = .max,
+                               refusedBefore cutoff: Date = .distantFuture) throws -> [Op] {
+        try database.pool.read { db in
+            try OpRecord.fetchAll(db, sql: """
+                SELECT * FROM op WHERE quarantined_at IS NOT NULL AND kitchen_id = ? \
+                AND quarantine_count < ? AND quarantined_at < ? ORDER BY clock, op_id
+                """, arguments: [kitchenID.rawValue.uuidString, refusals, cutoff.msSince1970])
+                .map { try OpCoding.op(from: $0) }
         }
     }
 
     public func markPushed(_ ids: [OpID], at date: Date = Date()) throws {
         try database.pool.write { db in
             for id in ids {
-                try db.execute(sql: "UPDATE op SET pushed_at = ? WHERE op_id = ?",
-                               arguments: [date.msSince1970, id.rawValue.uuidString])
+                // Leaving quarantine is what an accepted retry MEANS; pushed_at and
+                // quarantined_at must never both be set, or the counts would report it twice.
+                try db.execute(sql: """
+                    UPDATE op SET pushed_at = ?, quarantined_at = NULL WHERE op_id = ?
+                    """, arguments: [date.msSince1970, id.rawValue.uuidString])
+            }
+        }
+    }
+
+    /// `pushed_at` stays NULL: a refused op was accepted by nobody, and claiming otherwise is the
+    /// one outcome worse than a wedged queue. The count rises on every refusal and never falls.
+    public func markQuarantined(_ ids: [OpID], at date: Date = Date()) throws {
+        try database.pool.write { db in
+            for id in ids {
+                try db.execute(sql: """
+                    UPDATE op SET quarantined_at = ?, quarantine_count = quarantine_count + 1 \
+                    WHERE op_id = ? AND pushed_at IS NULL
+                    """, arguments: [date.msSince1970, id.rawValue.uuidString])
             }
         }
     }
