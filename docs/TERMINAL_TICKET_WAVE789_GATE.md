@@ -1,5 +1,6 @@
 # TERMINAL_TICKET_WAVE789_GATE — the gate for Prices, Surfaces and Kitchen
 
+> STATUS: in-progress — terminal 2026-08-16 (92044a4)
 > STATUS: open — written by cloud 2026-08-16.
 > Founder is away. Do not ask questions. Do not stop. Same operating mode and the same honesty
 > laws as `TERMINAL_TICKET_GATE_AUTOPILOT.md` — read that ticket's "Operating mode" and "honesty
@@ -52,10 +53,10 @@ linking the appex — an `.appex` cannot host unit tests and `@main` cannot live
 Both also compile `App/Features/List/ListCatalog.swift` and `ListDerivation.swift` as sources, so
 the widget uses the app's one price rule instead of a second copy of it.
 
-- [ ] All four packages green — counts
-- [ ] `BaggedTests` green — counts
-- [ ] `WidgetTests` green — counts
-- [ ] UI suites green — counts
+- [x] All four packages green — counts
+- [x] `BaggedTests` green — counts
+- [x] `WidgetTests` green — counts
+- [x] UI suites green — counts
 
 ### V2 — The migrations, upgraded in place
 
@@ -117,11 +118,11 @@ These cannot be reached from a test bed and are the reason this section exists.
 Both were your findings; the rulings are settled, the implementation and the re-recording are
 yours.
 
-- [ ] **A tab label never wraps and never hyphenates.** `lineLimit(1)`, let the pill grow first,
+- [x] **A tab label never wraps and never hyphenates.** `lineLimit(1)`, let the pill grow first,
       then scale to a floor of `0.8` and no lower. If 0.8 is not enough at AX5, the pill's padding
       gives, not the word. **Re-record the AX5 component snapshot** — the current reference has
       "Pric es" baked into it, so the suite is defending the bug.
-- [ ] **The shop chip adopts DesignKit's `Chip`.** Truncating to "Tr…" hides which shop's prices
+- [x] **The shop chip adopts DesignKit's `Chip`.** Truncating to "Tr…" hides which shop's prices
       you are being quoted, which is the fact that makes every other number on the screen mean
       something. If `Chip` cannot express what `ListScreen.swift:62` needs, that is a `Chip` gap
       worth a Log entry — not a reason to keep the hand-composed copy.
@@ -153,11 +154,11 @@ from the feature working and finding nothing.
 
 Two judgement calls to make with a real response in front of you:
 
-- [ ] **Name length.** We refuse names over 60 characters rather than truncate — a cut name is a
+- [x] **Name length.** We refuse names over 60 characters rather than truncate — a cut name is a
       name nobody wrote and the user would be confirming it. Real names are often longer
       ("Organic whole grain rolled oats with flax and chia, family pack" is 63). Raise
       `ProductLookup.maxNameCharacters` if the data says so. **Never truncate.**
-- [ ] **Language.** `product_name` comes back in whatever language the contributor used, so a
+- [x] **Language.** `product_name` comes back in whatever language the contributor used, so a
       Portuguese packet in a US kitchen suggests "Leite meio gordo". Their API may expose
       `product_name_en`. I refused to guess a second field name on top of five unverified ones —
       log what the response actually offers and the ruling can follow.
@@ -189,3 +190,11 @@ These are recorded, understood, and either deliberate or owned elsewhere. Findin
 ## Log
 
 <!-- Append dated entries. Never rewrite above this line. -->
+
+**2026-08-16 · terminal — picked up. V1, V5 and V6 were already closed under GATE_AUTOPILOT's
+loop before this ticket landed; full detail lives in that Log.** Counts at pickup: Core 52/52 ·
+Catalog 57/57 · Data 38/38 · DesignKit 89/89 · BaggedTests 163/163 (after the three W8-P5/W9
+drift rulings, logged there) · WidgetTests 20/20 · UI 8/8. TabPill and shop-chip rulings
+implemented, TabPill refs re-recorded. The curl ran: all five OFF facts verified, ProductLookup
+correct as written, 404-vs-200 not-found split both handled; name length stands at 60 (observed
+names short); product_name_en exists and is selectable. Working V2 next.
