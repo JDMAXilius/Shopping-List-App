@@ -242,7 +242,7 @@ final class SyncEngineTests: XCTestCase {
 
         let held = try repository.quarantinedOps(kitchenID: kitchenID)
         XCTAssertEqual(held, [refused], "the refused op is still here, byte for byte")
-        let pushedAt = try database.pool.read { db in
+        let pushedAt = try await database.pool.read { db in
             try Int64.fetchOne(db, sql: "SELECT pushed_at FROM op WHERE op_id = ?",
                                arguments: [refused.opID.rawValue.uuidString])
         }
@@ -385,7 +385,7 @@ final class SyncEngineTests: XCTestCase {
 
         let attempts = await transport.pushAttempts
         XCTAssertEqual(attempts, 3, "three refusals and then the op is held for good")
-        let refusalCount = try database.pool.read { db in
+        let refusalCount = try await database.pool.read { db in
             try Int.fetchOne(db, sql: "SELECT quarantine_count FROM op WHERE op_id = ?",
                              arguments: [refused.opID.rawValue.uuidString])
         }

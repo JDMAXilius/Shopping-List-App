@@ -26,14 +26,14 @@ endpoint. That is not a thing to work around; it is why this ticket exists.
 
 ## V1 — Compile it, then run it, then say the numbers
 
-- [ ] `xcodegen generate` first. Nothing new landed in the app target this wave, but `ScreensPanel`
+- [x] `xcodegen generate` first. Nothing new landed in the app target this wave, but `ScreensPanel`
       from V9 may still be missing — `git grep -c ScreensPanel Bagged.xcodeproj/project.pbxproj`
       must be non-zero.
-- [ ] `swift build && swift test` in `Packages/Data`. **Expect mechanical errors** — GRDB
+- [x] `swift build && swift test` in `Packages/Data`. **Expect mechanical errors** — GRDB
       `StatementArguments` coercion, `Row` subscript casts and actor isolation on the new fake
       state are the three W10-P1 itself named as the places it could not check. Fix them and say
       what they were.
-- [ ] The full ladder with real counts, against V8's last numbers (DesignKit 89 · BaggedTests 252 ·
+- [x] The full ladder with real counts, against V8's last numbers (DesignKit 89 · BaggedTests 252 ·
       WidgetTests 23 · UI 10). BaggedTests should rise by roughly 19 (16 from W10-P2, 3 from the
       sync sentence) **plus** the 9 from V9's panel if those are still not in the bundle.
 - [ ] The RLS suite: `sections 1-20 pass`, final notice exactly
@@ -139,3 +139,42 @@ a suite prints ALL TESTS PASSED.
 ## Log
 
 <!-- Append dated entries. Never rewrite above this line. -->
+
+## Log
+
+**2026-08-17 · terminal · V1 done, V2 done — the revert proof W10-P1 could not run.**
+
+**V1 — wave 10 compiled and executed for the first time.**
+- `ScreensPanel` is in the project (8 references in the pbxproj after regenerate).
+- **One mechanical error, twice**: `SyncEngineTests:245` and `:388` read the GRDB pool inside an
+  async test without `await` (`try database.pool.read` → `try await database.pool.read`). None of
+  the three things W10-P1 predicted (StatementArguments coercion, Row subscript casts, actor
+  isolation on the fake) actually bit — those all compiled as written.
+- Counts, against V8's last numbers: Core **59/59** · Catalog **57/57** · Data **69/69** (was 59;
+  +10 from W10-P1's quarantine tests) · DesignKit **89/89** · **BaggedTests 284/284** (was 252;
+  +32 = W10-P2's 16, the sync sentence's 3, V9's panel 9, and 4 more) · WidgetTests **23/23** ·
+  UI **11/11** (ExportUITests is new since V8). Everything green.
+
+**V2 — the acceptance W10-P1 reported `blocked`. Done, and it holds.**
+A plain revert only proves "does not compile", so I ran a **surgical behavioural revert** in a
+throwaway worktree: every API kept (`quarantinedOps`, `refused`, `markQuarantined`), and only the
+one decision removed — `pushOrQuarantine` re-throws a `.rejected` instead of quarantining it, i.e.
+exactly the pre-W10-P1 behaviour. Then ran the suite. Result, per the ticket's list:
+
+| test | on revert |
+|---|---|
+| `testARefusedOpDoesNotBlockAnOpMadeAfterIt` | **failed** |
+| `testStatusIsNeverSyncedWhileAnythingIsQuarantined` | **failed** — `offline`, not `stuck`, exactly as predicted |
+| `testAQuarantinedOpIsStillInTheDatabaseWithItsPayload` | **failed** |
+| `testPendingExcludesQuarantinedOpsAndRefusedCountsThem` | **failed** — refused counted 0, not 2 |
+| `testASuccessfulPullReleasesQuarantinedOps` | **failed** |
+| `testTheReleaseIsBoundedSoARefusalCannotRetryForever` | **failed** — 8 push attempts instead of 3, and the bound never persisted |
+| `testRetryableFailuresQuarantineNothing` (guard) | **passed**, before and after — correct, it must |
+
+**Every new test fails without the fix and the guard test does not. Nothing is testing nothing.**
+- Same for the schema: reverting `Migrations.swift` + `AppDatabase.swift` alone makes
+  `testTheQuarantineColumnsArriveInV8AndQuarantineNoExistingOp` fail (no v8 row at all) and
+  `testMigrateIsIdempotent` fail on the column set — the two the ticket named.
+- The three sentence tests: reverting `SyncCoordinator` to `140225c~1` does not compile
+  `KitchenStoreTests` (`SyncCoordinator.sentence` did not exist as a static then), so those three
+  are compile-blocked rather than behaviourally provable. Recorded as such rather than claimed.

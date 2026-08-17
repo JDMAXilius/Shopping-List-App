@@ -127,10 +127,12 @@
 		E5FE9184C172062FC10BFDCF /* PriceDerivation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32FE13A839CDE7AD1183F10 /* PriceDerivation.swift */; };
 		E609A79F00B0784F1A63DEF7 /* RemoveItemIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C719C334BA5272277D04BE /* RemoveItemIntent.swift */; };
 		E722ACEEFAAAFF87533D21B6 /* AddItemIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2D57FAC240279B967D0CED /* AddItemIntent.swift */; };
+		E7E868B9A53400706873F7E5 /* ScreensPanelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCDD28E9765D5CC9644E627B /* ScreensPanelTests.swift */; };
 		E89CD859CB88FC508F6AC0D8 /* ExportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E81B6AEA6A3276B00D1B4C6 /* ExportUITests.swift */; };
 		EA7C3FDA8CF1B107D2B73A2C /* IntentList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06376DB800BDD4679C3AB3A4 /* IntentList.swift */; };
 		EAE986E179FDB5253471B315 /* PricesScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ABC75666947BAABF11ABD1C /* PricesScreen.swift */; };
 		EC1AC724F6431B1E11C19504 /* ShopEditorScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E97E314FDE717FBCC992514 /* ShopEditorScreen.swift */; };
+		EE143C717C79D4E0B69F9459 /* ScreensPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85A3798BC15A64EA4AC57A4 /* ScreensPanel.swift */; };
 		F19D369CE22FAD9E6CDCEBAF /* CaptureShopPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3650BCF367A36AEA4F918876 /* CaptureShopPicker.swift */; };
 		F1FE9C6E8F4135EA9B2ED866 /* BaggedApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9496DAE4A6A8F94B61CD1BC /* BaggedApp.swift */; };
 		F2E34A580A7B3DC505DE061E /* testNeedsAppRefusal.ax5.png in Resources */ = {isa = PBXBuildFile; fileRef = ED4E6EF80273B529B4E9F883 /* testNeedsAppRefusal.ax5.png */; };
@@ -269,11 +271,13 @@
 		B599F11C8AE5F98529564375 /* FakeScanBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeScanBackend.swift; sourceTree = "<group>"; };
 		B72D41E78E2AFD648E6A4575 /* Environment+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Environment+.swift"; sourceTree = "<group>"; };
 		B9DD114B17309B2C0325DCCE /* PriceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceStore.swift; sourceTree = "<group>"; };
+		BCDD28E9765D5CC9644E627B /* ScreensPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreensPanelTests.swift; sourceTree = "<group>"; };
 		BF74E2E9C9F10503C5BE3C49 /* ToggleItemIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToggleItemIntent.swift; sourceTree = "<group>"; };
 		C32FE13A839CDE7AD1183F10 /* PriceDerivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceDerivation.swift; sourceTree = "<group>"; };
 		C433C4A72639556FAD0814E1 /* WidgetProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetProviderTests.swift; sourceTree = "<group>"; };
 		C6C409A234316931BC5A31AA /* CaptureChooserSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureChooserSheet.swift; sourceTree = "<group>"; };
 		C6C8F7199D41A7B3297065BC /* PlaceStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceStoreTests.swift; sourceTree = "<group>"; };
+		C85A3798BC15A64EA4AC57A4 /* ScreensPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreensPanel.swift; sourceTree = "<group>"; };
 		C85D1B7BA879948DB38DDBF3 /* AisleOrderEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AisleOrderEditor.swift; sourceTree = "<group>"; };
 		C8953E8C624549DB6B231935 /* DataPrivacyScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataPrivacyScreen.swift; sourceTree = "<group>"; };
 		C9496DAE4A6A8F94B61CD1BC /* BaggedApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaggedApp.swift; sourceTree = "<group>"; };
@@ -478,6 +482,8 @@
 				C8953E8C624549DB6B231935 /* DataPrivacyScreen.swift */,
 				ED90D185385BC261EEDBD3FC /* DataPrivacyScreenTests.swift */,
 				107E9AE67226C39B61286FCD /* PaywallScreen.swift */,
+				C85A3798BC15A64EA4AC57A4 /* ScreensPanel.swift */,
+				BCDD28E9765D5CC9644E627B /* ScreensPanelTests.swift */,
 				53AD522AEDB1DF0353B7D683 /* SetupScreen.swift */,
 				FA7427003E8E38807AC551EA /* SubscriptionStore.swift */,
 				8DD0C44B043FB2A98ABFF0AA /* SubscriptionStoreTests.swift */,
@@ -921,6 +927,7 @@
 				D4C9BDED09DE08B91ED1FB42 /* RootView.swift in Sources */,
 				E4D8593E8653148934464499 /* Route.swift in Sources */,
 				7A7064B2551B960D36A2CC31 /* ScanClient.swift in Sources */,
+				EE143C717C79D4E0B69F9459 /* ScreensPanel.swift in Sources */,
 				A0A52BF88ACE2AEF6D00C476 /* ScriptedScanBackend.swift in Sources */,
 				627CC74E5753DD2487709AD6 /* SetupScreen.swift in Sources */,
 				665D5741480B15EEF4CE125D /* Sheet.swift in Sources */,
@@ -965,6 +972,7 @@
 				4A489F2991196AB3E6A69885 /* PriceStoreTests.swift in Sources */,
 				606B24D13C8E3B3884746989 /* ProductLookupTests.swift in Sources */,
 				2CE5E64AC761B1FA177E51D3 /* ScanClientTests.swift in Sources */,
+				E7E868B9A53400706873F7E5 /* ScreensPanelTests.swift in Sources */,
 				DDDDBCA8A2EC18A7AABEFFD9 /* SubscriptionStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1073,6 +1081,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = app.bagged;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = BAGGED_SCREENS_PANEL;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -1239,7 +1248,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = app.bagged;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG BAGGED_SCREENS_PANEL";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
