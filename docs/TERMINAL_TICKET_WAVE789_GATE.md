@@ -253,3 +253,46 @@ names short); product_name_en exists and is selectable. Working V2 next.
   the guarded causes sentence, citation in place.
 - Full sweep after the merge: Core 59/59 · Data 41/41 · BaggedTests 171/171 · WidgetTests 23/23
   · UI 9/9. TEST SUCCEEDED.
+
+### V8 — Wave 9 is complete and wired. It is the largest uncompiled drop yet.
+
+Kitchen, Places, the You tab and the navigation that joins them all landed together. **Regenerate
+first** — three new feature folders and the app now builds `App/Features/Kitchen`,
+`App/Features/Places`, `App/Features/You` and `App/Services/{LocationService,CSVExporter}`.
+
+Two structural changes worth knowing before you read the first error:
+
+- **`BaggedApp` grew an `AppSession`.** Joining a kitchen changes which kitchen every store
+  reads, and a `let` on an App struct cannot answer that, so the stores are held in an
+  `@Observable` object and rebuilt whole on a kitchen change. Launch now resolves the kitchen you
+  last used (`ActiveKitchen.resolve`) rather than the alphabetically first.
+- **`Sheet` gained `case join(String)`** for invite links, and `Route.setup` is now unused —
+  Setup is tab 3's root, not a push destination.
+
+- [ ] Everything compiles and every suite is green — counts
+- [ ] `SupabaseURL` reaches the app: with it absent the transport is nil, the phone is `.local`,
+      and **nothing syncs, silently.** `Config/Base.xcconfig` and the template both declare it now
+      and the Release preflight fails without it. Confirm the Debug warning actually fires.
+- [ ] **A guest never sees the paywall.** The role is bound to `kitchenStore.isGuest`, which
+      `load()` resolves asynchronously. Exercise it: join as a guest, exhaust three scans, confirm
+      the paywall does not appear. This is a `.onChange` binding, so a wrong one fails silently.
+- [ ] **An invite link opens the join sheet and nothing else.** Also needs an Associated Domains
+      entitlement / `bagged.app` AASA for the tap-through; without it the paste path still works,
+      which is the fallback by design.
+
+**Ten Supabase request shapes are unverified** and this is the same trap as the barcode lookup:
+`supabase.co` is proxy-blocked here, so every shape came from `0001`/`0002` SQL and the function
+source. A wrong one fails silently — no sync, no error, looks like a phone with no server. They
+are listed in W9-P3's report; the highest-value five are `rpc/push_ops`' named-argument body, the
+PostgREST `op` select with `seq=gt`, the anonymous-signup body, the OTP verify shapes, and
+`join-kitchen`'s response. **One live project settles all of them at once** — which is blocked on
+`TERMINAL_TICKET_FOUNDER_BLOCKERS` item 1.
+
+**Two known holes, deliberately left, do not "fix" them blind:**
+
+- **A 403 is a poison pill.** An evicted member's queue never drains and every later op piles up
+  behind it. `SupabaseTransportError` distinguishes "will never be accepted" from "try again"
+  precisely so a future packet can quarantine; nothing quarantines yet.
+- **The local projection is kitchen-blind.** A guest's own pre-join items stay in their list and
+  mix with the shared one, on their phone only. Fixing it needs a kitchen filter in
+  `Repository`/`Merge`.
