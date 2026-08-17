@@ -51,6 +51,9 @@ targets:
       - path: App
         excludes:
           - "**/*Tests.swift"
+          # Test-only directories: reference images must never ship inside the app bundle.
+          - "SnapshotTests/**"
+          - "UITests/**"
       # App target, not an extension: the intents call ListDerivation.addPlan and ListCatalog,
       # which are @MainActor app-target types. An extension would compile a second copy of them.
       # Schema27 is Apple's .reminders cluster, parked for iOS 27 — see its README.

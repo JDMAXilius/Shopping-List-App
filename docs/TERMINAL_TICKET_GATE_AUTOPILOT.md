@@ -681,3 +681,25 @@ back to `1.0`.
 
 Not a blocker for anything else — the feature degrades to the previous behaviour on every failure
 path, by design.
+**2026-08-16 · terminal · Wave 8 gate green + both AX rulings implemented.**
+- Wave 8 first compile, three mechanical fixes: WidgetKit completions need `@Sendable` under
+  strict concurrency (WidgetProvider); WidgetProviderTests had drifted from the shipped
+  signatures (`catalog:` param, shop resolved inside `state()` — updated the calls, no
+  expectations touched); AddItemIntent now speaks a named shop whenever one was named — the
+  tests pin named→said/unnamed→quiet, and the stamp always lands, so saying it is truthful.
+  **BaggedTests 144/144 · WidgetTests 17/17.**
+- **Ruling 2 implemented (TabPill):** `lineLimit(1)` + `minimumScaleFactor(0.8)`, and at
+  accessibility sizes the pill's own paddings give (16→8pt per label, 6→3pt rim, spacing
+  collapses). AX5 now renders "List Prices You" — full words, one line. Both TabPill
+  references re-recorded; the old AX5 ref had the wrap baked in.
+- **Ruling 3 implemented (shop chip):** ListScreen adopts DesignKit's `Chip` with
+  `opensPicker` and the spoken "Shopping at …. Change shop." label; the hand-composed copy
+  is gone. No Chip gap found — it expressed everything the screen needed.
+- Housekeeping: snapshot reference PNGs were being globbed into the app bundle as resources —
+  `SnapshotTests/**` and `UITests/**` now excluded from the app target.
+- Flake permanently fixed: a manual session had granted the simulator camera, which flips the
+  capture screens off their undecided-state primers; the three camera-path UI tests now call
+  `resetAuthorizationStatus(for: .camera)` before launch.
+- Full suite after all of it: **144 + 17 unit/snapshot, 8/8 UI, TEST SUCCEEDED.** Still open
+  from the wave-8 note: widget family snapshots + the 20–26pt lock-screen tap-target
+  judgement (needs the widget rendered — next).

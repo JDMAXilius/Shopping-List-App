@@ -13,7 +13,12 @@ public struct TabPill: View {
     @Binding private var selection: Tab
     private let onAdd: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Namespace private var capsuleSpace
+
+    /// The W8 ruling: a tab label never wraps, and when space runs out the pill's own
+    /// padding gives before the word does — the scale floor is 0.8, no lower.
+    private var isTight: Bool { typeSize.isAccessibilitySize }
 
     public init(selection: Binding<Tab>, onAdd: @escaping () -> Void) {
         self._selection = selection
@@ -21,13 +26,13 @@ public struct TabPill: View {
     }
 
     public var body: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 4) {
+        HStack(spacing: isTight ? 8 : 12) {
+            HStack(spacing: isTight ? 0 : 4) {
                 ForEach(Tab.allCases, id: \.self) { tab in
                     tabButton(tab)
                 }
             }
-            .padding(6)
+            .padding(isTight ? 3 : 6)
             .background(Capsule().fill(Palette.ink.color))
             Button(action: onAdd) {
                 ZStack {
@@ -52,8 +57,12 @@ public struct TabPill: View {
         } label: {
             Text(tab.rawValue)
                 .font(.system(.subheadline, weight: isActive ? .semibold : .regular))
+                // A tab label never wraps and never hyphenates (W8 ruling): the pill grows
+                // to fit first, then the word scales — floored at 0.8, no lower.
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .foregroundStyle((isActive ? Palette.ink : Palette.paper).color)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, isTight ? 8 : 16)
                 .frame(minHeight: 44)
                 .background {
                     if isActive {

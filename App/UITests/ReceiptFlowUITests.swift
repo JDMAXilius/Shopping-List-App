@@ -15,6 +15,9 @@ final class ReceiptFlowUITests: XCTestCase {
     @MainActor
     func testScanReviewResolveSave() throws {
         let app = XCUIApplication()
+        // A manual session may have granted the camera; these flows assert the
+        // undecided-state screens, so pin the state before every run.
+        app.resetAuthorizationStatus(for: .camera)
         app.launchArguments = ["--uitest-reset", "--uitest-scripted-scan"]
         app.launch()
 
@@ -85,6 +88,7 @@ final class ReceiptFlowUITests: XCTestCase {
     @MainActor
     func testOfflineQueuesThenRetryReads() throws {
         let app = XCUIApplication()
+        app.resetAuthorizationStatus(for: .camera)
         app.launchArguments = ["--uitest-reset", "--uitest-scripted-scan-offline"]
         app.launch()
 
@@ -113,6 +117,7 @@ final class ReceiptFlowUITests: XCTestCase {
     @MainActor
     func testBarcodeScreenPrimer() throws {
         let app = XCUIApplication()
+        app.resetAuthorizationStatus(for: .camera)
         app.launchArguments = ["--uitest-reset"]
         app.launch()
         app.buttons["Capture"].firstMatch.tap()

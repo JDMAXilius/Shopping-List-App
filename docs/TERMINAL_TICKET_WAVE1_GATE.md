@@ -1,5 +1,6 @@
 # TERMINAL_TICKET_WAVE1_GATE — now covers Waves 1, 2 AND 3
 
+> STATUS: done — terminal 2026-08-16, superseded by TERMINAL_TICKET_GATE_AUTOPILOT.
 > STATUS: open — written by cloud 2026-08-16. Blocked in cloud: the container's proxy denies
 > download.swift.org, so no Swift toolchain there. This machine has one.
 
@@ -259,3 +260,11 @@ cd ../Data          && swift build && swift test   # fetches GRDB 7 from github
 > stays open and stays required reading** — it holds the reasoning behind every ruling, every P1
 > the critics found, and the wave-by-wave detail the autopilot ticket only summarises. Read this
 > Log before fixing anything; it will usually tell you *why* the code is the way it is.
+
+
+## Log
+
+**2026-08-16 · terminal — closed as superseded.** Every task here ran under
+TERMINAL_TICKET_GATE_AUTOPILOT (T0/T1): Core 52/52, Catalog 57/57 with 23/23 goldens against
+the 461-item catalog, Data 38/38, conflict harness green in both orders and shuffled. Full
+detail and every ruling lives in the AUTOPILOT Log.
