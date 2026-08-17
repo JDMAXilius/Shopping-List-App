@@ -15,6 +15,9 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     PRODUCT_BUNDLE_IDENTIFIER: app.bagged
     CODE_SIGN_STYLE: Automatic
+    # Founder's Apple Developer team (TESTFLIGHT §B1). Not a secret — an archive
+    # cannot be signed without it, and it is the same for every target.
+    DEVELOPMENT_TEAM: A6J6HGNWZK
   configs:
     # BAGGED_SCREENS_PANEL compiles the testing-only screens panel
     # (App/Features/You/ScreensPanel.swift, its row in About, and its tests). It is on in Release

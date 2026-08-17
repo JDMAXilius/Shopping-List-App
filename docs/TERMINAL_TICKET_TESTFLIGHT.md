@@ -41,7 +41,7 @@ Everything else below can be prepared while that is open.
 
 `project.yml` sets `CODE_SIGN_STYLE: Automatic` and **no team**, so an archive cannot be signed.
 
-- [ ] Add `DEVELOPMENT_TEAM: <TEAM_ID>` to `settings.base` in `project.yml` (the founder supplies
+- [x] Add `DEVELOPMENT_TEAM: <TEAM_ID>` to `settings.base` in `project.yml` (the founder supplies
       the ID — §B1). A Team ID is not a secret; it is fine committed.
 - [ ] Xcode must be signed in with the Apple ID (Settings → Accounts). If it is not, say so in the
       Log — that is a §B item, not something to force.
@@ -269,3 +269,27 @@ you next need a Release build; never commit it.
   screen renders wave 10's sync sentence for the first time — *"No signal — everything still
   works, and syncs when you're back."* Exactly the honest wording, and it does not claim to be
   still trying over something nothing will retry.
+
+**2026-08-17 · terminal · B1 landed. Team ID committed, and the archive walked two walls further.**
+- Founder supplied **`A6J6HGNWZK`**; committed to `project.yml` `settings.base`, so all targets
+  inherit it (7 occurrences in the generated pbxproj).
+- Archive attempt 1 — the "requires a development team" error is **gone**. New error:
+  `No profiles for 'app.bagged' were found … Automatic signing is disabled and unable to generate
+  a profile. To enable automatic signing, pass -allowProvisioningUpdates`. Expected: automatic
+  signing only mints profiles when explicitly allowed on the command line.
+- Archive attempt 2, with `-allowProvisioningUpdates`:
+  ```
+  error: No Accounts: Add a new account in Accounts settings. (in target 'Bagged')
+  error: No profiles for 'app.bagged' were found … (in target 'Bagged')
+  error: No Accounts … (in target 'BaggedWidget')
+  ** ARCHIVE FAILED **
+  ```
+  Confirmed at the source rather than inferred: `defaults read com.apple.dt.Xcode
+  DVTDeveloperAccountManagerAppleIDLists` returns an **empty** `IDE.Identifiers.Prod` list — this
+  Mac's Xcode has no Apple ID signed in at all. (The profiles in `~/Library/Developer/Xcode/
+  UserData/Provisioning Profiles/` are somebody else's, from other work; none match our bundle ids.)
+> HANDOFF → founder: **Xcode → Settings → Accounts → ⊕ → Apple ID**, sign in with the account that
+  owns team A6J6HGNWZK. That is §A1's "if it is not, say so in the Log" item, reached. It cannot be
+  done from a phone and I must not force it — signing someone in is theirs. Once done, the next
+  archive registers both App IDs automatically, and the wall after that is the App Group (§B2) and
+  then the backend config (§B6).
