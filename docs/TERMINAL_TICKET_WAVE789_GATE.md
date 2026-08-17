@@ -71,8 +71,16 @@ install that runs v5 and then dies before v6 commits will claim to be v6 while h
 and the widget and the intents both trust that number to decide whether they may write. **Change it
 to a literal `5` when you are in that file**, and log it.
 
-- [ ] v3 → v5 upgrade in place, with real data, verified
-- [ ] `user_version` pragma in v5 changed to a literal
+- [ ] v3 → **v6** upgrade in place, with real data, verified
+- [x] `user_version` pragma in v5 changed to a literal — **done by cloud**, and
+      `MigrationTests` now asserts a database stopped at v5 reads 5
+
+**v6 landed after this ticket was written**: `PriceObservation` gained a quantity, so a receipt
+line finally records how many were bought. The one that risks real data: **every `.price` op
+already written must still decode, and must go on meaning exactly one unit.** A silent default
+that turns old data into a different claim is the worst outcome available here. The decode was
+proven by a Python port of the payload rather than argued — re-prove it on a real database with
+pre-v6 ops in it.
 
 ### V3 — The quantity fix, which touched every total in the app
 
