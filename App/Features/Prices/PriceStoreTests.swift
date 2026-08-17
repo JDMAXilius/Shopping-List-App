@@ -19,11 +19,13 @@ final class PriceStoreTests: XCTestCase {
 
     private func days(_ count: Double) -> Date { now.addingTimeInterval(-count * 86_400) }
 
+    /// `quantity: nil` by default — the shape of every observation written before W9, which is
+    /// what most of these cases are testing against.
     private func observation(_ minor: Int, _ shopID: ShopID, _ date: Date,
                              _ source: PriceObservation.Source = .receipt,
-                             item: ItemID? = nil) -> PriceObservation {
+                             item: ItemID? = nil, quantity: Double? = nil) -> PriceObservation {
         PriceObservation(itemID: item ?? milk, shopID: shopID, date: date,
-                         amount: Money(minorUnits: minor), source: source)
+                         amount: Money(minorUnits: minor), source: source, quantity: quantity)
     }
 
     private var catalog: ListCatalog { ListCatalog(database: nil) }
@@ -209,7 +211,8 @@ final class PriceStoreTests: XCTestCase {
     /// stated rather than left for the user to discover by adding the rows up.
     func testTheCoverageSentenceNamesTheGapBetweenPaidAndMatched() {
         let short = PriceDerivation.month(
-            observations: [observation(400, shopA, now)], receipts: [receipt(1_000, shopA, now)],
+            observations: [observation(400, shopA, now, quantity: 1)],
+            receipts: [receipt(1_000, shopA, now)],
             shops: shops, catalog: catalog, currencyCode: "USD", now: now)
         XCTAssertEqual(short.coverageText,
                        "$4.00 of the $10.00 is matched to items. The rest is tax, deposits, "
@@ -217,10 +220,83 @@ final class PriceStoreTests: XCTestCase {
 
         // Prices recorded by hand can exceed the receipts. That is not tax — say the truth.
         let over = PriceDerivation.month(
-            observations: [observation(400, shopA, now, .manual)],
+            observations: [observation(400, shopA, now, .manual, quantity: 1)],
             receipts: [receipt(100, shopA, now)],
             shops: shops, catalog: catalog, currencyCode: "USD", now: now)
         XCTAssertTrue(over.coverageText.contains("more than the receipts add up to"))
+    }
+
+    /// RULING 5. The sentence may name tax again only because the counts are recorded now. An
+    /// observation written before they were counts as one, and cannot be told from a genuine
+    /// one — so where any of those are in the figure, the sentence stops claiming what the rest
+    /// is. This is the exact wrongness W8 left behind: 69% of a trip called tax when it was
+    /// quantity.
+    func testCoverageOnlyBlamesTaxWhenEveryCountIsRecorded() {
+        let counted = PriceDerivation.coverage(
+            paid: PaidSummary([ReceiptTotal(printedOnReceipt: Money(minorUnits: 1_000))],
+                              in: "August", currencyCode: "USD"),
+            matched: PriceSummary(PriceDerivation.lines(
+                [observation(200, shopA, now, quantity: 2)], asOf: now)),
+            uncounted: 0)
+        XCTAssertEqual(counted,
+                       "$4.00 of the $10.00 is matched to items. The rest is tax, deposits, "
+                       + "fees and lines nothing could be matched to.")
+
+        let one = PriceDerivation.month(
+            observations: [observation(400, shopA, now)], receipts: [receipt(1_000, shopA, now)],
+            shops: shops, catalog: catalog, currencyCode: "USD", now: now)
+        XCTAssertEqual(one.coverageText,
+                       "$4.00 of the $10.00 is matched to items. 1 of those prices was recorded "
+                       + "before quantities were, and counts as one, so the rest is not only "
+                       + "tax, deposits, fees and lines nothing could be matched to.")
+
+        let two = PriceDerivation.month(
+            observations: [observation(400, shopA, now),
+                           observation(250, shopA, now, item: ItemID())],
+            receipts: [receipt(1_000, shopA, now)],
+            shops: shops, catalog: catalog, currencyCode: "USD", now: now)
+        XCTAssertTrue(two.coverageText.contains("2 of those prices were recorded before "
+                                                + "quantities were, and count as one each"))
+        XCTAssertTrue(two.coverageText.contains("not only tax"))
+    }
+
+    /// The refutation's receipt: ×4 milk at $3.50, ×2 bread at $1.99, till $17.98. Every line
+    /// is matched and every count is recorded, so there is no rest — and nothing is called tax.
+    func testAMonthOfCountedLinesReachesTheTillsOwnTotal() {
+        let month = PriceDerivation.month(
+            observations: [observation(350, shopA, now, quantity: 4),
+                           observation(199, shopA, now, item: ItemID(), quantity: 2)],
+            receipts: [receipt(1_798, shopA, now, lines: 2)],
+            shops: shops, catalog: catalog, currencyCode: "USD", now: now)
+        XCTAssertEqual(month.matched.total, Money(minorUnits: 1_798))
+        XCTAssertNotEqual(month.matched.total, Money(minorUnits: 549), "one of each is the bug")
+        XCTAssertEqual(month.coverageText, "$17.98 is matched to items — all of the $17.98.")
+        XCTAssertEqual(month.aisles.reduce(0) { $0 + $1.summary.total.minorUnits }, 1_798,
+                       "the aisle breakdown counts the same lines the same way")
+        // Counts are of PRICES, not of units: "4 of 2 matched prices" would be nonsense.
+        XCTAssertEqual(month.matched.measuredCount, 2)
+        XCTAssertEqual(month.matchedFromReceipts, 2)
+    }
+
+    /// RULING 4. Counting quantities must not turn the price book into a book of line totals:
+    /// what one costs is the whole point of comparing shops.
+    func testThePriceBookAndTheHistoryStillShowThePriceOfOne() throws {
+        let fourMilks = observation(350, shopA, days(1), quantity: 4)
+        let book = PriceDerivation.book(observations: [fourMilks], items: [], names: names,
+                                        shops: shops, catalog: catalog, now: now)
+        XCTAssertEqual(book.entries.first?.price,
+                       PriceDisplay(amount: Money(minorUnits: 350), confidence: .trusted),
+                       "the book shows $3.50, never the $14.00 line")
+
+        let history = try XCTUnwrap(PriceDerivation.history(
+            for: milk, observations: [fourMilks, observation(319, shopB, days(3), quantity: 2)],
+            names: names, listNames: [:], shops: shops, catalog: catalog, now: now))
+        XCTAssertEqual(history.headline,
+                       PriceDisplay(amount: Money(minorUnits: 350), confidence: .trusted))
+        XCTAssertEqual(history.shops.map(\.price),
+                       [PriceDisplay(amount: Money(minorUnits: 350), confidence: .trusted),
+                        PriceDisplay(amount: Money(minorUnits: 319), confidence: .trusted)],
+                       "two shops compared at what one costs at each")
     }
 
     func testTheMonthSaysHowMuchOfTheBreakdownATillPrinted() {

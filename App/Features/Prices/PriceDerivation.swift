@@ -311,7 +311,8 @@ enum PriceDerivation {
 
     /// A month's spend is the sum of its RECEIPTS — the tills' own totals, tax and fees and
     /// unmatched lines included. The observations feed the aisle breakdown and nothing else:
-    /// they are the value of the lines we could match, which is a smaller, different number.
+    /// they are the value of the lines we could match, counted at what was bought, which is a
+    /// different number from what was paid even when the two happen to land on each other.
     static func month(observations: [PriceObservation], receipts: [Receipt],
                       shops: [ShopID: String], catalog: ListCatalog,
                       currencyCode: String, now: Date) -> MonthSpend {
@@ -330,9 +331,8 @@ enum PriceDerivation {
         let matched = PriceSummary(lines(thisMonth, asOf: now))
         var aisles: [CategoryGlyph: [PriceLine]] = [:]
         for observation in thisMonth {
-            aisles[catalog.category(for: observation.itemID), default: []].append(
-                PriceDisplay(amount: observation.amount,
-                             confidence: observation.confidence(asOf: now)).line(quantity: 1))
+            aisles[catalog.category(for: observation.itemID), default: []]
+                .append(line(observation, asOf: now))
         }
         let aisleGroups = aisles.map { category, displays in
             MonthGroup(title: catalog.name(for: category), summary: PriceSummary(displays),
@@ -350,7 +350,8 @@ enum PriceDerivation {
             paid: paid,
             matched: matched,
             matchedFromReceipts: thisMonth.filter { $0.source == .receipt }.count,
-            coverageText: coverage(paid: paid, matched: matched),
+            coverageText: coverage(paid: paid, matched: matched,
+                                   uncounted: thisMonth.filter { !$0.hasRecordedQuantity }.count),
             deltaText: deltaVsUsual(receipts, paid: paid, currencyCode: currencyCode, now: now),
             bars: bars(receipts, current: paid, currencyCode: currencyCode, now: now),
             aisles: ranked(aisleGroups),
@@ -375,7 +376,11 @@ enum PriceDerivation {
 
     /// How the breakdown relates to the money paid — stated, not left for the user to notice
     /// that the aisle rows don't add up to the headline. They can't: tax has no aisle.
-    static func coverage(paid: PaidSummary, matched: PriceSummary) -> String {
+    ///
+    /// `uncounted` is how many of the matched observations carry no count. Each of those is
+    /// worth one here, so with any present the gap is not only tax and this must not say it is —
+    /// that was the confidently wrong sentence a ×4 receipt used to produce.
+    static func coverage(paid: PaidSummary, matched: PriceSummary, uncounted: Int) -> String {
         guard matched.hasPricedItems else {
             return "No prices from \(paid.period) are matched to items yet."
         }
@@ -387,11 +392,21 @@ enum PriceDerivation {
             return "\(figure(matched)) is matched to items — more than the receipts add up to, "
                 + "because some of it was recorded without a receipt."
         }
-        // Not a list of what the rest IS — a price observation carries no quantity yet, so a
-        // ×4 row contributes the price of one and most of the gap can be quantity, not tax.
-        // Naming causes we cannot separate would be the confident kind of wrong.
-        return "\(figure(matched)) of the \(paid.figure) is matched to individual items. "
-            + "The rest is everything a single item's price can't account for."
+        let head = "\(figure(matched)) of the \(paid.figure) is matched to items."
+        let short = matched.total.minorUnits < paid.total.minorUnits
+        guard uncounted > 0 else {
+            guard short else {
+                return "\(figure(matched)) is matched to items — all of the \(paid.figure)."
+            }
+            return head + " The rest is tax, deposits, fees and lines nothing could be matched to."
+        }
+        let caveat = uncounted == 1
+            ? " 1 of those prices was recorded before quantities were, and counts as one"
+            : " \(uncounted) of those prices were recorded before quantities were, and count "
+                + "as one each"
+        guard short else { return head + caveat + "." }
+        return head + caveat + ", so the rest is not only tax, deposits, fees and lines nothing "
+            + "could be matched to."
     }
 
     /// Biggest first, and nothing that carries no money at all.
@@ -474,22 +489,16 @@ enum PriceDerivation {
 
     // MARK: - Shared
 
-    /// Private: a bare array of unit prices is the shape that used to become a total. Callers
-    /// wanting a sum ask for `lines`, which has to state a quantity.
-    private static func displays(_ observations: [PriceObservation],
-                                 asOf now: Date) -> [PriceDisplay] {
-        observations.map {
-            PriceDisplay(amount: $0.amount, confidence: $0.confidence(asOf: now))
-        }
+    /// One line per observation, at the count that observation was recorded at: a receipt's ×4
+    /// milk is $14.00 here, not $3.50. An observation written before counts existed reports one,
+    /// which is what it has always meant — `uncounted` is how the month says so out loud.
+    static func lines(_ observations: [PriceObservation], asOf now: Date) -> [PriceLine] {
+        observations.map { line($0, asOf: now) }
     }
 
-    /// One line per observation, at quantity ONE, and the quantity is not a guess: an
-    /// observation stores the price of one and no count (`PriceObservation` has no quantity
-    /// field), so a receipt's ×4 milk is one $3.50 line here. That understates `matched`
-    /// against `paid` — which is why `matched` is never shown as the month's spend, and why
-    /// `coverageText` states the two figures side by side rather than reconciling them.
-    static func lines(_ observations: [PriceObservation], asOf now: Date) -> [PriceLine] {
-        displays(observations, asOf: now).map { $0.line(quantity: 1) }
+    private static func line(_ observation: PriceObservation, asOf now: Date) -> PriceLine {
+        PriceDisplay(amount: observation.amount, confidence: observation.confidence(asOf: now))
+            .line(quantity: observation.quantity)
     }
 
     static func latest(_ observations: [PriceObservation]) -> [ItemID: PriceObservation] {

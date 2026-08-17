@@ -161,6 +161,17 @@ enum Migrations {
                 """)
             try db.execute(sql: "DROP TABLE receipt")
             try db.execute(sql: "ALTER TABLE receipt_v5 RENAME TO receipt")
+            // Each migration stamps its OWN number: this one read the app's current version, so
+            // adding v6 would have made a database stopped at v5 claim to be v6.
+            try db.execute(sql: "PRAGMA user_version = 5")
+        }
+        migrator.registerMigration("v6") { db in
+            // Nullable and with no default: a price observation written before this column
+            // existed genuinely has no count, and 1 here would turn "nobody said" into a
+            // recorded claim that one was bought. Every total already read those rows as one.
+            try db.alter(table: "price_observation") { t in
+                t.add(column: "quantity_milli", .integer)
+            }
             try db.execute(sql: "PRAGMA user_version = \(AppDatabase.schemaVersion)")
         }
         return migrator

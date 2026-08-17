@@ -1,6 +1,7 @@
 import Catalog
 import Core
 import Data
+import DesignKit
 import Foundation
 import XCTest
 
@@ -577,8 +578,13 @@ final class CaptureSessionTests: XCTestCase {
         XCTAssertTrue(harness.session.record(typedLine(1050, quantity: 3), shopID: shopID,
                                              date: Date()))
 
-        XCTAssertEqual(try harness.repository.priceObservations().first?.amount,
-                       Money(minorUnits: 350))
+        let observation = try XCTUnwrap(try harness.repository.priceObservations().first)
+        XCTAssertEqual(observation.amount, Money(minorUnits: 350))
+        // The field said "what you paid for all 3", so 3 is what the observation records — and
+        // $3.50 × 3 is the $10.50 that was typed.
+        XCTAssertEqual(observation.quantity, 3)
+        XCTAssertEqual(PriceSummary(PriceDerivation.lines([observation], asOf: Date())).total,
+                       Money(minorUnits: 1_050))
     }
 
     func testATypedPriceIsNeverDatedIntoTheFuture() throws {
@@ -720,8 +726,56 @@ final class CaptureSessionTests: XCTestCase {
 
         // Under one the printed amount stands, exactly as it does for a receipt line: $4.49 was
         // what was paid, and no per-unit price nobody paid is invented from it.
-        XCTAssertEqual(try harness.repository.priceObservations().first?.amount,
-                       Money(minorUnits: 449))
+        let observation = try XCTUnwrap(try harness.repository.priceObservations().first)
+        XCTAssertEqual(observation.amount, Money(minorUnits: 449))
+        // So the count recorded against it is ONE, not 0.5: the amount IS the whole line, and
+        // half of it is money the till never gave back.
+        XCTAssertEqual(observation.quantity, 1)
+        XCTAssertTrue(observation.hasRecordedQuantity)
+    }
+
+    // MARK: - How many were bought (W9 RULING 1)
+
+    /// The refutation's receipt, exactly: ×4 milk at $3.50 and ×2 bread at $1.99, till $17.98.
+    private let multiBuyJSON = """
+        {"lines":[{"raw_text":"4 MILK 1L","amount_minor":1400,"quantity":4,"confidence":"sure",
+        "match_hint":"milk"},
+        {"raw_text":"2 SOURDOUGH","amount_minor":398,"quantity":2,"confidence":"sure",
+        "match_hint":"bread"}],
+        "shop_name":"Trader Joe's","total_minor":1798,"currency":"USD","is_plus":false,
+        "scans_used":1}
+        """
+
+    /// The whole packet in one test: the month screen matched $5.49 of this $17.98 trip and
+    /// attributed the missing $12.49 — 69% of it — to tax, deposits and fees. None of it was.
+    func testTheCountOnAReceiptLineReachesTheMonthTotal() async throws {
+        let harness = try makeHarness([try parsed(multiBuyJSON)])
+        await harness.session.capture(jpeg: jpeg)
+        let shopID = try XCTUnwrap(harness.store.activeShopID)
+        let milk = try XCTUnwrap(harness.session.lines.first { $0.rawText == "4 MILK 1L" })
+        let bread = try XCTUnwrap(harness.session.lines.first { $0.rawText == "2 SOURDOUGH" })
+        harness.session.choose(itemID: ItemID.catalog(1), name: "Milk", for: milk.id)
+        harness.session.choose(itemID: ItemID.catalog(2), name: "Sourdough", for: bread.id)
+
+        XCTAssertTrue(harness.session.commit())
+
+        let observations = try harness.repository.priceObservations()
+        // What is stored is still the price of ONE — that is what the price book compares.
+        XCTAssertEqual(Set(observations.map(\.amount)),
+                       [Money(minorUnits: 350), Money(minorUnits: 199)])
+        XCTAssertEqual(observations.map(\.quantity).sorted(), [2, 4])
+
+        let month = PriceDerivation.month(
+            observations: observations, receipts: try harness.repository.receipts(),
+            shops: [shopID: "Trader Joe's"], catalog: ListCatalog(database: nil),
+            currencyCode: "USD", now: Date())
+        XCTAssertEqual(month.paid.total, Money(minorUnits: 1_798))
+        XCTAssertEqual(month.matched.total, Money(minorUnits: 1_798),
+                       "the month counts what was bought, not one of each")
+        XCTAssertNotEqual(month.matched.total, Money(minorUnits: 549),
+                          "$5.49 is the figure this packet exists to kill")
+        XCTAssertFalse(month.coverageText.contains("tax"),
+                       "there is no gap left, so nothing may be called tax")
     }
 
     // MARK: - The money the two typed screens share

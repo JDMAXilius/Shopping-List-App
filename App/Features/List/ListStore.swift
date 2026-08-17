@@ -147,6 +147,11 @@ final class ListStore {
     /// The measured-price moment. Observations accumulate — there is no inverse op to undo.
     /// All three ops or none of them: a price the database refuses must not leave the row with
     /// an identity and a taught name it never earned, and the caller is told either way.
+    ///
+    /// The count recorded is ONE, and the row's own quantity is deliberately not used. The sheet
+    /// asks "WHAT YOU PAID", which is the words the typed screen uses for the price of one — it
+    /// says "for all N" when it means the line. Reading it as N would also claim a purchase the
+    /// row is no evidence of: a list row is what someone means to buy, not a receipt.
     @discardableResult
     func setPrice(_ item: ListItem, _ amount: Money) -> Bool {
         guard let shopID = activeShopID else { return false }
@@ -159,7 +164,7 @@ final class ListStore {
             if itemID.catalogID == nil { kinds.append(.name(itemID, item.name)) }
         }
         kinds.append(.price(PriceObservation(itemID: itemID, shopID: shopID, date: Date(),
-                                             amount: amount, source: .manual)))
+                                             amount: amount, source: .manual, quantity: 1)))
         return append(kinds)
     }
 

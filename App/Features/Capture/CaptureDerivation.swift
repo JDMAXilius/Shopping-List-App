@@ -84,6 +84,11 @@ struct CaptureLine: Identifiable, Hashable, Sendable {
                      currencyCode: amount.currencyCode)
     }
 
+    /// How many `unitAmount` is the price of, so unit × count is the money this line printed.
+    /// Under one it is ONE, because `unitAmount` kept the whole printed amount there — recording
+    /// 0.5 against it would put half of what the till charged into the month's total.
+    var unitCount: Double { quantity > 1 ? quantity : 1 }
+
     /// A multi-unit line shows what one cost, because that is the number being recorded.
     var showsEach: Bool { quantity > 1 }
 

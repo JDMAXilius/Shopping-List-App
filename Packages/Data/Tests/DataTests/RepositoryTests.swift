@@ -285,6 +285,60 @@ final class RepositoryTests: XCTestCase {
         try assertRebuildEquivalent(database, repository)
     }
 
+    func testAPriceCountSurvivesTheOpLogAndTheProjection() throws {
+        let (database, repository) = try makeStack()
+        let itemID = ItemID()
+        try repository.append(.price(PriceObservation(itemID: itemID, shopID: ShopID(),
+                                                      date: Date(msSince1970: 1_755_300_000_000),
+                                                      amount: Money(minorUnits: 350),
+                                                      source: .receipt, quantity: 4)),
+                              kitchenID: kitchenID)
+        let stored = try XCTUnwrap(try repository.priceObservations().first)
+        XCTAssertEqual(stored.amount, Money(minorUnits: 350), "the price of ONE is what is stored")
+        XCTAssertEqual(stored.quantity, 4)
+        XCTAssertTrue(stored.hasRecordedQuantity)
+        XCTAssertEqual(try database.pool.read { db in
+            try Int.fetchOne(db, sql: "SELECT quantity_milli FROM price_observation")
+        }, 4_000, "thousandths in the column, so the count is exact in storage too")
+        // rebuild() re-derives the table from the op alone: the count is in the op or nowhere.
+        try assertRebuildEquivalent(database, repository)
+        XCTAssertEqual(try repository.priceObservations().first?.quantity, 4)
+    }
+
+    /// The op log is the only durable truth, and it is full of ops written before quantities
+    /// existed. One of those must replay into an observation worth exactly one unit — and must
+    /// still say that nobody counted it, so the month screen can degrade instead of guessing.
+    func testAPriceOpWrittenBeforeQuantitiesReplaysAsOneUncountedUnit() throws {
+        let (database, repository) = try makeStack()
+        let itemID = ItemID()
+        let payload = """
+            {"amount":{"currencyCode":"USD","minorUnits":350},"date":1755300000000,\
+            "itemID":"\(itemID.rawValue.uuidString)",\
+            "shopID":"\(ShopID().rawValue.uuidString)","source":"receipt"}
+            """
+        try database.pool.write { db in
+            try db.execute(sql: """
+                INSERT INTO op (op_id, kitchen_id, device_id, clock, wall_clock, type, payload, \
+                origin, pushed_at) VALUES (?, ?, ?, 1, 1755300000000, 'price', ?, 'local', NULL)
+                """, arguments: [UUID().uuidString, kitchenID.rawValue.uuidString,
+                                 UUID().uuidString, payload])
+        }
+
+        try repository.rebuild()
+
+        let replayed = try XCTUnwrap(try repository.priceObservations().first)
+        XCTAssertEqual(replayed.itemID, itemID)
+        XCTAssertEqual(replayed.amount, Money(minorUnits: 350))
+        XCTAssertEqual(replayed.quantity, 1, "it always meant one unit and still does")
+        XCTAssertFalse(replayed.hasRecordedQuantity, "and nobody ever counted it")
+        XCTAssertNil(try database.pool.read { db in
+            try Int.fetchOne(db, sql: "SELECT quantity_milli FROM price_observation")
+        }, "the projection carries the op's own silence, not a default of one")
+        let reencoded = try XCTUnwrap(try allOps(database).first)
+        XCTAssertEqual(try OpCoding.record(for: reencoded, origin: .local).payload, payload,
+                       "re-encoding invents no key: the op we hand a peer is the one we were given")
+    }
+
     func testNormalizedNameGroupingMatchesCore() throws {
         let (database, repository) = try makeStack()
         try repository.append(.add(ListItem(name: "Milk")), kitchenID: kitchenID)

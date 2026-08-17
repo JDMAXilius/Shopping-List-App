@@ -345,8 +345,11 @@ final class CaptureSession {
             if let teaches = match.teaches {
                 ops.append(.name(match.itemID, teaches))
             }
+            // The count is the till's own, not a guess: unit × count is the money this line
+            // printed, which is what makes a month of these a month.
             ops.append(.price(PriceObservation(itemID: match.itemID, shopID: shopID, date: date,
-                                               amount: line.unitAmount, source: .receipt)))
+                                               amount: line.unitAmount, source: .receipt,
+                                               quantity: line.unitCount)))
         }
         // The till's total or nothing, and beside it what this receipt actually recorded. A
         // receipt with no printed total is stored with none — never with a sum wearing its name.
@@ -372,7 +375,8 @@ final class CaptureSession {
               line.amount.currencyCode == currencyCode else { return false }
         let observation = PriceObservation(itemID: match.itemID, shopID: shopID,
                                            date: CaptureSession.honestDate(date),
-                                           amount: line.unitAmount, source: .typed)
+                                           amount: line.unitAmount, source: .typed,
+                                           quantity: line.unitCount)
         guard (try? repository.append(.price(observation), kitchenID: kitchenID)) != nil else {
             return false
         }

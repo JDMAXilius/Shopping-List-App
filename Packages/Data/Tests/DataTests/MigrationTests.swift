@@ -187,6 +187,44 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(shopNotNull, 1)
     }
 
+    // W9 RULING 2: a price observation records how many were bought — and one written before
+    // that must go on meaning one unit, not be silently rewritten into a count nobody made.
+    func testThePriceQuantityArrivesInV6AndInventsNoCountForOldRows() throws {
+        let database = try makeDatabase()
+        try Migrations.migrator.migrate(database.pool, upTo: "v5")
+        XCTAssertEqual(try database.installedSchemaVersion(), 5,
+                       "a database stopped at v5 must not claim to be v6 — each migration "
+                       + "stamps its own number")
+        let opID = UUID().uuidString
+        try database.pool.write { db in
+            try db.execute(sql: """
+                INSERT INTO price_observation \
+                (op_id, item_id, shop_id, observed_at, amount_minor, currency, source) \
+                VALUES (?, ?, ?, 1755300000000, 350, 'USD', 'receipt')
+                """, arguments: [opID, UUID().uuidString, UUID().uuidString])
+        }
+
+        try database.migrate()
+
+        XCTAssertEqual(try database.installedSchemaVersion(), AppDatabase.schemaVersion)
+        let columns = try database.pool.read { db in
+            try Row.fetchAll(db, sql: "PRAGMA table_info(price_observation)")
+        }
+        let added = try XCTUnwrap(columns.first { ($0["name"] as String) == "quantity_milli" })
+        XCTAssertEqual(added["notnull"] as Int, 0, "an unrecorded count must be storable")
+        XCTAssertNil(added["dflt_value"] as String?,
+                     "a default of 1 would turn 'nobody counted' into 'one was bought'")
+
+        let rows = try database.pool.read { db in
+            try Row.fetchAll(db, sql: "SELECT * FROM price_observation")
+        }
+        let row = try XCTUnwrap(rows.first)
+        XCTAssertEqual(rows.count, 1, "the v5 → v6 upgrade preserves recorded prices")
+        XCTAssertEqual(row["op_id"] as String, opID)
+        XCTAssertEqual(row["amount_minor"] as Int, 350, "the price of one is not touched")
+        XCTAssertNil(row["quantity_milli"] as Int?, "and no count is invented for it")
+    }
+
     private func insertTotallessReceipt(_ database: AppDatabase) throws {
         try database.pool.write { db in
             try db.execute(sql: """

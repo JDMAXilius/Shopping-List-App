@@ -13,6 +13,9 @@ struct PriceObservationRecord: Codable, FetchableRecord, PersistableRecord {
     var amountMinor: Int
     var currency: String
     var source: String
+    /// NULL for every row projected from an op written before counts existed: the column carries
+    /// the op's own silence rather than the one every total already assumed.
+    var quantityMilli: Int?
 
     enum CodingKeys: String, CodingKey {
         case opID = "op_id"
@@ -22,6 +25,7 @@ struct PriceObservationRecord: Codable, FetchableRecord, PersistableRecord {
         case amountMinor = "amount_minor"
         case currency
         case source
+        case quantityMilli = "quantity_milli"
     }
 
     init(opID: OpID, observation: PriceObservation) {
@@ -32,6 +36,7 @@ struct PriceObservationRecord: Codable, FetchableRecord, PersistableRecord {
         amountMinor = observation.amount.minorUnits
         currency = observation.amount.currencyCode
         source = observation.source.rawValue
+        quantityMilli = observation.quantityMilli
     }
 
     func observation() throws -> PriceObservation {
@@ -43,6 +48,9 @@ struct PriceObservationRecord: Codable, FetchableRecord, PersistableRecord {
             shopID: ShopID(try requireUUID(shopID)),
             date: Date(msSince1970: observedAt),
             amount: Money(minorUnits: amountMinor, currencyCode: currency),
-            source: source)
+            source: source,
+            // Thousandths divide back exactly at this scale, so the row and the op it came
+            // from carry the same count — and a NULL stays "nobody recorded one".
+            quantity: quantityMilli.map { Double($0) / 1000 })
     }
 }

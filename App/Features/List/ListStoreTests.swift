@@ -219,6 +219,26 @@ final class ListStoreTests: XCTestCase {
                        PriceDisplay(amount: Money(minorUnits: 479), confidence: .trusted))
     }
 
+    /// W9 RULING 3. The sheet's field says "WHAT YOU PAID" — the same words the typed screen
+    /// uses for the price of ONE; it says "for all N" when it means the line. So the count
+    /// recorded is one, not the row's ×4: reading it as four would both contradict the other
+    /// screen and turn a shopping list into evidence of a purchase.
+    func testAPriceSetOnARowRecordsOneNotTheRowsQuantity() throws {
+        let (store, repository) = try makeStore()
+        store.addShop(named: "Trader Joe's")
+        store.add(text: "4 milk")
+        store.setPrice(try XCTUnwrap(store.rows.first).item, Money(minorUnits: 350))
+
+        let observation = try XCTUnwrap(try repository.priceObservations().first)
+        XCTAssertEqual(observation.amount, Money(minorUnits: 350), "what one cost")
+        XCTAssertEqual(observation.quantity, 1)
+        XCTAssertTrue(observation.hasRecordedQuantity,
+                      "one was recorded here, which is not the same as nobody counting")
+        // The row still multiplies for the trip total — that is the list's own quantity, and
+        // it is a different fact from what this observation claims.
+        XCTAssertEqual(PriceSummary(store.prices).total, Money(minorUnits: 1_400))
+    }
+
     func testSetPriceOnAnUnresolvedRowGivesItAnIdentity() throws {
         let (store, _) = try makeStore()
         store.addShop(named: "Trader Joe's")

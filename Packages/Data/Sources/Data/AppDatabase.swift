@@ -37,7 +37,7 @@ public enum AppGroup {
 }
 
 public final class AppDatabase: Sendable {
-    public static let schemaVersion = 5
+    public static let schemaVersion = 6
 
     let pool: DatabasePool
     // Receipt photos live beside the database, so they land in the App Group container too.
