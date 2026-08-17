@@ -97,6 +97,12 @@ Both are structural, not cosmetic, and both will fail submission rather than mer
       email. That is honest and it is not sufficient for review. Needs a `Repository` wipe **and**
       a server-side delete; it is a packet, not a checkbox, and it is on the critical path to
       submission rather than to launch.
+      **What deletion means is no longer an open question** — `DECISIONS.md` → "Deleting an
+      account" settles it (the person leaves, the household keeps its list, ownership passes to the
+      longest-standing member, `scan_audit` goes because it is the one table holding a `user_id`).
+      Two facts for whoever builds it: `op.kitchen_id` has **no `on delete cascade`**, so deleting
+      a kitchen fails on a foreign key while its ops exist, and the local wipe is as much work as
+      the server half.
 - [ ] **A paywall must carry Terms and Privacy links.** `SupportURL`, `PrivacyPolicyURL` and
       `TermsURL` are read from Info.plist the way the scan endpoint is, and none of the three is
       declared — because the domain is not owned (item 2). About says so plainly rather than

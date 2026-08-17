@@ -114,6 +114,41 @@ One page. Everything decided, everything recommended, and what's still open.
 - ✅ TestFlight internal first (100 people, no review, minutes), then external (10,000, Beta App Review)
 - ❌ No analytics SDK, no crash reporter, no UI kit, no i18n at launch
 
+## Deleting an account — settled 2026-08-17, before anyone builds it
+
+App Review **5.1.1(v)** requires an account to be deletable from inside the app, and it will fail
+submission rather than merely look bad (`TERMINAL_TICKET_FOUNDER_BLOCKERS` §7). The hard part was
+never the button, it was what deletion *means* in a shared kitchen. Settled now, because a packet
+that has to invent this while writing SQL will invent it badly.
+
+**The fact that makes all of it clean: `op` carries `device_id`, never `user_id`.** The shared
+history is attributed to a phone, not to a person's account. So deleting an account never requires
+rewriting or anonymising the op log — the op log never knew who they were.
+
+- ✅ **Deletion means the person leaves. The household keeps its list.** Their `member` row, their
+  `entitlement` row, their `scan_audit` rows and their auth user are deleted.
+- ✅ **`scan_audit` is in that list deliberately.** It holds `user_id` + timestamp — no receipt
+  content, but it *is* personal data tied to the account, and it is the only table that is.
+- ✅ **The ops stay if anyone else is still in the kitchen.** They are the household's shopping list.
+  Deleting them would silently empty someone else's list, days later, with no explanation — and
+  because they carry a device rather than a person, keeping them discloses nothing about the leaver.
+- ✅ **Last one out takes the lights.** If they were the only member, the kitchen, its invites and
+  its ops go too: nobody is left who could ever read them.
+- ✅ **Ownership passes to the longest-standing remaining member** when an owner leaves and others
+  remain. A kitchen with no owner is a kitchen nobody can invite into — a slow, confusing death.
+- ✅ **The screen says who ends up in charge before the confirm, not after.** Nobody deleting their
+  account should be surprised by who inherited their kitchen.
+- ✅ **On the phone: everything.** Database, receipt photos, pins, defaults — the same sweep
+  `DataPrivacyScreen` already promises for deleting the app.
+- ✅ **It says what it cannot undo.** A receipt already read was already read; the photo was never
+  retained server-side, and the sentence should say that rather than implying a recall.
+
+Two engineering facts found while settling this, both of which will bite the packet on day one:
+`op.kitchen_id references kitchen (id)` has **no `on delete cascade`** (unlike `member` and
+`invite`), so deleting a kitchen fails on a foreign-key violation while its ops exist — the delete
+has to be ordered, or the constraint changed in a migration. And `Repository` has **no wipe API**
+at all; the local half of this is as much work as the server half.
+
 ## Go to market
 
 - ✅ **ASO is the entire marketing budget** — 65–70% of downloads start with store search, top-3 takes >50% of clicks
