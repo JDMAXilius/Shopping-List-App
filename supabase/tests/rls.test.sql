@@ -488,7 +488,14 @@ rollback;
 create extension if not exists dblink;
 do $$
 declare
-  conn text := 'dbname=' || current_database();
+  -- The host and port are asked of the running server rather than left to libpq's defaults:
+  -- `dbname=` alone reaches /var/run/postgresql:5432, so on any cluster started somewhere else
+  -- this whole section died with "could not establish connection" — the one section that proves
+  -- commit-ordered seq, skipped by an environment detail. `unix_socket_directories` can hold a
+  -- list; the first entry is the one libpq would have used.
+  conn text := format('dbname=%s host=%s port=%s', current_database(),
+                      split_part(current_setting('unix_socket_directories'), ',', 1),
+                      current_setting('port'));
   kt uuid := 'eeeeeeee-0000-0000-0000-000000000001';
   s1 bigint; s2 bigint; n int;
 begin
@@ -530,37 +537,54 @@ begin
   raise notice 'ok 13: seq is commit-ordered — concurrent kitchen-mate insert blocked';
 end $$;
 
-do $$ begin raise notice 'ALL RLS TESTS PASSED (including seq commit-ordering)'; end $$;
-
 -- ---------------------------------------------------------------------------
 -- 14. An invite is server-minted and server-revoked. A member cannot write one.
 --     Both halves were reachable before: revoked_at back to null resurrected every
 --     link the owner had killed, and a chosen token is the guessable capability
 --     this schema exists to prevent.
+--
+--     This section runs AFTER section 13's rollback, so it carries its own
+--     transaction and its own fixtures — the users at the top of this file are
+--     long gone by here. (It was written assuming otherwise, and assuming an
+--     `owner_a()` helper that does not exist, so it aborted in its declare block
+--     and asserted NOTHING. Never trust a section that only ever ran after an
+--     earlier one had already failed.)
 -- ---------------------------------------------------------------------------
+begin;
+
+insert into auth.users (id, aud, role, email) values
+  ('00000000-0000-0000-0000-0000000000e1', 'authenticated', 'authenticated', 'own-n@test.local'),
+  ('00000000-0000-0000-0000-0000000000e2', 'authenticated', 'authenticated', 'gst-n@test.local');
+
 do $$
 declare
   kid uuid;
   tok text;
-  guest uuid := '00000000-0000-0000-0000-0000000000ge'::uuid;
+  owner_n uuid := '00000000-0000-0000-0000-0000000000e1';
+  guest_n uuid := '00000000-0000-0000-0000-0000000000e2';
   n int;
 begin
-  perform set_config('request.jwt.claims', json_build_object('sub', owner_a())::text, true);
-  set local role authenticated;
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', owner_n, 'role', 'authenticated')::text, true);
   kid := public.create_kitchen('Kitchen N');
   tok := public.create_invite(kid);
 
-  perform set_config('request.jwt.claims', json_build_object('sub', guest)::text, true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', guest_n, 'role', 'authenticated')::text, true);
   perform public.join_kitchen(tok);
 
   -- The owner kills the link the way the app does: a new one revokes the prior.
-  perform set_config('request.jwt.claims', json_build_object('sub', owner_a())::text, true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', owner_n, 'role', 'authenticated')::text, true);
   perform public.create_invite(kid);
   select count(*) into n from invite where kitchen_id = kid and revoked_at is null;
   assert n = 1, 'exactly one live token after a new link';
 
-  -- Now the guest tries to undo that, and to name a token of their own.
-  perform set_config('request.jwt.claims', json_build_object('sub', guest)::text, true);
+  -- Now the guest tries to undo that, and to name a token of their own. UPDATE is
+  -- revoked outright, so the privilege check fires before any row is even matched.
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', guest_n, 'role', 'authenticated')::text, true);
   begin
     update invite set revoked_at = null where kitchen_id = kid;
     raise exception 'a member resurrected a revoked invite';
@@ -572,8 +596,20 @@ begin
   exception when insufficient_privilege then null;
   end;
 
-  perform set_config('request.jwt.claims', json_build_object('sub', owner_a())::text, true);
+  -- And the owner cannot either: revocation is the server's job, not a member's.
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', owner_n, 'role', 'authenticated')::text, true);
+  begin
+    update invite set revoked_at = null where kitchen_id = kid;
+    raise exception 'the owner resurrected a revoked invite';
+  exception when insufficient_privilege then null;
+  end;
   select count(*) into n from invite where kitchen_id = kid and revoked_at is null;
   assert n = 1, 'still exactly one live token';
-  raise notice 'ok 14 invite is server-minted and server-revoked';
+  raise notice 'ok 14: invite is server-minted and server-revoked';
 end $$;
+reset role;
+
+rollback;
+
+do $$ begin raise notice 'ALL RLS TESTS PASSED (including seq commit-ordering and invites)'; end $$;
