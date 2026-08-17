@@ -388,6 +388,17 @@ enum PriceDerivation {
             return "These prices were recorded by hand. Without a receipt none of it can be "
                 + "called what the month cost."
         }
+        // A unit price is a printed line divided by its count, so rebuilding the line multiplies
+        // the rounding back up: "2 SOURDOUGH 3.99" stores $2.00 and rebuilds $4.00. One minor unit
+        // per priced line bounds it. Inside that, the two figures agree — and saying money "was
+        // recorded without a receipt" when a cent of rounding is the whole difference would be
+        // inventing a cause.
+        let slack = matched.measuredCount + matched.estimatedCount
+        let excess = matched.total.minorUnits - paid.total.minorUnits
+        if excess > 0, excess <= slack {
+            return "\(figure(matched)) is matched to items, which is the \(paid.figure) the "
+                + "receipts add up to, give or take the rounding on a shared line."
+        }
         guard matched.total.minorUnits <= paid.total.minorUnits else {
             // A trip whose till total was never read is missing from `paid` while its prices are
             // in `matched`. Counting quantities makes that overshoot ordinary, so the sentence

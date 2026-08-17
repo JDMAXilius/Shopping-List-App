@@ -121,7 +121,11 @@ struct ItemDetailSheet: View {
 
     private func priceSection(_ row: ListRow) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("WHAT YOU PAID")
+            // The count has to be in the label or the number is ambiguous: on a ×4 row, "what
+            // you paid" reads as the line to one person and as one item to the next, and the two
+            // answers differ by 4×. EnterByHandScreen already says "for all 4" when it means the
+            // line; this asks for one, so it says so. The two must not disagree.
+            Text(row.item.quantity > 1 ? "WHAT ONE COST" : "WHAT YOU PAID")
                 .font(Typography.sectionLabel)
                 .tracking(Typography.labelTracking)
                 .foregroundStyle(Palette.muted.color)

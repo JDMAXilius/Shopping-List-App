@@ -483,3 +483,30 @@ extension PriceStoreTests {
         XCTAssertEqual(PriceStore.expiry([], after: now), midnight)
     }
 }
+
+extension PriceStoreTests {
+    /// A unit price is a printed line divided by its count, so rebuilding it multiplies the
+    /// rounding back up — "2 SOURDOUGH 3.99" stores $2.00 and rebuilds $4.00, a cent over what
+    /// was paid. The sentence used to blame that cent on money "recorded without a receipt",
+    /// when nothing was.
+    func testACentOfRoundingIsNotCalledMoneyRecordedWithoutAReceipt() {
+        let paid = PaidSummary([ReceiptTotal(printedOnReceipt: Money(minorUnits: 399))],
+                               in: "August", currencyCode: "USD")
+        let matched = PriceSummary([PriceLine(PriceDisplay(amount: Money(minorUnits: 200),
+                                                           confidence: .trusted), quantity: 2)])
+        let sentence = PriceDerivation.coverage(paid: paid, matched: matched, uncounted: 0)
+        XCTAssertTrue(sentence.contains("give or take the rounding"), sentence)
+        XCTAssertFalse(sentence.contains("without a receipt"), sentence)
+    }
+
+    /// The slack is one minor unit per priced line and no more: real money above it is still
+    /// named as real money.
+    func testMoneyWellAboveTheReceiptsIsStillNamedAsSuch() {
+        let paid = PaidSummary([ReceiptTotal(printedOnReceipt: Money(minorUnits: 399))],
+                               in: "August", currencyCode: "USD")
+        let matched = PriceSummary([PriceLine(PriceDisplay(amount: Money(minorUnits: 900),
+                                                           confidence: .trusted), quantity: 1)])
+        let sentence = PriceDerivation.coverage(paid: paid, matched: matched, uncounted: 0)
+        XCTAssertFalse(sentence.contains("give or take"), sentence)
+    }
+}
