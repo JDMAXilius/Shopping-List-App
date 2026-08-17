@@ -111,6 +111,29 @@ key is committed and none should be — but it means the entire purchase path is
 the dependency is a deliberate act (`project.yml` `packages:`), and it should happen at the same
 time as the account and the products, not before.
 
+## 9. Entitlement reaches a device ONLY by scanning on it
+
+Found by W9-P7 arguing against its own work, and it is a correctness gap that has to close
+before anything is sold.
+
+The server's `is_plus` rides on the scan response and nothing else. So:
+
+- A subscriber who buys Plus on their **iPhone** and opens Bagged on their **iPad** is not
+  entitled on the iPad until they scan a receipt there. Until then Setup shows the sales card and
+  the switcher offers to sell them a second shop they already own.
+- A **joiner** in a household whose owner pays is told "more than one shop is part of Plus, yours
+  stays free" for a feature the kitchen has already bought.
+- A **fresh device** says "3 free scans left" before it has ever asked the server — the app being
+  more generous than the server, for exactly one scan.
+
+The fix is an entitlement read that does not require a scan: either a `GET` on the `entitlement`
+row (RLS already scopes it to the user) called on launch and on foreground, or RevenueCat's own
+customer-info sync once the SDK is in the binary. **Do not ship a purchase without one of them** —
+someone who has paid being shown a sales card is the worst version of this app's honesty problem,
+because it is about their money.
+
+- [ ] An entitlement refresh that works without scanning
+
 ---
 
 ## Log
