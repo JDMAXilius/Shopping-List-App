@@ -104,7 +104,7 @@ Say this in the Log so nobody "fixes" it later:
 About → "Open a screen directly". That is deliberate — a TestFlight build is a Release build, and it
 is how a tester reaches a screen that would otherwise cost a real receipt.
 
-- [ ] Confirm it appears in the installed TestFlight build, and that it is the sandbox-receipt path
+- [x] Confirm it appears in the installed TestFlight build, and that it is the sandbox-receipt path
       doing it rather than a Debug accident.
 - [ ] Tell testers what it is in the same note as the two missing features below.
 - [ ] **It comes out before submission, and the removal is one line** — see
@@ -245,3 +245,27 @@ enable); no Associated Domains (the domain is not owned, so `RootView.onOpenURL`
 this build — expected, and the paste path in Kitchen → "I have an invite link" is the working
 route testers should be told to use); no Sign in with Apple capability yet — email is the
 shipping path.
+
+**2026-08-17 · terminal · A4b confirmed, and a Release build was produced and run.**
+To reach Release-only behaviour I wrote a **local, gitignored** `Config/Secrets.xcconfig` with
+obviously-fake values (`https://local-verification.invalid`), built Release, verified, then
+**deleted it** so the tree is back to its honest no-backend default. Recreate it the same way when
+you next need a Release build; never commit it.
+- **The Release preflight passes when the config is present** — the other half of the check that
+  was only ever seen failing. `** BUILD SUCCEEDED **`.
+- **A2 verified in the built product**, not just in the spec: the installed Release app's
+  Info.plist carries `CFBundleVersion = 1`, `ITSAppUsesNonExemptEncryption = false`, and the
+  xcconfig values resolve to real URLs (the `$()` escaping produces `https://…` correctly, which
+  is the trap in xcconfig where `//` starts a comment).
+- **A4b: the screens panel IS in the Release binary.** `strings … Bagged.app/Bagged` finds
+  "Open a screen directly" in the Release product. Not a Debug accident — the flag is
+  `SWIFT_ACTIVE_COMPILATION_CONDITIONS: BAGGED_SCREENS_PANEL` on the Release config in project.yml.
+- **Finding worth knowing: the test suites cannot be run against Release.** `@testable import
+  Bagged` needs `ENABLE_TESTABILITY`, which Release correctly disables, so
+  `xcodebuild test -configuration Release` fails to compile `BaggedTests`. Verification of
+  Release-only behaviour has to be by binary inspection and by driving the installed app, which
+  is what I did. Do not "fix" this by enabling testability in Release.
+- **Unexpected bonus, and it is good news:** with a backend configured but unreachable, the list
+  screen renders wave 10's sync sentence for the first time — *"No signal — everything still
+  works, and syncs when you're back."* Exactly the honest wording, and it does not claim to be
+  still trying over something nothing will retry.
