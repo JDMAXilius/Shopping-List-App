@@ -171,8 +171,8 @@ struct RootView: View {
                 KitchenScreen(store: kitchenStore, sync: syncCoordinator, sheet: $sheet)
             }
         case .places:
-            if let placeStore {
-                PlacesScreen(store: store, places: placeStore)
+            if let placeStore, let subscriptionStore {
+                PlacesScreen(store: store, places: placeStore, subscription: subscriptionStore)
             }
         case .shopEditor(let shopID):
             if let placeStore, let shopID {

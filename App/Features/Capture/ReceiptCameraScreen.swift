@@ -7,7 +7,11 @@ import SwiftUI
 struct ReceiptCameraScreen: View {
     let session: CaptureSession
 
+    /// Read here, not held by the session: a per-flow store must not own app-lifetime
+    /// entitlement, but the screen still has to know whether this person is ever to be sold to.
+    @Environment(\.subscriptionStore) private var subscription
     @State private var camera = ReceiptCamera()
+    @State private var showsPaywall = false
     @State private var isShooting = false
     @State private var shutterFailed = false
 
@@ -150,16 +154,35 @@ struct ReceiptCameraScreen: View {
         }
     }
 
-    /// Wave 9 owns all three destinations. The route is decided here and named honestly —
-    /// a live-looking button to a screen that does not exist would be the worse lie.
-    private func handoffState(_ handoff: CaptureSession.Handoff) -> some View {
+    /// The route is decided by the session, which is role-blind by design; whether this person
+    /// is ever shown a price is decided here. A joiner is told what it is and offered nothing.
+    @ViewBuilder private func handoffState(_ handoff: CaptureSession.Handoff) -> some View {
+        let joinerSentence: String? = {
+            guard case .paywall = handoff,
+                  case .unavailable(let sentence)? = subscription?.gate(.receiptScanning)
+            else { return nil }
+            return sentence
+        }()
         VStack(alignment: .leading, spacing: 12) {
-            Text(Self.headline(handoff))
+            Text(joinerSentence == nil ? Self.headline(handoff) : "Scanning is part of Plus")
                 .font(.system(.title2, weight: .bold))
                 .foregroundStyle(Palette.ink.color)
-            Notice(Self.sentence(handoff), on: .paper)
+            Notice(joinerSentence ?? Self.sentence(handoff), on: .paper)
             Notice("Your photo is queued on this phone until then.", on: .paper)
+            if joinerSentence == nil, case .paywall = handoff, subscription != nil {
+                Button { showsPaywall = true } label: {
+                    Text("See what Plus costs")
+                        .font(.system(.body, weight: .semibold))
+                        .foregroundStyle(Palette.persimmon.color)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
             takeAnother
+        }
+        .sheet(isPresented: $showsPaywall) {
+            if let subscription { PaywallScreen(store: subscription) }
         }
     }
 
@@ -236,7 +259,8 @@ struct ReceiptCameraScreen: View {
         // The count is the function's own; when it doesn't send one we don't invent it.
         case .paywall(let scansUsed):
             let used = scansUsed.map { "You've used \($0) free receipt \($0 == 1 ? "scan" : "scans")." }
-            return [used, "The Plus screen isn't built yet."].compactMap { $0 }.joined(separator: " ")
+            return [used, "Plus makes the prices real — the list stays free."]
+                .compactMap { $0 }.joined(separator: " ")
         case .signIn:
             return "An account is what keeps your kitchen if you lose this phone. The sign-in screen arrives with sharing."
         case .kitchen:

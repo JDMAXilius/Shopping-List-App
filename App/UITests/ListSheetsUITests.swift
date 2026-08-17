@@ -36,7 +36,7 @@ final class ListSheetsUITests: XCTestCase {
         shoot(app, "19-shop-switcher")
         var name = app.textFields["Shop name"].firstMatch
         if !name.waitForExistence(timeout: 2) {
-            app.buttons["+ Add a shop"].firstMatch.tap()
+            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "+ Add a shop")).firstMatch.tap()
             name = app.textFields["Shop name"].firstMatch
         }
         XCTAssertTrue(name.waitForExistence(timeout: 3))

@@ -6,9 +6,17 @@ import SwiftUI
 struct PlacesScreen: View {
     let store: ListStore
     let places: PlaceStore
+    let subscription: SubscriptionStore
 
     @State private var newShopName = ""
     @State private var isAdding = false
+    @State private var showsPaywall = false
+
+    /// The SAME rule the switcher uses. Two ways to add a shop and one gate between them is not
+    /// a gate — a free owner could meet the wall in the switcher and walk around it here.
+    private var addGate: Gate {
+        ShopSwitcherSheet.addShopGate(shopCount: store.shops.count, subscription)
+    }
 
     var body: some View {
         ScrollView {
@@ -27,6 +35,7 @@ struct PlacesScreen: View {
             .padding(.bottom, 12)
         }
         .background(Palette.paper.color)
+        .sheet(isPresented: $showsPaywall) { PaywallScreen(store: subscription) }
         .navigationTitle("Places")
         .toolbar(.hidden, for: .navigationBar)
         // A shop deleted on another phone leaves a pin behind that nothing else would collect.
@@ -111,9 +120,17 @@ struct PlacesScreen: View {
                     .disabled(trimmed.isEmpty)
                     .opacity(trimmed.isEmpty ? 0.4 : 1)
             }
+        } else if case .unavailable(let sentence) = addGate {
+            // A joiner is told what it is and never shown a price.
+            Text(sentence)
+                .font(Typography.footnote)
+                .foregroundStyle(Palette.muted.color)
+                .fixedSize(horizontal: false, vertical: true)
         } else {
-            Button { isAdding = true } label: {
-                Text("+ Add a shop")
+            Button {
+                if case .paywall = addGate { showsPaywall = true } else { isAdding = true }
+            } label: {
+                Text(addGate == .allowed ? "+ Add a shop" : "Add a shop — part of Plus")
                     .font(.system(.body, weight: .semibold))
                     .foregroundStyle(Palette.persimmon.color)
                     .frame(maxWidth: .infinity, minHeight: 44)
