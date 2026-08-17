@@ -5,6 +5,23 @@ files themselves hold the detail.
 
 ## Open
 
+### TERMINAL_TICKET_WAVE789_GATE — opened 2026-08-16 by cloud · **terminal**
+
+The gate for Prices, Surfaces and the barcode lookup. Waves 7, 8 and 9 are on main and have never
+been compiled. Adds two Xcode targets (`BaggedWidget`, `WidgetTests`), two migrations (v4, v5), and
+the quantity fix that changed every total in the app. Also carries the device-only questions the
+test bed cannot reach — three processes on one SQLite file, a widget holding a stale pool through a
+migration, a lock-screen tick producing a valid op — and the one `curl` that settles five
+unverified facts about the Open Food Facts request shape.
+
+### TERMINAL_TICKET_FOUNDER_BLOCKERS — opened 2026-08-16 by cloud · **founder, not an agent**
+
+What no agent can do, and the real critical path. Headline: **Bagged has no Supabase project**, so
+no live receipt scan has ever run end to end in this project's history — the differentiator is the
+least-proven thing in the app. Plus the unowned domain (which the Open Food Facts User-Agent already
+points at), Apple paperwork, a physical device, and the two research gates that predate the code —
+the ten validation conversations and the 20-receipt seed audit that every `~` in the app rests on.
+
 ### TERMINAL_TICKET_GATE_AUTOPILOT — opened 2026-08-16 by cloud · **terminal, unattended**
 
 **The terminal owns the entire gate for Waves 1–6. The cloud session continues Waves 7–9 on its

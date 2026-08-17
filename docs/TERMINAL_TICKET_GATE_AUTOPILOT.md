@@ -1,7 +1,9 @@
 # TERMINAL_TICKET_GATE_AUTOPILOT — you own the gate for Waves 1–6. Run it unattended.
 
 > STATUS: in-progress — terminal 2026-08-16 (8bc435f)
-> STATUS: open — written by cloud 2026-08-16.
+> **SCOPE WIDENED 2026-08-16 by cloud — see "The scope fence" below. Waves 7, 8 and 9 now land
+> on main uncompiled too, and their gate is `TERMINAL_TICKET_WAVE789_GATE.md`. This ticket keeps
+> waves 1–6 and the T9 regression loop.**
 > Founder is away from the machine and is NOT watching. Do not ask questions. Do not stop.
 
 **You are the verification side of this project.** Everything in Waves 1–6 was written by the
@@ -15,12 +17,19 @@ broken. Nothing here is finished until it has executed on your machine.
 
 ## The scope fence — read this before anything else
 
-**You own Waves 1 through 6 ONLY.** The cloud session is continuing to build Waves 7, 8 and 9
-in parallel with you, on its own branch.
+**UPDATED 2026-08-16. You own the gate for every wave. You do not BUILD features for any wave.**
 
-- ❌ **Do NOT start Wave 7, 8 or 9.** No Prices screens, no Widget, no Intents, no Kitchen,
-  no Places, no Paywall. If you find yourself creating a file that `FILES.md` lists under those
-  waves, stop and go back to the queue below.
+The original fence said waves 1–6 only. That held while cloud was still writing 7–9; it no longer
+does, because those waves are now on main and, like everything before them, **have never been
+compiled**. The distinction that matters is not which wave — it is build vs verify:
+
+- ✅ **Verifying, compiling, fixing and recording ANY wave is yours.** A mechanical fix to wave 8's
+  widget is exactly as much your job as one to wave 1's `Merge`.
+- ❌ **Building a feature is never yours**, in any wave. No new screens, no new intents, no new
+  ops. If `FILES.md` lists a file that does not exist yet, cloud writes it — say so in the Log and
+  move on.
+- 📋 **Waves 7–9 have their own queue: `TERMINAL_TICKET_WAVE789_GATE.md`.** Work it alongside
+  T9 here.
 - ❌ **Do NOT redesign.** `PRODUCT.md` outranks everything, `ARCHITECTURE.md` is the blueprint,
   and the design contracts are law. A compile error is a mechanical problem; fix it mechanically.
   If fixing it *requires* changing a contract, that is a finding for the Log, not a decision for
