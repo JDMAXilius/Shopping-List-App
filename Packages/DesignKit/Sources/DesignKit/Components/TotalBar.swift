@@ -19,26 +19,49 @@ public struct TotalBar: View {
         self.summary = summary
     }
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             doubleRule
-            HStack(alignment: .firstTextBaseline) {
+            // A money figure never truncates and never wraps — "$153…" is a wrong number,
+            // not a short one. It scales to 0.8 like a tab label, and when accessibility
+            // sizes need more than that the LAYOUT gives: the figure takes the full width
+            // on its own line instead of sharing one with the label.
+            if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 2) {
-                    SectionLabel("TOTAL")
-                    if let breakdown {
-                        Text(breakdown)
-                            .font(Typography.footnote)
-                            .foregroundStyle(Palette.muted.color)
-                    }
+                    label
+                    figure.frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                Spacer(minLength: 12)
-                Text(summary.display)
-                    .font(Typography.total)
-                    .foregroundStyle(Palette.ink.color)
+            } else {
+                HStack(alignment: .firstTextBaseline) {
+                    label
+                    Spacer(minLength: 12)
+                    figure
+                }
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
+    }
+
+    private var label: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            SectionLabel("TOTAL")
+            if let breakdown {
+                Text(breakdown)
+                    .font(Typography.footnote)
+                    .foregroundStyle(Palette.muted.color)
+            }
+        }
+    }
+
+    private var figure: some View {
+        Text(summary.display)
+            .font(Typography.total)
+            .foregroundStyle(Palette.ink.color)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
     }
 
     private var doubleRule: some View {

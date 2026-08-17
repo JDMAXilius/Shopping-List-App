@@ -161,8 +161,9 @@ enum Migrations {
                 """)
             try db.execute(sql: "DROP TABLE receipt")
             try db.execute(sql: "ALTER TABLE receipt_v5 RENAME TO receipt")
-            // Each migration stamps its OWN number: this one read the app's current version, so
-            // adding v6 would have made a database stopped at v5 claim to be v6.
+            // A literal, like v1–v4: the constant would stamp a FUTURE version the day v6
+            // registers, and a crash between the two would leave a db claiming a shape it
+            // does not have — the number the widget and intents trust before writing.
             try db.execute(sql: "PRAGMA user_version = 5")
         }
         migrator.registerMigration("v6") { db in
@@ -172,7 +173,7 @@ enum Migrations {
             try db.alter(table: "price_observation") { t in
                 t.add(column: "quantity_milli", .integer)
             }
-            try db.execute(sql: "PRAGMA user_version = \(AppDatabase.schemaVersion)")
+            try db.execute(sql: "PRAGMA user_version = 6")
         }
         return migrator
     }

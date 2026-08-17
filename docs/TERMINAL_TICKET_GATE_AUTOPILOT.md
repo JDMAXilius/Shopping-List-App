@@ -703,3 +703,34 @@ path, by design.
 - Full suite after all of it: **144 + 17 unit/snapshot, 8/8 UI, TEST SUCCEEDED.** Still open
   from the wave-8 note: widget family snapshots + the 20–26pt lock-screen tap-target
   judgement (needs the widget rendered — next).
+
+**2026-08-16 · terminal · The curl ran — all five facts verified, ProductLookup is RIGHT as written.**
+Real responses from world.openfoodfacts.org (first attempts hit their nginx 504s; it recovered):
+- Known product: `{"code":"3017620422003","product":{"product_name":"Nutella"},"status":1,
+  "status_verbose":"product found"}` — facts 1–4 all confirmed: `.json` suffix works on v2,
+  `?fields=` works, `product_name` sits inside `product`, `status` is the INTEGER 1.
+- Fact 5 has two shapes, both handled: a valid-format unknown EAN (`4999999999993`) returns
+  **HTTP 404** with body `{"status":0,"status_verbose":"product not found"}` (the 200-only
+  guard answers nil); an INVALID code returns **HTTP 200** with `"status":0,"status_verbose":
+  "no code or invalid code"` (the `status != 0` guard answers nil). No code changes needed.
+- Field selection is approximate: requesting `product_name,product_name_en` on a US product
+  returned `ecoscore_tags` too, and omitted `product_name_en` where empty. The tolerant
+  decoder doesn't care.
+- **Language**: `product_name_en` / `product_name_fr` exist and are selectable via `fields=`
+  (verified on Nutella). The ruling on requesting `product_name_en` first can proceed on real
+  ground now.
+- **Name length**: observed names were short ("Nutella", "Cocoa puffs"); two probes are not a
+  distribution, so `maxNameCharacters = 60` stands unchanged.
+- `CFBundleShortVersionString: "1.0"` now set in project.yml so the User-Agent stops relying
+  on the fallback. The `bagged.app` domain remains unbought (DECISIONS.md) — founder's call.
+
+**2026-08-16 · terminal · W8-P5/W9 first execution — three test failures, all ruled from history.**
+- `IntentsTests` subtitle pair (new in 9e90952, never run before): the impl used the row's
+  unit label, so "4 milk" read "4 L at $3.50" — four litres for $3.50, the exact misreading
+  ruling 5 kills. The tests are the commit's stated intent ("×4 at $3.50"); `ListItemEntity.
+  detail` now uses the bare multiplier and the unit vocabulary stays on the list row.
+- `PriceStoreTests` coverage sentence: f945ce9 deliberately changed the CODE to stop naming
+  causes it cannot separate ("tax, deposits, fees" → "everything a single item's price can't
+  account for") but missed the test written minutes earlier in 9e90952. Expectation aligned
+  to the newer ruling, cited in place.
+- After all of it: **BaggedTests 163/163 · WidgetTests 20/20**, packages 52/57/38/89, UI 8/8.

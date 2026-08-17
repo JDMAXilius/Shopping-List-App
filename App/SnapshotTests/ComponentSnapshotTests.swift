@@ -130,6 +130,14 @@ final class ComponentSnapshotTests: XCTestCase {
         }, height: 220)
     }
 
+    /// A five-digit approximate total — only a multiplied list produces one, and a wrapped
+    /// or truncated figure at accessibility5 would go uncaught without this frame.
+    func testTotalBarFiveDigits() {
+        verify(TotalBar(prices: [measured.line(quantity: 33),   // $148.17
+                                 estimated.line(quantity: 1)]), // + ~$5.00 → ≈
+               height: 160)
+    }
+
     func testField() {
         verify(VStack(spacing: 12) {
             Field("Item", text: .constant("Whole milk"), placeholder: "What is it?",

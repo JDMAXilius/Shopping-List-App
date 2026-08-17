@@ -7,8 +7,12 @@ import WidgetKit
 /// design/app/28-widget.png, in DesignKit's tokens only. The tile carries exactly one money
 /// figure — what the rows still to buy come to, the same basket the count names.
 struct ListWidgetView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) private var environmentFamily
     let entry: ListEntry
+    /// Snapshot seam: `\.widgetFamily` is not writable from a test host. nil in the widget.
+    var familyOverride: WidgetFamily?
+
+    private var family: WidgetFamily { familyOverride ?? environmentFamily }
 
     var body: some View {
         content
