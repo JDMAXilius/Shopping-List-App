@@ -142,6 +142,13 @@ rewriting or anonymising the op log — the op log never knew who they were.
   `DataPrivacyScreen` already promises for deleting the app.
 - ✅ **It says what it cannot undo.** A receipt already read was already read; the photo was never
   retained server-side, and the sentence should say that rather than implying a recall.
+- ⚠️ **The copy must not claim more than the deletion does.** W10-P3 objected to its own packet and
+  the objection is right: `device_id` makes the retained ops *pseudonymous*, not anonymous. It is a
+  stable identifier for the leaver's phone that stays in the kept kitchen's log, and in a
+  two-person household it identifies them by elimination. The payloads are not neutral either —
+  item names the person typed, a kitchen named after someone. The balance of the ruling stands
+  (deleting them would silently empty someone else's list), but **the screen says the shared list
+  stays with the household; it must never say every trace of the person is gone.**
 
 Two engineering facts found while settling this, both of which will bite the packet on day one:
 `op.kitchen_id references kitchen (id)` has **no `on delete cascade`** (unlike `member` and

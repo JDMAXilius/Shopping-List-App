@@ -100,9 +100,33 @@ Both are structural, not cosmetic, and both will fail submission rather than mer
       **What deletion means is no longer an open question** — `DECISIONS.md` → "Deleting an
       account" settles it (the person leaves, the household keeps its list, ownership passes to the
       longest-standing member, `scan_audit` goes because it is the one table holding a `user_id`).
-      Two facts for whoever builds it: `op.kitchen_id` has **no `on delete cascade`**, so deleting
-      a kitchen fails on a foreign key while its ops exist, and the local wipe is as much work as
-      the server half.
+      **The server half is built and proven** — W10-P3, `supabase/migrations/0003_delete_account.sql`
+      plus `supabase/functions/delete-account/`, 20 RLS sections and 117 asserts, three mutation
+      tests. What remains is below.
+- [ ] **Deploying the migration WITHOUT the edge function leaves deletion silently incomplete.**
+      `auth.users` is owned by `supabase_auth_admin`, not by the role that owns the function, and a
+      refusal there can be silent — a delete that matches zero rows raises nothing. The SQL deletes
+      the person's data; only the edge function's Admin API call deletes their **login**. Deploy
+      both or the person can sign back in to an empty account, and App Review 5.1.1(v) is not
+      satisfied. The function reports `auth_user_deleted` from the row count rather than from
+      optimism, so this is detectable — but only if someone looks.
+- [ ] **A deleted user's access token still works until it expires** (Supabase tokens are
+      stateless; the Admin API revokes refresh tokens and sessions, so no *new* token can be minted,
+      but the one in hand lives out its TTL — an hour by default). Within that window a call could
+      re-create membership or an entitlement row. And with no time bound at all: a late or replayed
+      RevenueCat webhook re-creates an `entitlement` row for a deleted user, because
+      `apply_entitlement_event` is an unconditional upsert. **Both were proven by execution, not
+      argued.** The app must sign out as part of deleting; the server-side fix is an
+      `exists (select 1 from auth.users …)` guard, which changes contracts two other packets own.
+- [ ] **The local half** — a `Repository` wipe (database, receipt photos, pins, defaults), the
+      confirm screen naming the heir *before* the confirm using the same rule the server uses
+      (`order by joined_at, user_id` among the others, and only when the leaver was the sole
+      owner), and handling the endpoint's three answers: retry-safe, `auth_user_not_deleted` means
+      retry and never show success, `upstream` means nothing was deleted.
+
+      One fact for whoever builds it: `op.kitchen_id` has **no `on delete cascade`**, so deleting a
+      kitchen fails on a foreign key while its ops exist. A mutation test in W10-P3 confirms it by
+      removing the ordered delete and watching the constraint fire.
 - [ ] **A paywall must carry Terms and Privacy links.** `SupportURL`, `PrivacyPolicyURL` and
       `TermsURL` are read from Info.plist the way the scan endpoint is, and none of the three is
       declared — because the domain is not owned (item 2). About says so plainly rather than
