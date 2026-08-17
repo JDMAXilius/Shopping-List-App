@@ -251,3 +251,22 @@ final class MigrationTests: XCTestCase {
         }
     }
 }
+
+extension MigrationTests {
+    /// A shop syncs; where it is does not. `wake_radius`/`wake_enabled` were syncing fields for
+    /// device-local data — a field that still exists is a field the next packet will set, and
+    /// setting it would arm a wake-up on a phone with no pin and tell the household which shops
+    /// someone watches.
+    func testTheGeofenceColumnsAreGoneInV7() throws {
+        let database = try AppDatabase(url: temporaryURL())
+        try database.migrate()
+        try database.pool.read { db in
+            let columns = try db.columns(in: "shop").map(\.name)
+            XCTAssertFalse(columns.contains("wake_radius"), "a pin must not ride an op")
+            XCTAssertFalse(columns.contains("wake_enabled"))
+            XCTAssertTrue(columns.contains("name"))
+        }
+        XCTAssertEqual(try database.installedSchemaVersion(), 7)
+        XCTAssertEqual(AppDatabase.schemaVersion, 7)
+    }
+}

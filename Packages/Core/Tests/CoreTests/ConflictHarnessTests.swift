@@ -455,7 +455,7 @@ final class ConflictHarnessTests: XCTestCase {
 
         let coffeeB = ListItem(name: " coffee ", quantity: 3, createdAt: Date(timeIntervalSince1970: 300))
         let cheese = ListItem(name: "Cheese", createdAt: Date(timeIntervalSince1970: 400))
-        let shop = Shop(name: "Trader Joe's", wakeRadius: 200, wakeEnabled: true)
+        let shop = Shop(name: "Trader Joe's")
         let order = AisleOrder(shopID: shop.id, ordered: [CategoryID("produce"), CategoryID("dairy")])
         let bOps = [b.op(.add(coffeeB)),
                     b.op(.add(cheese)),

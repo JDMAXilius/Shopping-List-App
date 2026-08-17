@@ -55,7 +55,7 @@ final class RepositoryTests: XCTestCase {
     func testEveryOpTypeRoundTrips() throws {
         let (database, repository) = try makeStack()
         let item = ListItem(name: "Milk")
-        let shop = Shop(name: "Trader Joe's", branch: "Court St", wakeRadius: 200, wakeEnabled: true)
+        let shop = Shop(name: "Trader Joe's", branch: "Court St")
         let observation = PriceObservation(itemID: ItemID(), shopID: shop.id, date: Date(),
                                            amount: Money(minorUnits: 449), source: .receipt)
         let order = AisleOrder(shopID: shop.id, ordered: [CategoryID("produce"), CategoryID("dairy")])

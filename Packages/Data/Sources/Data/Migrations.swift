@@ -43,6 +43,8 @@ enum Migrations {
                 t.column("id", .text).primaryKey()
                 t.column("name", .text).notNull()
                 t.column("branch", .text)
+                // v1 shape, kept so this migration still describes what it created. Both are
+                // unread from v7 on: a geofence is device-local and must never ride an op.
                 t.column("wake_radius", .double).notNull()
                 t.column("wake_enabled", .boolean).notNull()
             }
@@ -174,6 +176,15 @@ enum Migrations {
                 t.add(column: "quantity_milli", .integer)
             }
             try db.execute(sql: "PRAGMA user_version = 6")
+        }
+        migrator.registerMigration("v7") { db in
+            // Where a shop IS must not sync. The columns are dropped rather than left unread:
+            // a field that still exists is a field the next packet will set.
+            try db.alter(table: "shop") { t in
+                t.drop(column: "wake_radius")
+                t.drop(column: "wake_enabled")
+            }
+            try db.execute(sql: "PRAGMA user_version = 7")
         }
         return migrator
     }

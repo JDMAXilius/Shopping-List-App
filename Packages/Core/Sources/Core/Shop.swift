@@ -4,17 +4,15 @@ public struct Shop: Hashable, Sendable, Codable {
     public let id: ShopID
     public var name: String
     public var branch: String?
-    // Meters. Geofences are evaluated on-device only.
-    public var wakeRadius: Double
-    public var wakeEnabled: Bool
+    // A shop syncs; WHERE it is does not. The pin and its radius live in a local file that the
+    // sync engine cannot reach (App/Features/Places) — a geofence field here would ride an op
+    // into every phone in the kitchen, arming a wake-up on a device with no pin for it and
+    // telling a household member which shops you watch.
 
-    public init(id: ShopID = ShopID(), name: String, branch: String? = nil,
-                wakeRadius: Double = 150, wakeEnabled: Bool = false) {
+    public init(id: ShopID = ShopID(), name: String, branch: String? = nil) {
         self.id = id
         self.name = name
         self.branch = branch
-        self.wakeRadius = wakeRadius
-        self.wakeEnabled = wakeEnabled
     }
 }
 
