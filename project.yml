@@ -39,12 +39,12 @@ targets:
           # A missing key and a missing account produce the same "signed out" message,
           # so a misconfigured App Store build would blame the user's account. Ship
           # builds must carry the config; dev builds only warn.
-          if [ -z "${SCAN_RECEIPT_ENDPOINT}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+          if [ -z "${SCAN_RECEIPT_ENDPOINT}" ] || [ -z "${SUPABASE_ANON_KEY}" ] || [ -z "${SUPABASE_URL}" ]; then
             if [ "${CONFIGURATION}" = "Release" ]; then
-              echo "error: SCAN_RECEIPT_ENDPOINT / SUPABASE_ANON_KEY missing — fill Config/Secrets.xcconfig (see the template). A Release build without them ships a scanner that blames the user's account."
+              echo "error: SCAN_RECEIPT_ENDPOINT / SUPABASE_URL / SUPABASE_ANON_KEY missing — fill Config/Secrets.xcconfig (see the template). A Release build without them ships a scanner that blames the user's account."
               exit 1
             else
-              echo "warning: scan config absent — this build takes the signed-out scan path (fill Config/Secrets.xcconfig to reach the function)"
+              echo "warning: backend config absent — this build takes the signed-out scan path and never syncs (fill Config/Secrets.xcconfig to reach the function and the database)"
             fi
           fi
     sources:
@@ -89,6 +89,7 @@ targets:
           when you take your phone out. The spots you pin stay on this phone and
           are never uploaded.
         ScanReceiptEndpoint: $(SCAN_RECEIPT_ENDPOINT)
+        SupabaseURL: $(SUPABASE_URL)
         SupabaseAnonKey: $(SUPABASE_ANON_KEY)
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
