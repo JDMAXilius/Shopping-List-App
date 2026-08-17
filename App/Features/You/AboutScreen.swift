@@ -57,6 +57,7 @@ struct AboutScreen: View {
                 identity
                 links
                 attribution
+                ScreensPanelRow()
                 Text("Made for the weekly shop.")
                     .font(Typography.footnote)
                     .foregroundStyle(Palette.muted.color)
