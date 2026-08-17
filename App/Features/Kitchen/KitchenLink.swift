@@ -44,7 +44,7 @@ enum KitchenLink {
 
     private static func pathToken(_ text: String) -> String? {
         let normalized = text.contains("://") ? text : "https://" + text
-        guard let url = URL(string: normalized), url.host()?.hasSuffix(host) == true else {
+        guard let url = URL(string: normalized), url.host() == host else {
             return nil
         }
         let path = url.path()

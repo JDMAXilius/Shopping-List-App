@@ -18,6 +18,9 @@ final class AppSession {
     let places = PlaceStore()
     let repository: Repository?
     let scanBackend: any ScanBackend
+    /// Built once and held. A second `KitchenServices.make()` would mint a second `KitchenAuth`
+    /// over the same keychain item, and the two would race one single-use refresh token.
+    private let services: KitchenServices.Services?
 
     init() {
         let opened = try? AppSession.open()
@@ -25,10 +28,10 @@ final class AppSession {
         // A catalog built before the kitchen was read would price its seeds in a guessed
         // currency; without a database there is no kitchen, and the device's own is all there is.
         catalog = opened?.catalog ?? ListCatalog()
-        let services = KitchenServices.make()
+        services = KitchenServices.make()
         scanBackend = AppSession.makeScanBackend(auth: services?.auth)
         guard let repository, let opened else { return }
-        adopt(opened.kitchen, services: services)
+        adopt(opened.kitchen)
         // Arriving switches the list to that shop so the prices and the walk are already right.
         // The store announces it — a silent switch is how the wrong shop's prices get read.
         places.onArrival = { [weak self] shopID in self?.list?.switchShop(shopID, arrived: true) }
@@ -39,7 +42,7 @@ final class AppSession {
 
     /// The stores for one kitchen. Rebuilt whole rather than re-pointed: every one of them
     /// caches something keyed on the kitchen it was built for.
-    private func adopt(_ kitchen: Kitchen, services: KitchenServices.Services?) {
+    private func adopt(_ kitchen: Kitchen) {
         guard let repository else { return }
         catalog = ListCatalog(currencyCode: kitchen.currencyCode)
         list = try? ListStore(repository: repository, kitchenID: kitchen.id, catalog: catalog)
@@ -56,11 +59,12 @@ final class AppSession {
         guard let repository,
               let kitchen = (try? repository.kitchens())?.first(where: { $0.id == kitchenID })
         else { return }
-        adopt(kitchen, services: KitchenServices.make())
+        adopt(kitchen)
         sync?.start()
         sync?.kick()
         // A joiner is never paywalled: sharing is the growth loop, and the owner already paid.
-        subscription?.adopt(self.kitchen?.isGuest == true ? .guest : .owner)
+        // Only a known answer moves the role; RootView adopts again when the roster lands.
+        if let isGuest = self.kitchen?.isGuest { subscription?.adopt(isGuest ? .guest : .owner) }
     }
 
     private static func open()

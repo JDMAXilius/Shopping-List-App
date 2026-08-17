@@ -73,7 +73,22 @@ final class KitchenStore {
 
     var inviteURL: URL? { invite.flatMap { KitchenLink.url(token: $0) } }
 
-    var isGuest: Bool { identity?.isAnonymous ?? false }
+    /// The ROSTER's answer, not the session's. A guest who secures their kitchen with an email
+    /// stops being anonymous but is still a guest — deriving this from `isAnonymous` reclassified
+    /// them as an owner and started selling them Plus, permanently, for adding an email address.
+    /// A dropped session answers nil rather than "owner": unknown is not a promotion.
+    var role: Member.Role? {
+        guard let userID = identity?.userID else { return nil }
+        return members.first { $0.userID == userID }?.role
+    }
+
+    /// nil while the roster is still loading — the caller must not read that as "owner".
+    var isGuest: Bool? {
+        if let role { return role == .guest }
+        // Anonymous with no roster yet is a guest by construction: an anonymous session can only
+        // exist because someone joined with a link.
+        return identity.map { $0.isAnonymous ? true : nil } ?? nil
+    }
 
     /// "3 people · 1 list". One list is a fact of v1, not a count.
     var headline: String {

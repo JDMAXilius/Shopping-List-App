@@ -75,8 +75,10 @@ struct RootView: View {
         // identity asynchronously: setting it before the answer arrives is how a guest meets
         // the paywall on their third scan.
         .task { await kitchenStore?.load() }
+        // nil means the roster has not answered yet, and unknown is never a promotion to owner:
+        // a joiner reclassified while their kitchen loads is a joiner being sold to.
         .onChange(of: kitchenStore?.isGuest) { _, isGuest in
-            guard let isGuest else { return }
+            guard let isGuest = isGuest ?? nil else { return }
             subscriptionStore?.adopt(isGuest ? .guest : .owner)
         }
     }

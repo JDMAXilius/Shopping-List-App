@@ -60,7 +60,9 @@ struct PaywallScreen: View {
     let store: SubscriptionStore
 
     @Environment(\.dismiss) private var dismiss
-    @State private var term: PlusPlan.Term = .annual
+    /// Nothing is chosen for you. A preselected plan — the dearer one, with the smaller number
+    /// on its face — is a dark pattern whichever way it points, and this screen said it had none.
+    @State private var term: PlusPlan.Term?
     @State private var notice: String?
     @State private var isWorking = false
 
@@ -173,14 +175,19 @@ struct PaywallScreen: View {
                     planCard(offer.monthly)
                     planCard(offer.annual)
                 }
-                Text(PaywallCopy.terms(term, offer: offer))
-                    .font(Typography.footnote)
-                    .foregroundStyle(Palette.muted.color)
-                    .fixedSize(horizontal: false, vertical: true)
+                // BOTH commitments, always. Rendering only the selected one put "a month until
+                // you cancel" behind a tap, which is a price you have to work to read.
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(PaywallCopy.terms(.monthly, offer: offer))
+                    Text(PaywallCopy.terms(.annual, offer: offer))
+                }
+                .font(Typography.footnote)
+                .foregroundStyle(Palette.muted.color)
+                .fixedSize(horizontal: false, vertical: true)
                 Button {
                     Task { await buy() }
                 } label: {
-                    Text(PaywallCopy.callToAction(term, offer: offer))
+                    Text(term.map { PaywallCopy.callToAction($0, offer: offer) } ?? "Pick a plan")
                         .font(.system(.body, weight: .semibold))
                         .foregroundStyle(Palette.card.color)
                         .frame(maxWidth: .infinity)
@@ -188,7 +195,8 @@ struct PaywallScreen: View {
                         .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .fill(Palette.persimmon.color))
                 }
-                .disabled(isWorking)
+                .disabled(isWorking || term == nil)
+                .opacity(term == nil ? 0.4 : 1)
             }
         } else {
             // The normal state of every build today: no subscription configuration, so there is
@@ -262,6 +270,7 @@ struct PaywallScreen: View {
     // MARK: - Actions
 
     private func buy() async {
+        guard let term else { return }
         isWorking = true
         let result = await store.purchase(term)
         isWorking = false

@@ -118,7 +118,7 @@ struct SignInScreen: View {
     /// mint a DIFFERENT user and quietly drop this phone's membership, so the store refuses it
     /// and the email path — which keeps the same user id — is the one that upgrades a guest.
     @ViewBuilder private var appleButton: some View {
-        if !store.isGuest {
+        if store.isGuest == false {
             SignInWithAppleButton(.continue) { request in
                 request.requestedScopes = [.email]
                 request.nonce = AppleNonce.hashed(nonce)
