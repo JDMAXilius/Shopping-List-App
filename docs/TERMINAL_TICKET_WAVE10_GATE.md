@@ -80,8 +80,8 @@ Log whether the behaviour matches those descriptions once it compiles.
 
 W10-P3 proved the SQL. Two things are yours:
 
-- [ ] `deno check supabase/functions/delete-account/index.ts` — the only half never executed.
-- [ ] **Read this and put it in the log so it cannot be lost:** deploying `0003` without the edge
+- [x] `deno check supabase/functions/delete-account/index.ts` — the only half never executed.
+- [x] **Read this and put it in the log so it cannot be lost:** deploying `0003` without the edge
       function leaves deletion *silently* incomplete. `auth.users` is owned by `supabase_auth_admin`
       and a delete that matches zero rows raises nothing, so the person's data goes while their
       login survives. They can sign back in to an empty account and App Review 5.1.1(v) is not
@@ -194,3 +194,30 @@ exactly the pre-W10-P1 behaviour. Then ran the suite. Result, per the ticket's l
   `deno test scan-receipt/` is **27/27**.
 - Not claimed: the function has still never served a request. That needs a deployed project
   (FOUNDER_BLOCKERS item 1).
+
+**2026-08-17 · terminal · V3 confirmed in the code (not implemented — they are wave-11 packets).**
+1. **Batch granularity — the description is exact.** `SupabaseTransport.pushBatchSize = 200` and
+   `push` loops `min(index + 200, ops.count)` internally, while `SyncEngine.pushOrQuarantine`
+   hands `push` the WHOLE unpushed set and, on `.rejected`, calls
+   `markQuarantined(ops.map(\.opID))` over all of it. So a refusal on the first chunk quarantines
+   every op in the call, including ones no request ever carried. Confirmed, not fixed: the
+   ruling (transport declares its batch size through `SyncTransport`; engine drains one batch at
+   a time) is wave 11's.
+2. **A spent bound is permanent — also exact.** `refusalLimit = 3` and the release query only
+   returns ops `refusedFewerThan: 3`, so at three the op stops being eligible for the
+   pull-triggered release. There is **no `releaseQuarantined` anywhere in `Repository`** and no
+   caller anywhere in the app — grep returns nothing — so a person re-invited the next day has no
+   reachable way to send their held edits. Confirmed. The ruling (a deliberate, user-initiated
+   "try these again" from the kitchen screen, never automatic) is wave 11's.
+
+**2026-08-17 · terminal · V4 — the deletion warning, recorded so it cannot be lost.**
+> **Deploying `0003_delete_account.sql` WITHOUT the `delete-account` edge function leaves account
+> deletion silently incomplete.** `auth.users` is owned by `supabase_auth_admin`; a delete that
+> matches zero rows raises nothing. The person's data goes and their login survives — they can
+> sign back in to an empty account, and App Review 5.1.1(v) is not satisfied. **Both halves ship
+> together or neither does.** This is now recorded in two places (here and the ticket body).
+- `deno check delete-account/index.ts` passes. It has still never served a request; that is
+  FOUNDER_BLOCKERS item 1, not something this machine can close.
+- V4b's two open findings (a signed-in joiner classified `.owner` when the roster read fails, and
+  the unclamped wall-clock grace window) were read and left alone: both are recorded as wave-11
+  packets with rulings already written, and neither is a mechanical fix.
