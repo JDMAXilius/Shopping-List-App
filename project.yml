@@ -136,6 +136,7 @@ targets:
       - package: Catalog
       - package: Data
       - package: DesignKit
+      - package: SnapshotTesting
 
   BaggedTests:
     type: bundle.unit-test

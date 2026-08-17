@@ -161,7 +161,10 @@ enum Migrations {
                 """)
             try db.execute(sql: "DROP TABLE receipt")
             try db.execute(sql: "ALTER TABLE receipt_v5 RENAME TO receipt")
-            try db.execute(sql: "PRAGMA user_version = \(AppDatabase.schemaVersion)")
+            // A literal, like v1–v4: the constant would stamp a FUTURE version the day v6
+            // registers, and a crash between the two would leave a db claiming a shape it
+            // does not have — the number the widget and intents trust before writing.
+            try db.execute(sql: "PRAGMA user_version = 5")
         }
         return migrator
     }
