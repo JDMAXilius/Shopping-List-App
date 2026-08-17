@@ -224,6 +224,20 @@ final class PriceStoreTests: XCTestCase {
             receipts: [receipt(100, shopA, now)],
             shops: shops, catalog: catalog, currencyCode: "USD", now: now)
         XCTAssertTrue(over.coverageText.contains("more than the receipts add up to"))
+
+        // A trip whose till total was never read is left out of `paid` while its prices are in
+        // `matched` — which counting quantities makes an ordinary way to overshoot. It is named,
+        // rather than blamed on prices recorded by hand that may not exist.
+        let unread = PriceDerivation.month(
+            observations: [observation(350, shopA, now, quantity: 4)],
+            receipts: [receipt(100, shopA, now),
+                       Receipt(shopID: shopA, capturedAt: now, lineCount: 9, totalMinor: nil)],
+            shops: shops, catalog: catalog, currencyCode: "USD", now: now)
+        XCTAssertEqual(unread.coverageText,
+                       "$14.00 is matched to items — more than the receipts add up to. "
+                       + "1 captured trip had no printed total, so that money is not in the "
+                       + "figure it is being compared with.")
+        XCTAssertFalse(unread.coverageText.contains("without a receipt"))
     }
 
     /// RULING 5. The sentence may name tax again only because the counts are recorded now. An

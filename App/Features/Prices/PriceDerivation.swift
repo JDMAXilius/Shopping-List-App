@@ -389,6 +389,15 @@ enum PriceDerivation {
                 + "called what the month cost."
         }
         guard matched.total.minorUnits <= paid.total.minorUnits else {
+            // A trip whose till total was never read is missing from `paid` while its prices are
+            // in `matched`. Counting quantities makes that overshoot ordinary, so the sentence
+            // has to name it rather than go on blaming prices recorded by hand.
+            guard paid.unreadCount == 0 else {
+                let trips = "\(paid.unreadCount) captured trip\(paid.unreadCount == 1 ? "" : "s")"
+                return "\(figure(matched)) is matched to items — more than the receipts add up "
+                    + "to. \(trips) had no printed total, so that money is not in the figure "
+                    + "it is being compared with."
+            }
             return "\(figure(matched)) is matched to items — more than the receipts add up to, "
                 + "because some of it was recorded without a receipt."
         }
