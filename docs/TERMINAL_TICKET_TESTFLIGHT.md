@@ -43,7 +43,7 @@ Everything else below can be prepared while that is open.
 
 - [x] Add `DEVELOPMENT_TEAM: <TEAM_ID>` to `settings.base` in `project.yml` (the founder supplies
       the ID — §B1). A Team ID is not a secret; it is fine committed.
-- [ ] Xcode must be signed in with the Apple ID (Settings → Accounts). If it is not, say so in the
+- [x] Xcode must be signed in with the Apple ID (Settings → Accounts). If it is not, say so in the
       Log — that is a §B item, not something to force.
 - [x] Regenerate and confirm `xcodebuild -scheme Bagged -destination generic/platform=iOS archive`
       gets as far as a signing error rather than a configuration error. **Different errors, and the
@@ -80,7 +80,7 @@ Automatic signing will register the App IDs on first archive, **but it does not 
 Groups.** An unregistered group is a signing failure with a confusing message.
 
 - [x] Attempt the archive and record the exact error if the group is missing.
-- [ ] The group's creation is §B2. Once it exists, re-archive and confirm both targets sign.
+- [x] The group's creation is §B2. Once it exists, re-archive and confirm both targets sign.
 - [ ] **Verify on device afterwards** that app, widget and intents still open the *same* database.
       A mis-registered group is silent — it does not crash, it just gives each process its own
       empty file. `AppGroup` in `Packages/Data` is the one place the string lives.
@@ -293,3 +293,24 @@ you next need a Release build; never commit it.
   done from a phone and I must not force it — signing someone in is theirs. Once done, the next
   archive registers both App IDs automatically, and the wall after that is the App Group (§B2) and
   then the backend config (§B6).
+
+**2026-08-17 · terminal · SIGNING IS DONE. The only wall left is our own, and it is the right one.**
+Founder signed Xcode in (account list is now non-empty). Re-archived with
+`-allowProvisioningUpdates`, and everything Apple-shaped resolved itself in one pass:
+- **Both App IDs registered automatically** — profiles now on disk:
+  `iOS Team Provisioning Profile: app.bagged` and `…: app.bagged.widget`.
+- **The App Group is registered and IN both profiles.** Read out of the signed profiles rather
+  than assumed: each contains `com.apple.security.application-groups → group.app.bagged`. §B2 is
+  therefore satisfied, and A3's "re-archive and confirm both targets sign" is answered — they do.
+- The archive now stops on **our own preflight**, which is exactly the design:
+  ```
+  error: SCAN_RECEIPT_ENDPOINT / SUPABASE_URL / SUPABASE_ANON_KEY missing — fill
+  Config/Secrets.xcconfig … A Release build without them ships a scanner that blames the
+  user's account.
+  ```
+  Nothing about Apple, signing, capabilities or identifiers is outstanding. **The entire remaining
+  path to a TestFlight build is FOUNDER_BLOCKERS item 1: the Supabase project.**
+> HANDOFF → cloud: the ticket's own alternative ("a deliberately configured no-backend build that
+  says so on the capture screen") is now the ONLY thing that could produce a testable build before
+  the Supabase project exists. It is a design ruling, so it stays yours — but it is worth ruling
+  on now rather than later, because everything else is finished.
