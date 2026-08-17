@@ -612,4 +612,561 @@ reset role;
 
 rollback;
 
-do $$ begin raise notice 'ALL RLS TESTS PASSED (including seq commit-ordering and invites)'; end $$;
+-- ---------------------------------------------------------------------------
+-- 15-20. ACCOUNT DELETION (0003_delete_account.sql).
+--     DECISIONS.md → "Deleting an account" is the ruling; these sections are the
+--     proof that the SQL implements it and that it cannot be turned on anyone else.
+--     Same shape as 14: each section is its own transaction with its own fixtures
+--     (the users at the top of this file are long gone by here), each ends with
+--     `reset role`, and every claim is an assert rather than a notice.
+-- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
+-- 15. Last one out takes the lights — and takes NOTHING of anybody else's.
+--     A solo kitchen goes with its ops and its invites (the ordered delete that
+--     op.kitchen_id's missing ON DELETE CASCADE forces), entitlement and scan_audit
+--     go, and an unrelated user's identical set of rows is untouched by the same call.
+-- ---------------------------------------------------------------------------
+begin;
+
+insert into auth.users (id, aud, role, email) values
+  ('00000000-0000-0000-0000-0000000000f1', 'authenticated', 'authenticated', 'solo@test.local'),
+  ('00000000-0000-0000-0000-0000000000f2', 'authenticated', 'authenticated', 'bystd@test.local');
+
+do $$
+declare
+  solo  uuid := '00000000-0000-0000-0000-0000000000f1';
+  other uuid := '00000000-0000-0000-0000-0000000000f2';
+  k_solo uuid; k_other uuid; res jsonb; n int;
+begin
+  -- The bystander's kitchen exists BEFORE the deletion, so every assertion about it
+  -- afterwards is about data the delete had every opportunity to take.
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', other, 'role', 'authenticated')::text, true);
+  k_other := public.create_kitchen('Kitchen Bystander');
+  perform public.create_invite(k_other);
+  insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
+  values ('f2f2f2f2-0000-0000-0000-000000000001', k_other,
+          'dddddddd-0000-0000-0000-000000000002', 1, 1723800000000, 'add', '{"name":"rice"}');
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', solo, 'role', 'authenticated')::text, true);
+  k_solo := public.create_kitchen('Kitchen Solo');
+  perform public.create_invite(k_solo);
+  insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
+  values ('f1f1f1f1-0000-0000-0000-000000000001', k_solo,
+          'dddddddd-0000-0000-0000-000000000001', 1, 1723800000000, 'add', '{"name":"milk"}'),
+         ('f1f1f1f1-0000-0000-0000-000000000002', k_solo,
+          'dddddddd-0000-0000-0000-000000000001', 2, 1723800000500, 'add', '{"name":"eggs"}');
+
+  -- entitlement and scan_audit are service-role territory: seed them as the server does.
+  perform set_config('role', 'none', true); reset role;
+  insert into entitlement (user_id, is_plus, scans_used) values (solo, true, 2), (other, false, 1);
+  insert into scan_audit (user_id) values (solo), (solo), (other);
+
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', solo, 'role', 'authenticated')::text, true);
+  res := public.delete_account();
+  perform set_config('role', 'none', true); reset role;
+
+  -- What it says it did
+  assert (res->>'kitchens_deleted')::int = 1, 'the solo kitchen is reported deleted';
+  assert (res->>'kitchens_kept')::int = 0, 'no kitchen was kept';
+  assert (res->>'owners_promoted')::int = 0, 'nobody was promoted — there was nobody left';
+  assert (res->>'ops_deleted')::int = 2, 'both ops of the dead kitchen are reported deleted';
+  assert (res->>'member_rows_deleted')::int = 1, 'one membership reported deleted';
+  assert (res->>'entitlement_deleted')::boolean, 'the entitlement row is reported deleted';
+  assert (res->>'scan_audit_rows_deleted')::int = 2, 'both scan_audit rows reported deleted';
+
+  -- What actually happened
+  select count(*) into n from kitchen where id = k_solo;
+  assert n = 0, 'the solo kitchen itself is gone';
+  select count(*) into n from op where kitchen_id = k_solo;
+  assert n = 0, 'the ops of a kitchen nobody is left in are gone (ordered delete: op has no cascade)';
+  select count(*) into n from invite where kitchen_id = k_solo;
+  assert n = 0, 'the invites of the dead kitchen are gone — no capability URL outlives it';
+  select count(*) into n from member where user_id = solo;
+  assert n = 0, 'the caller holds no membership anywhere';
+  select count(*) into n from entitlement where user_id = solo;
+  assert n = 0, 'the entitlement row is gone';
+  select count(*) into n from scan_audit where user_id = solo;
+  assert n = 0, 'scan_audit is gone — the one table holding a user_id beside a timestamp';
+
+  -- auth.users: the flag is row_count, never optimism. This equality holds on a platform
+  -- where the definer function may delete auth.users AND on one where it may not.
+  assert (not exists (select 1 from auth.users where id = solo))
+         = (res->>'auth_user_deleted')::boolean,
+    'auth_user_deleted reports whether the row actually went, not that we tried';
+  -- The shim owns auth.users, so the in-transaction branch is the one exercised here. A
+  -- false on a locked-down platform is not a bug in this function: it is the instruction
+  -- to finish through the Admin API, which the delete-account edge function always does.
+  assert (res->>'auth_user_deleted')::boolean,
+    'where the definer owner may delete auth.users, the whole deletion is one transaction';
+
+  -- The bystander, whose data was equally reachable to a function that got identity wrong
+  select count(*) into n from kitchen where id = k_other;
+  assert n = 1, 'another user''s kitchen survives someone else''s account deletion';
+  select count(*) into n from op where kitchen_id = k_other;
+  assert n = 1, 'another user''s ops survive';
+  select count(*) into n from invite where kitchen_id = k_other and revoked_at is null;
+  assert n = 1, 'another user''s live invite survives';
+  select count(*) into n from member where user_id = other and role = 'owner';
+  assert n = 1, 'another user''s membership and role survive';
+  select scans_used into n from entitlement where user_id = other;
+  assert n = 1, 'another user''s entitlement row is untouched, value included';
+  select count(*) into n from scan_audit where user_id = other;
+  assert n = 1, 'another user''s scan_audit row is untouched';
+  select count(*) into n from auth.users where id = other;
+  assert n = 1, 'another user''s auth row is untouched';
+
+  raise notice 'ok 15: solo kitchen, its ops, its invites, entitlement and scan_audit gone; bystander intact';
+end $$;
+reset role;
+
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- 16. The household keeps its list. An owner leaves a kitchen that others still use:
+--     the kitchen and every op survive (op carries device_id, never user_id, so
+--     keeping them discloses nothing about the leaver), the longest-standing
+--     remaining member becomes owner, and the departure revokes the live invite the
+--     leaver had shared. A kitchen with no owner is a kitchen nobody can administer,
+--     so the promotion is proven by USE, not just by the role column.
+-- ---------------------------------------------------------------------------
+begin;
+
+insert into auth.users (id, aud, role, email) values
+  ('00000000-0000-0000-0000-0000000000f3', 'authenticated', 'authenticated', 'own-h@test.local'),
+  ('00000000-0000-0000-0000-0000000000f4', 'authenticated', 'authenticated', 'old-g@test.local'),
+  ('00000000-0000-0000-0000-0000000000f5', 'authenticated', 'authenticated', 'new-g@test.local');
+
+do $$
+declare
+  ownr uuid := '00000000-0000-0000-0000-0000000000f3';
+  g_old uuid := '00000000-0000-0000-0000-0000000000f4';
+  g_new uuid := '00000000-0000-0000-0000-0000000000f5';
+  kid uuid; tok text; res jsonb; n int; r text;
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', ownr, 'role', 'authenticated')::text, true);
+  kid := public.create_kitchen('Kitchen Household');
+  insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
+  values ('f3f3f3f3-0000-0000-0000-000000000001', kid,
+          'dddddddd-0000-0000-0000-000000000003', 1, 1723800000000, 'add', '{"name":"bread"}'),
+         ('f3f3f3f3-0000-0000-0000-000000000002', kid,
+          'dddddddd-0000-0000-0000-000000000003', 2, 1723800000500, 'add', '{"name":"butter"}');
+  tok := public.create_invite(kid);
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', g_old, 'role', 'authenticated')::text, true);
+  perform public.join_kitchen(tok);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', g_new, 'role', 'authenticated')::text, true);
+  perform public.join_kitchen(tok);
+
+  -- joined_at defaults to now(), which is identical for everything inside one
+  -- transaction, so "longest-standing" is spelled out here rather than left to a tie.
+  -- (The tie case is section 19's whole subject.)
+  perform set_config('role', 'none', true); reset role;
+  update member set joined_at = now() - interval '3 days' where kitchen_id = kid and user_id = ownr;
+  update member set joined_at = now() - interval '2 days' where kitchen_id = kid and user_id = g_old;
+  update member set joined_at = now() - interval '1 day'  where kitchen_id = kid and user_id = g_new;
+
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', ownr, 'role', 'authenticated')::text, true);
+  res := public.delete_account();
+  perform set_config('role', 'none', true); reset role;
+
+  assert (res->>'kitchens_kept')::int = 1, 'the shared kitchen is reported kept';
+  assert (res->>'kitchens_deleted')::int = 0, 'no kitchen was destroyed';
+  assert (res->>'owners_promoted')::int = 1, 'one ownership transfer is reported';
+  assert (res->>'ops_deleted')::int = 0, 'no op was deleted';
+
+  select count(*) into n from kitchen where id = kid;
+  assert n = 1, 'a kitchen with another member survives its owner deleting their account';
+  select count(*) into n from op where kitchen_id = kid;
+  assert n = 2, 'the household keeps its list — every op survives';
+  select count(*) into n from op where kitchen_id = kid and payload->>'name' = 'bread';
+  assert n = 1, 'the ops are the same ops, not replacements';
+  select count(*) into n from member where kitchen_id = kid and user_id = ownr;
+  assert n = 0, 'the leaver''s membership is gone';
+  select role into r from member where kitchen_id = kid and user_id = g_old;
+  assert r = 'owner', 'the LONGEST-STANDING remaining member inherits ownership';
+  select role into r from member where kitchen_id = kid and user_id = g_new;
+  assert r = 'guest', 'the later joiner is not promoted';
+  select count(*) into n from member where kitchen_id = kid and role = 'owner';
+  assert n = 1, 'exactly one owner — never zero, never two';
+  select count(*) into n from invite where kitchen_id = kid and revoked_at is null;
+  assert n = 0, 'a departure kills every live invite, exactly as an eviction does';
+
+  -- Ownership is only real if it can be exercised: the heir must be able to do the two
+  -- owner-only things — remove a guest (member_delete, is_kitchen_owner) and mint a link.
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', g_old, 'role', 'authenticated')::text, true);
+  perform public.create_invite(kid);
+  delete from member where kitchen_id = kid and user_id = g_new;
+  perform set_config('role', 'none', true); reset role;
+  select count(*) into n from member where kitchen_id = kid and user_id = g_new;
+  assert n = 0, 'the inherited ownership is usable: the new owner can remove a guest';
+
+  raise notice 'ok 16: shared kitchen and its ops survive; longest-standing member inherits a usable ownership';
+end $$;
+reset role;
+
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- 17. THE attack. delete_account takes no argument, so there is no id to point at a
+--     victim; anon cannot call it at all even holding a victim's sub claim; and a
+--     caller with no sub deletes nothing. Everything a hostile caller can reach here
+--     must leave the victim's kitchen, ops, entitlement, scan_audit and auth row alone.
+-- ---------------------------------------------------------------------------
+begin;
+
+insert into auth.users (id, aud, role, email) values
+  ('00000000-0000-0000-0000-0000000000f6', 'authenticated', 'authenticated', 'victim@test.local'),
+  ('00000000-0000-0000-0000-0000000000f7', 'authenticated', 'authenticated', 'attack@test.local');
+
+do $$
+declare
+  victim uuid := '00000000-0000-0000-0000-0000000000f6';
+  attacker uuid := '00000000-0000-0000-0000-0000000000f7';
+  kid uuid; res jsonb; n int;
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', victim, 'role', 'authenticated')::text, true);
+  kid := public.create_kitchen('Kitchen Victim');
+  perform public.create_invite(kid);
+  insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
+  values ('f6f6f6f6-0000-0000-0000-000000000001', kid,
+          'dddddddd-0000-0000-0000-000000000006', 1, 1723800000000, 'add', '{"name":"coffee"}');
+
+  perform set_config('role', 'none', true); reset role;
+  insert into entitlement (user_id, is_plus, scans_used) values (victim, true, 1);
+  insert into scan_audit (user_id) values (victim);
+
+  -- The attacker tries to name the victim. There is no signature that takes one.
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', attacker, 'role', 'authenticated')::text, true);
+  begin
+    execute 'select public.delete_account($1)' using victim;
+    raise exception 'delete_account accepted a caller-supplied user id';
+  exception when undefined_function then null;
+  end;
+  begin
+    execute format('select public.delete_account(%L::uuid)', victim);
+    raise exception 'delete_account accepted a caller-supplied user id (literal form)';
+  exception when undefined_function then null;
+  end;
+
+  -- And calling it legitimately deletes the ATTACKER, whatever they were hoping.
+  res := public.delete_account();
+  perform set_config('role', 'none', true); reset role;
+  assert (res->>'kitchens_deleted')::int = 0 and (res->>'kitchens_kept')::int = 0
+     and (res->>'member_rows_deleted')::int = 0,
+    'a caller with nothing deletes nothing and raises nothing';
+  select count(*) into n from auth.users where id = attacker;
+  assert n = 0, 'the attacker deleted their own account, which is all this function can do';
+
+  select count(*) into n from kitchen where id = kid;
+  assert n = 1, 'the victim''s kitchen is untouched';
+  select count(*) into n from op where kitchen_id = kid;
+  assert n = 1, 'the victim''s ops are untouched';
+  select count(*) into n from member where user_id = victim and role = 'owner';
+  assert n = 1, 'the victim is still the owner of their kitchen';
+  select count(*) into n from entitlement where user_id = victim;
+  assert n = 1, 'the victim''s entitlement is untouched';
+  select count(*) into n from scan_audit where user_id = victim;
+  assert n = 1, 'the victim''s scan_audit is untouched';
+  select count(*) into n from auth.users where id = victim;
+  assert n = 1, 'the victim''s auth user still exists';
+
+  -- anon: holding the victim's sub claim is not enough, because EXECUTE is what stops it.
+  perform set_config('role', 'anon', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', victim, 'role', 'anon')::text, true);
+  begin
+    perform public.delete_account();
+    raise exception 'anon executed delete_account';
+  exception when insufficient_privilege then null;
+  end;
+  perform set_config('role', 'none', true); reset role;
+  select count(*) into n from member where user_id = victim;
+  assert n = 1, 'anon holding a victim sub claim changed nothing';
+
+  -- authenticated with no sub at all (a service or gateway call): identity is auth.uid()
+  -- and nothing else, so there is nobody to delete.
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims', '{}', true);
+  begin
+    perform public.delete_account();
+    raise exception 'delete_account ran without an authenticated identity';
+  exception when sqlstate '28000' then null;
+  end;
+  perform set_config('role', 'none', true); reset role;
+
+  raise notice 'ok 17: no id to spoof, anon refused, no-sub refused; victim wholly intact';
+end $$;
+reset role;
+
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- 18. Several kitchens with different populations, ONE call: a solo kitchen the caller
+--     owns (destroyed), a shared kitchen the caller owns (kept, heir promoted), and a
+--     kitchen the caller merely joined (kept, nothing promoted, its owner untouched).
+--     A per-kitchen decision that leaked across kitchens would either strand a
+--     household's list or leave someone else's kitchen ownerless.
+-- ---------------------------------------------------------------------------
+begin;
+
+insert into auth.users (id, aud, role, email) values
+  ('00000000-0000-0000-0000-0000000000f8', 'authenticated', 'authenticated', 'multi@test.local'),
+  ('00000000-0000-0000-0000-0000000000f9', 'authenticated', 'authenticated', 'mate-q@test.local'),
+  ('00000000-0000-0000-0000-0000000000fa', 'authenticated', 'authenticated', 'own-t@test.local');
+
+do $$
+declare
+  m uuid := '00000000-0000-0000-0000-0000000000f8';
+  mate uuid := '00000000-0000-0000-0000-0000000000f9';
+  u uuid := '00000000-0000-0000-0000-0000000000fa';
+  k_solo uuid; k_shared uuid; k_guest uuid; tok text; res jsonb; n int; r text;
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', m, 'role', 'authenticated')::text, true);
+  k_solo := public.create_kitchen('Kitchen P solo');
+  perform public.create_invite(k_solo);
+  insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
+  values ('f8f8f8f8-0000-0000-0000-000000000001', k_solo,
+          'dddddddd-0000-0000-0000-000000000008', 1, 1723800000000, 'add', '{"name":"salt"}');
+
+  k_shared := public.create_kitchen('Kitchen Q shared');
+  insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
+  values ('f8f8f8f8-0000-0000-0000-000000000002', k_shared,
+          'dddddddd-0000-0000-0000-000000000008', 2, 1723800001000, 'add', '{"name":"pasta"}'),
+         ('f8f8f8f8-0000-0000-0000-000000000003', k_shared,
+          'dddddddd-0000-0000-0000-000000000008', 3, 1723800001500, 'add', '{"name":"oil"}');
+  tok := public.create_invite(k_shared);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', mate, 'role', 'authenticated')::text, true);
+  perform public.join_kitchen(tok);
+
+  -- A third kitchen the caller only joined.
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', u, 'role', 'authenticated')::text, true);
+  k_guest := public.create_kitchen('Kitchen T other household');
+  insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
+  values ('fafafafa-0000-0000-0000-000000000001', k_guest,
+          'dddddddd-0000-0000-0000-00000000000a', 1, 1723800002000, 'add', '{"name":"tea"}');
+  tok := public.create_invite(k_guest);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', m, 'role', 'authenticated')::text, true);
+  perform public.join_kitchen(tok);
+
+  res := public.delete_account();
+  perform set_config('role', 'none', true); reset role;
+
+  assert (res->>'kitchens_deleted')::int = 1, 'exactly one kitchen destroyed';
+  assert (res->>'kitchens_kept')::int = 2, 'both populated kitchens kept';
+  assert (res->>'owners_promoted')::int = 1, 'exactly one ownership transfer';
+  assert (res->>'ops_deleted')::int = 1, 'only the dead kitchen''s op is deleted';
+  assert (res->>'member_rows_deleted')::int = 3, 'all three memberships are gone';
+
+  select count(*) into n from kitchen where id = k_solo;
+  assert n = 0, 'the solo kitchen is destroyed';
+  select count(*) into n from op where kitchen_id = k_solo;
+  assert n = 0, 'the solo kitchen''s ops are destroyed';
+  select count(*) into n from invite where kitchen_id = k_solo;
+  assert n = 0, 'the solo kitchen''s invites are destroyed';
+
+  select count(*) into n from kitchen where id = k_shared;
+  assert n = 1, 'the shared kitchen survives the same call';
+  select count(*) into n from op where kitchen_id = k_shared;
+  assert n = 2, 'the shared kitchen''s ops survive the same call';
+  select role into r from member where kitchen_id = k_shared and user_id = mate;
+  assert r = 'owner', 'the remaining member of the shared kitchen inherits it';
+  select count(*) into n from member where kitchen_id = k_shared;
+  assert n = 1, 'only the leaver left the shared kitchen';
+
+  select count(*) into n from kitchen where id = k_guest;
+  assert n = 1, 'the kitchen the caller had merely joined survives';
+  select count(*) into n from op where kitchen_id = k_guest;
+  assert n = 1, 'its ops survive';
+  select role into r from member where kitchen_id = k_guest and user_id = u;
+  assert r = 'owner', 'its owner is still its owner — a guest leaving promotes nobody';
+  select count(*) into n from member where kitchen_id = k_guest;
+  assert n = 1, 'the guest membership is gone from it';
+  select count(*) into n from member where user_id = m;
+  assert n = 0, 'the caller is a member of nothing, anywhere';
+
+  raise notice 'ok 18: one call, three kitchens, three different correct outcomes';
+end $$;
+reset role;
+
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- 19. The tie the schema makes ordinary: joined_at defaults to now(), so two guests
+--     who join inside one transaction (a QR scan and a re-scan, a restore) hold the
+--     SAME joined_at. "Longest-standing" is then undefined, and `order by joined_at
+--     limit 1` would promote whichever row the planner returned — possibly a different
+--     person on a replica or after a vacuum. user_id breaks the tie, so the heir is
+--     arbitrary but deterministic, and there is always exactly one owner.
+-- ---------------------------------------------------------------------------
+begin;
+
+insert into auth.users (id, aud, role, email) values
+  ('00000000-0000-0000-0000-0000000000fb', 'authenticated', 'authenticated', 'own-tie@test.local'),
+  ('00000000-0000-0000-0000-0000000000fc', 'authenticated', 'authenticated', 'tie-lo@test.local'),
+  ('00000000-0000-0000-0000-0000000000fd', 'authenticated', 'authenticated', 'tie-hi@test.local');
+
+do $$
+declare
+  ownr uuid := '00000000-0000-0000-0000-0000000000fb';
+  tie_lo uuid := '00000000-0000-0000-0000-0000000000fc';  -- smaller uuid, joins SECOND
+  tie_hi uuid := '00000000-0000-0000-0000-0000000000fd';  -- larger uuid, joins FIRST
+  kid uuid; tok text; res jsonb; n int; r text;
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', ownr, 'role', 'authenticated')::text, true);
+  kid := public.create_kitchen('Kitchen Tie');
+  tok := public.create_invite(kid);
+
+  -- Insertion order is deliberately the OPPOSITE of the uuid order, so a promotion that
+  -- fell out of physical row order would pick tie_hi and fail the assert below.
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', tie_hi, 'role', 'authenticated')::text, true);
+  perform public.join_kitchen(tok);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', tie_lo, 'role', 'authenticated')::text, true);
+  perform public.join_kitchen(tok);
+
+  perform set_config('role', 'none', true); reset role;
+  select count(distinct joined_at) into n from member where kitchen_id = kid;
+  assert n = 1, 'the tie is real: one transaction, one now(), three identical joined_at';
+
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', ownr, 'role', 'authenticated')::text, true);
+  res := public.delete_account();
+  perform set_config('role', 'none', true); reset role;
+
+  assert (res->>'owners_promoted')::int = 1, 'a tie still produces exactly one promotion';
+  select count(*) into n from member where kitchen_id = kid and role = 'owner';
+  assert n = 1, 'a joined_at tie never leaves a kitchen with zero or two owners';
+  select role into r from member where kitchen_id = kid and user_id = tie_lo;
+  assert r = 'owner', 'the tie is broken deterministically by user_id, not by row order';
+  select role into r from member where kitchen_id = kid and user_id = tie_hi;
+  assert r = 'guest', 'the other tied member keeps their role';
+  select count(*) into n from kitchen where id = kid;
+  assert n = 1, 'the kitchen survives';
+
+  raise notice 'ok 19: identical joined_at promotes exactly one, deterministically';
+end $$;
+reset role;
+
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- 20. Replay is inert, and the last-owner guard is STILL ARMED.
+--     delete_account satisfies member_guard_last_owner by demoting the sole member of
+--     a kitchen it is about to destroy in the same transaction. That is the one place
+--     that may happen: if 0003 had instead disabled, replaced or loosened the guard,
+--     a kitchen full of guests could be left with no owner — so this section re-tries
+--     the guard from the client side and it must still refuse. It also proves the
+--     demotion itself is unreachable for a client (member UPDATE is revoked), and that
+--     a retried deletion (the edge function's network retry) changes nothing twice.
+-- ---------------------------------------------------------------------------
+begin;
+
+insert into auth.users (id, aud, role, email) values
+  ('00000000-0000-0000-0000-0000000000fe', 'authenticated', 'authenticated', 'replay@test.local'),
+  ('00000000-0000-0000-0000-0000000000ff', 'authenticated', 'authenticated', 'guard@test.local'),
+  ('00000000-0000-0000-0000-000000000100', 'authenticated', 'authenticated', 'guard-g@test.local');
+
+do $$
+declare
+  z uuid := '00000000-0000-0000-0000-0000000000fe';
+  gowner uuid := '00000000-0000-0000-0000-0000000000ff';
+  gguest uuid := '00000000-0000-0000-0000-000000000100';
+  kid uuid; k_solo uuid; tok text; res jsonb; res2 jsonb; n int; r text;
+begin
+  -- (a) replay
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', z, 'role', 'authenticated')::text, true);
+  k_solo := public.create_kitchen('Kitchen Replay');
+  insert into op (id, kitchen_id, device_id, clock, wall_clock, type, payload)
+  values ('fefefefe-0000-0000-0000-000000000001', k_solo,
+          'dddddddd-0000-0000-0000-00000000000e', 1, 1723800000000, 'add', '{"name":"jam"}');
+  perform set_config('role', 'none', true); reset role;
+  insert into entitlement (user_id, is_plus, scans_used) values (z, false, 3);
+  insert into scan_audit (user_id) values (z);
+
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', z, 'role', 'authenticated')::text, true);
+  res := public.delete_account();
+  -- The same JWT, replayed: the access token outlives the account row (it is stateless),
+  -- so this IS reachable, and it must be a no-op rather than an error or a surprise.
+  res2 := public.delete_account();
+  perform set_config('role', 'none', true); reset role;
+
+  assert (res->>'kitchens_deleted')::int = 1 and (res->>'ops_deleted')::int = 1,
+    'the first call did the work';
+  assert (res2->>'kitchens_deleted')::int = 0 and (res2->>'kitchens_kept')::int = 0
+     and (res2->>'ops_deleted')::int = 0 and (res2->>'member_rows_deleted')::int = 0
+     and (res2->>'scan_audit_rows_deleted')::int = 0
+     and not (res2->>'entitlement_deleted')::boolean,
+    'a replayed deletion is an all-zero no-op — safe for the edge function to retry';
+  assert not (res2->>'auth_user_deleted')::boolean,
+    'auth_user_deleted is false on replay: the row was already gone, so this call did not remove it';
+  select count(*) into n from kitchen where id = k_solo;
+  assert n = 0, 'the kitchen is gone after the pair of calls, not resurrected by the second';
+
+  -- (b) the guard, re-tried from the client side
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', gowner, 'role', 'authenticated')::text, true);
+  kid := public.create_kitchen('Kitchen Guarded');
+  tok := public.create_invite(kid);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', gguest, 'role', 'authenticated')::text, true);
+  perform public.join_kitchen(tok);
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', gowner, 'role', 'authenticated')::text, true);
+  -- The sole owner of a kitchen with guests still cannot walk out and leave it ownerless.
+  begin
+    delete from member where kitchen_id = kid and user_id = gowner;
+    raise exception 'the last owner left a kitchen with guests in it';
+  exception when sqlstate '55006' then null;
+  end;
+  -- And a client cannot perform the demotion delete_account performs internally.
+  begin
+    update member set role = 'guest' where kitchen_id = kid and user_id = gowner;
+    raise exception 'a client demoted an owner directly';
+  exception when insufficient_privilege then null;
+  end;
+  perform set_config('role', 'none', true); reset role;
+  select role into r from member where kitchen_id = kid and user_id = gowner;
+  assert r = 'owner', 'the last-owner guard is still armed after 0003 — the owner is still the owner';
+  select count(*) into n from member where kitchen_id = kid;
+  assert n = 2, 'nobody was removed by the refused attempts';
+
+  raise notice 'ok 20: replay is an all-zero no-op; the last-owner guard is still armed';
+end $$;
+reset role;
+
+rollback;
+
+do $$ begin raise notice 'ALL RLS TESTS PASSED (including seq commit-ordering, invites and account deletion)'; end $$;
