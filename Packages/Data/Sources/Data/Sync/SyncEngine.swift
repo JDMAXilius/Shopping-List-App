@@ -3,6 +3,10 @@ import Foundation
 import GRDB
 
 public enum SyncStatus: String, Sendable {
+    /// No remote peer for this kitchen — nothing has been asked of a server, and the local
+    /// database is the whole truth. A solo kitchen is not "synced" (nothing agreed with
+    /// anyone) and it is certainly not "offline" (nothing failed).
+    case local
     case synced, syncing, offline, stuck
 }
 
@@ -16,7 +20,12 @@ public actor SyncEngine {
     private let stuckAfter: Int
     private let now: @Sendable () -> Date
 
-    public private(set) var status: SyncStatus = .synced
+    // Before the first kick nothing has been agreed with anyone; saying `.synced` would claim
+    // a round-trip that never happened.
+    public private(set) var status: SyncStatus = .local
+    /// Ops THIS kitchen still owes the server. A queue that has not drained is not "synced",
+    /// and the number is what a screen can say honestly without inventing a spinner.
+    public private(set) var pending = 0
     private var failureCount = 0
     private var nextAttempt = Date.distantPast
     private var inFlight = false
@@ -45,8 +54,10 @@ public actor SyncEngine {
             try await pull()
             failureCount = 0
             nextAttempt = .distantPast
+            pending = 0
             status = .synced
         } catch {
+            pending = (try? unpushed().count) ?? pending
             failureCount += 1
             // 1s·2^n capped at 60s; until the window passes, kick() is a no-op.
             let delay = min(baseBackoff * pow(2, Double(failureCount - 1)), maxBackoff)
@@ -56,10 +67,19 @@ public actor SyncEngine {
     }
 
     private func drain() async throws {
-        let ops = try repository.unpushedOps()
+        let ops = try unpushed()
         guard !ops.isEmpty else { return }
         try await transport.push(ops)
         try repository.markPushed(ops.map(\.opID))
+    }
+
+    /// One engine speaks for ONE kitchen. A device that has a local-only kitchen and a shared
+    /// one (every guest does — the phone made its own kitchen before the invite arrived) must
+    /// not ship the local one's ops under this kitchen's session: RLS refuses the whole batch
+    /// (42501) and the queue wedges forever. Marking them pushed instead would be worse — a
+    /// drain that did not push them would lose them for good.
+    private func unpushed() throws -> [Op] {
+        try repository.unpushedOps().filter { $0.kitchenID == kitchenID }
     }
 
     private func pull() async throws {

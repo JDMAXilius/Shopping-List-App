@@ -4,15 +4,27 @@ import Data
 
 struct TransportFailure: Error {}
 
-// In-memory op store standing in for Supabase; cursor is an index into the global op array.
+/// In-memory op store standing in for Supabase, and matching `SupabaseTransport` where it
+/// counts: push is idempotent on op id (push_ops is ON CONFLICT DO NOTHING, so a redelivered
+/// batch succeeds), and the pull cursor is the SEQ OF THE LAST ROW DELIVERED — one global
+/// sequence shared by every kitchen, exactly as `op_seq` is. A fake that answered the global
+/// count instead would hand back a cursor past ops it never delivered.
 actor FakeTransport: SyncTransport {
-    private(set) var storedOps: [Op] = []
+    private struct StoredOp {
+        let seq: Int64
+        let op: Op
+    }
+
+    private var rows: [StoredOp] = []
+    private var nextSeq: Int64 = 0
     private(set) var pushCount = 0
     private(set) var lastPullCursor: Int64?
     private var knownOpIDs: Set<OpID> = []
     private var pushError: Error?
     private var pullError: Error?
     private var latency: Duration?
+
+    var storedOps: [Op] { rows.map(\.op) }
 
     func setPushError(_ error: Error?) { pushError = error }
     func setPullError(_ error: Error?) { pullError = error }
@@ -23,7 +35,8 @@ actor FakeTransport: SyncTransport {
         if let pushError { throw pushError }
         pushCount += 1
         for op in ops where knownOpIDs.insert(op.opID).inserted {
-            storedOps.append(op)
+            nextSeq += 1
+            rows.append(StoredOp(seq: nextSeq, op: op))
         }
     }
 
@@ -31,8 +44,9 @@ actor FakeTransport: SyncTransport {
         if let latency { try await Task.sleep(for: latency) }
         if let pullError { throw pullError }
         lastPullCursor = cursor
-        let start = min(max(Int(cursor), 0), storedOps.count)
-        let ops = storedOps[start...].filter { $0.kitchenID == kitchenID }
-        return (ops, Int64(storedOps.count))
+        let page = rows
+            .filter { $0.seq > cursor && $0.op.kitchenID == kitchenID }
+            .sorted { $0.seq < $1.seq }
+        return (page.map(\.op), page.last?.seq ?? cursor)
     }
 }

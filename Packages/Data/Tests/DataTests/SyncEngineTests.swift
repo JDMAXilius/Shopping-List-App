@@ -135,6 +135,73 @@ final class SyncEngineTests: XCTestCase {
         XCTAssertEqual(cursor, 1, "a fresh engine resumes from the persisted cursor")
     }
 
+    /// The guest's phone made its own kitchen before the invite arrived. Those ops must never
+    /// be shipped under the shared kitchen's session — the real server refuses the whole batch
+    /// (42501) and the queue never drains again — and must never be marked pushed by a drain
+    /// that did not push them.
+    func testOpsOfAnotherKitchenAreNeitherPushedNorMarked() async throws {
+        let transport = FakeTransport()
+        let (_, repository) = try makeStack()
+        let localOnly = KitchenID()
+        try repository.append(.add(ListItem(name: "Shared milk")), kitchenID: kitchenID)
+        try repository.append(.add(ListItem(name: "Private eggs")), kitchenID: localOnly)
+
+        let engine = SyncEngine(repository: repository, transport: transport, kitchenID: kitchenID)
+        await engine.kick()
+
+        let stored = await transport.storedOps
+        XCTAssertEqual(stored.count, 1, "only this engine's kitchen reached the server")
+        XCTAssertEqual(stored.first?.kitchenID, kitchenID)
+        let unpushed = try repository.unpushedOps()
+        XCTAssertEqual(unpushed.count, 1, "the other kitchen's op is still owed, not lost")
+        XCTAssertEqual(unpushed.first?.kitchenID, localOnly)
+        let status = await engine.status
+        XCTAssertEqual(status, .synced)
+        let pending = await engine.pending
+        XCTAssertEqual(pending, 0, "pending counts THIS kitchen's queue")
+    }
+
+    /// A cursor that was written but never persisted (a crash between apply and save) means the
+    /// same rows arrive again. Nothing may change.
+    func testAnOpDeliveredTwiceChangesNothing() async throws {
+        let transport = FakeTransport()
+        let (_, repoA) = try makeStack()
+        let (_, repoB) = try makeStack()
+        try repoA.append(.add(ListItem(name: "Coffee")), kitchenID: kitchenID)
+        await SyncEngine(repository: repoA, transport: transport, kitchenID: kitchenID).kick()
+
+        let first = try await transport.pull(after: 0, kitchenID: kitchenID)
+        try repoB.applyRemote(first.ops, cursor: first.cursor, kitchenID: kitchenID)
+        let afterFirst = try repoB.items()
+        try repoB.applyRemote(first.ops, cursor: first.cursor, kitchenID: kitchenID)
+
+        XCTAssertEqual(try repoB.items(), afterFirst)
+        XCTAssertEqual(try repoB.items().count, 1)
+        XCTAssertTrue(try repoB.unpushedOps().isEmpty)
+    }
+
+    func testPendingReportsTheUndrainedQueue() async throws {
+        let transport = FakeTransport()
+        let (_, repository) = try makeStack()
+        try repository.append(.add(ListItem(name: "Rice")), kitchenID: kitchenID)
+        let clock = FakeClock()
+        let engine = SyncEngine(repository: repository, transport: transport,
+                                kitchenID: kitchenID, now: { clock.now })
+        let initial = await engine.status
+        XCTAssertEqual(initial, .local, "nothing has been agreed with a server yet")
+
+        await transport.setPushError(TransportFailure())
+        await engine.kick()
+        let stalled = await engine.pending
+        XCTAssertEqual(stalled, 1, "an undrained queue is stated, not hidden behind .synced")
+
+        await transport.setPushError(nil)
+        clock.advance(by: 2)
+        await engine.kick()
+        let drained = await engine.pending
+        XCTAssertEqual(drained, 0)
+    }
+
     func testRemoteOpsAreNeverRePushed() async throws {
         let transport = FakeTransport()
         let (_, repoA) = try makeStack()
