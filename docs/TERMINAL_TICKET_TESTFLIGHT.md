@@ -355,8 +355,8 @@ they work for us unchanged.
   Two things needed before that can happen: a build must exist and be attached to an internal
   group, and I need either the ASC key trio (Key ID + Issuer ID + .p8) to do it by API, or the
   founder does it in App Store Connect → TestFlight → Internal Testing. **An internal tester is
-  added by App Store Connect account email, not by a handle** — so the exact email for
-  `jdmaxinius` is needed too.
+  added by App Store Connect account email, not by a handle.** Founder supplied it:
+  **jdmaxinius@gmail.com**.
 - Everything else is finished: signing, both App IDs, the App Group in both profiles, build
   number, encryption declaration, export options, the upload command, and the internal-group
   script from the skill. **One decision is in front of all of it** and it is the founder's:
