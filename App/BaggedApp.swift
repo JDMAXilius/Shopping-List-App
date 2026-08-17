@@ -52,7 +52,13 @@ final class AppSession {
         kitchenID = kitchen.id
         sync = SyncCoordinator(repository: repository, kitchenID: kitchen.id,
                                transport: services?.transport)
-        subscription = SubscriptionStore(defaults: .appGroup())
+        // Entitlement reaches this device by being asked for, not only by scanning on it. The
+        // read goes through `KitchenBackend` like every other server call; the store is handed a
+        // closure, so nothing about Supabase reaches it.
+        subscription = SubscriptionStore(defaults: .appGroup(),
+                                         entitlement: { [backend = self.services?.backend] in
+                                             await backend?.entitlement() ?? .unavailable
+                                         })
     }
 
     private func rebuild(_ kitchenID: KitchenID) {
@@ -65,6 +71,9 @@ final class AppSession {
         // A joiner is never paywalled: sharing is the growth loop, and the owner already paid.
         // Only a known answer moves the role; RootView adopts again when the roster lands.
         if let isGuest = self.kitchen?.isGuest { subscription?.adopt(isGuest ? .guest : .owner) }
+        // Joining signs this phone in as a different user, so the cached entitlement may not be
+        // this user's at all. Asked now rather than at the next foreground.
+        Task { [store = self.subscription] in await store?.refreshEntitlement() }
     }
 
     private static func open()

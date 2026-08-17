@@ -65,6 +65,15 @@ enum Gate: Equatable, Sendable {
     case unavailable(String)
 }
 
+/// What the server said about this user's entitlement when asked directly. Three answers, not
+/// two: an absent row is a real one — a user who has never scanned has none, and the server would
+/// grant them the three free scans — while `.unavailable` is a network fact and claims nothing.
+enum EntitlementRead: Equatable, Sendable {
+    case found(isPlus: Bool, scansUsed: Int)
+    case absent
+    case unavailable
+}
+
 /// What the App Store says today, in the reader's own currency. Built from live products only;
 /// there is no path that composes a price out of `PlusPlan`'s US figures.
 struct PlusOffer: Equatable, Sendable {
@@ -108,6 +117,9 @@ enum PurchaseResult: Equatable, Sendable {
 final class SubscriptionStore {
     typealias PurchaseAction = @MainActor (PlusPlan.Term) async -> PurchaseResult
     typealias RestoreAction = @MainActor () async -> PurchaseResult
+    /// The one way entitlement arrives without a scan. A closure, so this store still knows
+    /// nothing about Supabase or about HTTP — the read itself lives behind `KitchenBackend`.
+    typealias EntitlementReader = @MainActor () async -> EntitlementRead
 
     private static let plusKey = "plus.isPlus"
     private static let scansKey = "plus.scansUsed"
@@ -118,6 +130,13 @@ final class SubscriptionStore {
     /// every build today both are nil and the paywall says there is nothing on sale.
     private let purchaseAction: PurchaseAction?
     private let restoreAction: RestoreAction?
+    private let readEntitlement: EntitlementReader?
+    /// One read at a time: launch and the first foreground can both fire, and the second of them
+    /// would put an identical request on the wire for nothing.
+    private var isReading = false
+    /// Counts every write to entitlement state. A read that left before one of them is older
+    /// than it, whatever the clock says — see `refreshEntitlement()`.
+    private var writes = 0
 
     private(set) var isPlus: Bool
     private(set) var scansUsed: Int
@@ -129,11 +148,12 @@ final class SubscriptionStore {
     private(set) var role: Member.Role
 
     init(defaults: UserDefaults, role: Member.Role? = nil, purchase: PurchaseAction? = nil,
-         restore: RestoreAction? = nil) {
+         restore: RestoreAction? = nil, entitlement: EntitlementReader? = nil) {
         self.defaults = defaults
         self.role = role ?? SubscriptionStore.storedRole(defaults)
         purchaseAction = purchase
         restoreAction = restore
+        readEntitlement = entitlement
         isPlus = defaults.bool(forKey: SubscriptionStore.plusKey)
         scansUsed = defaults.integer(forKey: SubscriptionStore.scansKey)
     }
@@ -188,6 +208,34 @@ final class SubscriptionStore {
         }
     }
 
+    /// Entitlement asked for directly, on launch and on every foreground: someone buys Plus on
+    /// their phone and opens Bagged on their iPad, and until this existed the iPad sold them what
+    /// they had already paid for (TERMINAL_TICKET_FOUNDER_BLOCKERS §9).
+    func refreshEntitlement() async {
+        guard let readEntitlement, !isReading else { return }
+        isReading = true
+        let before = writes
+        let read = await readEntitlement()
+        isReading = false
+        // A scan answered — or a purchase completed — while this read was in flight. That answer
+        // is newer than this request, which left before it, so the read is dropped rather than
+        // allowed to reverse it. This is what stops a spent free scan reappearing.
+        guard before == writes else { return }
+        switch read {
+        case .found(let isPlus, let scansUsed):
+            // The server wins in both directions, downward included: a lapsed subscription has to
+            // stop being Plus. That is only safe because `.unavailable` writes nothing — losing
+            // Plus takes the server actually saying so, never a phone with no signal.
+            apply(isPlus: isPlus, scansUsed: scansUsed)
+        case .absent:
+            // No row is what a user who has never scanned looks like, and the server would grant
+            // them three scans. A real answer, so it is allowed to write.
+            apply(isPlus: false, scansUsed: 0)
+        case .unavailable:
+            break
+        }
+    }
+
     func apply(offer: PlusOffer?) {
         self.offer = offer
     }
@@ -207,6 +255,7 @@ final class SubscriptionStore {
     }
 
     private func apply(isPlus: Bool, scansUsed: Int) {
+        writes += 1
         self.isPlus = isPlus
         self.scansUsed = max(0, scansUsed)
         defaults.set(isPlus, forKey: SubscriptionStore.plusKey)

@@ -12,11 +12,12 @@ final class SubscriptionStoreTests: XCTestCase {
 
     private func makeStore(_ role: Member.Role = .owner, defaults: UserDefaults? = nil,
                            purchase: SubscriptionStore.PurchaseAction? = nil,
-                           restore: SubscriptionStore.RestoreAction? = nil) throws
+                           restore: SubscriptionStore.RestoreAction? = nil,
+                           entitlement: SubscriptionStore.EntitlementReader? = nil) throws
         -> SubscriptionStore {
         let suite = try defaults ?? makeDefaults()
         return SubscriptionStore(defaults: suite, role: role, purchase: purchase,
-                                 restore: restore)
+                                 restore: restore, entitlement: entitlement)
     }
 
     private func scanned(isPlus: Bool, scansUsed: Int) throws -> ScanOutcome {
@@ -242,6 +243,118 @@ final class SubscriptionStoreTests: XCTestCase {
         store.record(.unreadableImage(freeScan: .notReached))
         store.record(.unreadableImage(freeScan: .unreported))
         XCTAssertEqual(store.scansUsed, 2)
+    }
+
+    // MARK: - Entitlement arrives without a scan
+
+    func testTheServerSayingPlusEntitlesADeviceThatHasNeverScanned() async throws {
+        let defaults = try makeDefaults()
+        let store = try makeStore(defaults: defaults,
+                                  entitlement: { .found(isPlus: true, scansUsed: 0) })
+        XCTAssertFalse(store.isPlus, "nothing has been asked yet")
+
+        await store.refreshEntitlement()
+
+        XCTAssertTrue(store.isPlus)
+        XCTAssertFalse(store.mayBeOffered, "a subscriber must never meet the sales card")
+        XCTAssertEqual(store.gate(.moreThanOneShop), .allowed,
+                       "nor be offered a second shop they already own")
+        // And it is kept, so the next launch does not start by selling to them again.
+        XCTAssertTrue(SubscriptionStore(defaults: defaults).isPlus)
+    }
+
+    func testAFailedReadChangesNeitherEntitlementNorQuota() async throws {
+        let store = try makeStore(entitlement: { .unavailable })
+        store.record(try scanned(isPlus: true, scansUsed: 2))
+
+        await store.refreshEntitlement()
+
+        XCTAssertTrue(store.isPlus, "a network fact is never an entitlement fact")
+        XCTAssertEqual(store.scansUsed, 2)
+    }
+
+    func testAnAbsentRowIsFreeWithNoScansUsedAndIsNotAFailedRead() async throws {
+        let absent = try makeStore(entitlement: { .absent })
+        let failed = try makeStore(entitlement: { .unavailable })
+        for store in [absent, failed] { store.record(try scanned(isPlus: true, scansUsed: 3)) }
+
+        await absent.refreshEntitlement()
+        await failed.refreshEntitlement()
+
+        // `consume_scan` creates the row lazily, so no row is a user the server would give three
+        // free scans to — a real answer, and the app says the same thing.
+        XCTAssertFalse(absent.isPlus)
+        XCTAssertEqual(absent.scansUsed, 0)
+        XCTAssertEqual(absent.freeScansLeft, 3)
+        // The same shape of answer with the opposite permission to write.
+        XCTAssertTrue(failed.isPlus)
+        XCTAssertEqual(failed.scansUsed, 3)
+    }
+
+    func testTheServersHigherScanCountWinsOverThisDevicesLowerOne() async throws {
+        let store = try makeStore(entitlement: { .found(isPlus: false, scansUsed: 3) })
+        store.record(try scanned(isPlus: false, scansUsed: 1))
+        XCTAssertEqual(store.freeScansLeft, 2)
+
+        await store.refreshEntitlement()
+
+        XCTAssertEqual(store.scansUsed, 3)
+        XCTAssertEqual(store.freeScansLeft, 0, "the app is never more generous than the server")
+        XCTAssertEqual(store.gate(.receiptScanning), .paywall)
+    }
+
+    func testALapsedSubscriptionStopsBeingPlus() async throws {
+        let defaults = try makeDefaults()
+        let store = try makeStore(defaults: defaults,
+                                  entitlement: { .found(isPlus: false, scansUsed: 3) })
+        store.record(try scanned(isPlus: true, scansUsed: 0))
+        XCTAssertTrue(store.isPlus)
+
+        await store.refreshEntitlement()
+
+        XCTAssertFalse(store.isPlus, "the server is the truth in both directions")
+        XCTAssertEqual(store.gate(.priceHistory), .paywall)
+        XCTAssertFalse(SubscriptionStore(defaults: defaults).isPlus, "and it stays lapsed")
+    }
+
+    func testAJoinerIsNeverOfferedThePaywallWhateverTheReadAnswers() async throws {
+        let reads: [EntitlementRead] = [.found(isPlus: false, scansUsed: 3), .absent, .unavailable]
+        for read in reads {
+            let store = try makeStore(.guest, entitlement: { read })
+
+            await store.refreshEntitlement()
+
+            XCTAssertFalse(store.mayBeOffered, "after \(read)")
+            for capability in Capability.allCases {
+                XCTAssertNotEqual(store.gate(capability), .paywall,
+                                  "\(capability) sent a joiner to the paywall after \(read)")
+            }
+        }
+    }
+
+    func testAnAnswerThatLandedWhileTheReadWasInFlightIsNotUndoneByIt() async throws {
+        let reader = StaleReader()
+        let store = try makeStore(entitlement: { reader.answer() })
+        reader.store = store
+        // The row as it was BEFORE the scan this read overlaps: the request left first.
+        reader.read = .found(isPlus: false, scansUsed: 0)
+
+        await store.refreshEntitlement()
+
+        XCTAssertEqual(store.scansUsed, 3, "a spent free scan must not reappear")
+        XCTAssertEqual(store.gate(.receiptScanning), .paywall)
+    }
+
+    /// A read that a scan answers underneath — the whole race, with no scheduling to hope for:
+    /// the scan lands while the reader is still deciding what to say.
+    @MainActor private final class StaleReader {
+        weak var store: SubscriptionStore?
+        var read: EntitlementRead = .absent
+
+        func answer() -> EntitlementRead {
+            store?.record(.quotaExhausted(scansUsed: 3))
+            return read
+        }
     }
 
     // MARK: - No dark patterns, structurally

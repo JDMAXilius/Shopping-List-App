@@ -100,6 +100,13 @@ actor FakeKitchenBackend: KitchenBackend {
         return kitchens[kitchenID]
     }
 
+    /// Nothing in this file asks about entitlement; a fake user who has never scanned has no row,
+    /// which is the answer `SubscriptionStoreTests` covers in every direction.
+    func entitlement() async -> EntitlementRead {
+        calls.append("entitlement")
+        return .absent
+    }
+
     func requestEmailCode(_ email: String) async throws {
         calls.append("requestEmailCode")
         if let failure { throw failure }
@@ -320,6 +327,118 @@ final class KitchenLinkTests: XCTestCase {
         XCTAssertEqual(url.absoluteString, "https://bagged.app/j/\(token)")
         XCTAssertEqual(KitchenLink.token(from: url), token)
         XCTAssertTrue(KitchenLink.isInvite(url))
+    }
+}
+
+/// Enough of GoTrue and PostgREST to drive one entitlement read: a session, so the request
+/// carries a token, then one scripted answer for the read itself.
+private actor FakeEntitlementHTTP: SupabaseHTTP {
+    private let answer: Result<SupabaseResponse, KitchenError>
+    private(set) var requests: [SupabaseRequest] = []
+
+    init(status: Int, body: String) {
+        answer = .success(SupabaseResponse(status: status, body: Foundation.Data(body.utf8)))
+    }
+
+    init(failure: KitchenError) {
+        answer = .failure(failure)
+    }
+
+    func send(_ request: SupabaseRequest) async throws -> SupabaseResponse {
+        requests.append(request)
+        guard !request.url.path.contains("/auth/") else {
+            return SupabaseResponse(status: 200, body: Foundation.Data(Self.session.utf8))
+        }
+        return try answer.get()
+    }
+
+    private static let session = """
+        {"access_token":"jwt-abc","refresh_token":"refresh-1","expires_in":3600,
+         "user":{"id":"11111111-1111-1111-1111-111111111111","email":null,
+                 "is_anonymous":true}}
+        """
+}
+
+/// In memory, so no test writes a session to the keychain.
+private final class MemoryTokenStorage: TokenStorage, @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: Foundation.Data?
+
+    func read() -> Foundation.Data? { lock.withLock { stored } }
+    func write(_ data: Foundation.Data) { lock.withLock { stored = data } }
+    func clear() { lock.withLock { stored = nil } }
+}
+
+/// The read that does not need a scan (TERMINAL_TICKET_FOUNDER_BLOCKERS §9). What it must never do
+/// is confuse "this user has no row" with "the request failed".
+final class KitchenClientEntitlementTests: XCTestCase {
+    private struct Harness {
+        let client: KitchenClient
+        let auth: KitchenAuth
+        let http: FakeEntitlementHTTP
+    }
+
+    private func makeHarness(_ http: FakeEntitlementHTTP) -> Harness {
+        let config = SupabaseConfig(projectURL: URL(string: "https://example.supabase.co")!,
+                                    anonKey: "anon-key")
+        let auth = KitchenAuth(config: config, http: http, storage: MemoryTokenStorage())
+        return Harness(client: KitchenClient(config: config, auth: auth, http: http), auth: auth,
+                       http: http)
+    }
+
+    func testAPlusRowIsReadWithoutScanningAnything() async throws {
+        let harness = makeHarness(FakeEntitlementHTTP(
+            status: 200, body: #"[{"is_plus":true,"scans_used":3}]"#))
+        _ = try await harness.auth.signInAnonymously()
+
+        let read = await harness.client.entitlement()
+
+        XCTAssertEqual(read, .found(isPlus: true, scansUsed: 3))
+        let request = try XCTUnwrap(await harness.http.requests.last)
+        XCTAssertEqual(request.method, "GET")
+        XCTAssertEqual(request.url.path, "/rest/v1/entitlement")
+        XCTAssertEqual(request.headers["authorization"], "Bearer jwt-abc")
+        let query = try XCTUnwrap(request.url.query)
+        XCTAssertTrue(query.contains("is_plus"), query)
+        XCTAssertTrue(query.contains("scans_used"), query)
+        // `entitlement_select_own` is `user_id = auth.uid()`: RLS scopes the row, so no user id
+        // goes on the wire and none is trusted from the client.
+        XCTAssertFalse(query.contains("user_id"), query)
+    }
+
+    func testNoRowIsAFreeAccountRatherThanAFailure() async throws {
+        let harness = makeHarness(FakeEntitlementHTTP(status: 200, body: "[]"))
+        _ = try await harness.auth.signInAnonymously()
+
+        let read = await harness.client.entitlement()
+
+        XCTAssertEqual(read, .absent, "consume_scan creates the row lazily, so none is normal")
+    }
+
+    func testEveryFailedReadIsUnavailableAndNeverReadsAsAnEmptyRow() async throws {
+        let scripts = [FakeEntitlementHTTP(status: 401, body: "{}"),
+                       FakeEntitlementHTTP(status: 500, body: ""),
+                       FakeEntitlementHTTP(status: 200, body: #"{"is_plus":true}"#),
+                       FakeEntitlementHTTP(failure: .unreachable)]
+        for script in scripts {
+            let harness = makeHarness(script)
+            _ = try await harness.auth.signInAnonymously()
+
+            let read = await harness.client.entitlement()
+
+            XCTAssertEqual(read, .unavailable, "a failed read claims nothing")
+        }
+    }
+
+    func testAPhoneWithNoSessionSaysNothingAndAsksNothing() async throws {
+        let harness = makeHarness(FakeEntitlementHTTP(
+            status: 200, body: #"[{"is_plus":true,"scans_used":0}]"#))
+
+        let read = await harness.client.entitlement()
+
+        XCTAssertEqual(read, .unavailable)
+        let requests = await harness.http.requests
+        XCTAssertTrue(requests.isEmpty, "no session, so nothing went on the wire")
     }
 }
 

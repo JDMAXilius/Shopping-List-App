@@ -17,6 +17,10 @@ protocol KitchenBackend: Sendable {
     func createInvite(kitchenID: KitchenID) async throws -> String
     func members(kitchenID: KitchenID) async throws -> [Member]
     func kitchenName(kitchenID: KitchenID) async throws -> String?
+    /// Entitlement without a scan (TERMINAL_TICKET_FOUNDER_BLOCKERS §9). It does not throw
+    /// because a caller must not be able to catch "the row is not there" and "the request
+    /// failed" in one `catch`: only one of them is allowed to write.
+    func entitlement() async -> EntitlementRead
     func requestEmailCode(_ email: String) async throws
     func verifyEmailCode(_ code: String) async throws -> KitchenIdentity
     func signInWithApple(idToken: String, nonce: String) async throws -> KitchenIdentity
@@ -114,6 +118,24 @@ struct KitchenClient: KitchenBackend {
             "kitchen", query: [URLQueryItem(name: "select", value: "name"),
                                URLQueryItem(name: "id", value: "eq.\(identifier(kitchenID))")])
         return rows.first?.name
+    }
+
+    /// This user's own entitlement row. No filter and no user id on the wire: the policy is
+    /// `entitlement_select_own` — `user_id = auth.uid()` — so the answer is one row or none, and
+    /// a client-supplied owner column is exactly what that policy exists to make unnecessary.
+    func entitlement() async -> EntitlementRead {
+        do {
+            let rows: [EntitlementBody] = try await select(
+                "entitlement",
+                query: [URLQueryItem(name: "select", value: "is_plus,scans_used")])
+            // An empty array is a user who has never scanned: `consume_scan` creates the row
+            // lazily. That is an answer, not a failure.
+            guard let row = rows.first else { return .absent }
+            return .found(isPlus: row.isPlus, scansUsed: row.scansUsed)
+        } catch {
+            // Offline, 401, malformed, no session at all: every one of these claims nothing.
+            return .unavailable
+        }
     }
 
     // MARK: - Plumbing
@@ -218,5 +240,15 @@ struct KitchenClient: KitchenBackend {
 
     private struct NameBody: Decodable {
         let name: String
+    }
+
+    private struct EntitlementBody: Decodable {
+        let isPlus: Bool
+        let scansUsed: Int
+
+        enum CodingKeys: String, CodingKey {
+            case isPlus = "is_plus"
+            case scansUsed = "scans_used"
+        }
     }
 }

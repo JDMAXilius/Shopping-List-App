@@ -55,6 +55,10 @@ struct RootView: View {
                 priceStore?.refresh()
                 syncCoordinator?.start()
                 syncCoordinator?.kick()
+                // Plus bought on another device is bought while this one is backgrounded, so
+                // foreground is where a subscriber stops being shown a sales card. A failed read
+                // changes nothing, so this costs a request and never an entitlement.
+                Task { await subscriptionStore?.refreshEntitlement() }
             } else {
                 syncCoordinator?.stop()
             }
@@ -74,7 +78,13 @@ struct RootView: View {
         // Bound to the answer rather than set once at launch, because `load()` resolves the
         // identity asynchronously: setting it before the answer arrives is how a guest meets
         // the paywall on their third scan.
-        .task { await kitchenStore?.load() }
+        .task {
+            await kitchenStore?.load()
+            // Launch: what is stored is last session's answer, and a purchase elsewhere or a
+            // lapse happened since. After the load, so both are not refreshing one session at
+            // once.
+            await subscriptionStore?.refreshEntitlement()
+        }
         // nil means the roster has not answered yet, and unknown is never a promotion to owner:
         // a joiner reclassified while their kitchen loads is a joiner being sold to.
         .onChange(of: kitchenStore?.isGuest) { _, isGuest in
