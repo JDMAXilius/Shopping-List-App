@@ -9,6 +9,9 @@ import XCTest
 /// gives ONE answer for missing and revoked, and a new invite revokes every earlier one.
 actor FakeKitchenBackend: KitchenBackend {
     private(set) var calls: [String] = []
+    /// The id the phone asked to keep. The real function honours it, so this fake must too —
+    /// a fake that mints its own would hide the very bug this argument exists to fix.
+    private(set) var askedToKeep: KitchenID?
     private(set) var liveToken: String?
     private(set) var mintedTokens: [String] = []
     private var stored: KitchenIdentity?
@@ -59,14 +62,14 @@ actor FakeKitchenBackend: KitchenBackend {
         return kitchenID
     }
 
-    func createKitchen(name: String) async throws -> KitchenID {
+    func createKitchen(name: String, id: KitchenID) async throws -> KitchenID {
         calls.append("createKitchen")
+        askedToKeep = id
         if let failure { throw failure }
         guard let me = stored, !me.isAnonymous else { throw KitchenError.signInRequired }
-        let kitchenID = KitchenID()
-        kitchens[kitchenID] = name
-        roster[kitchenID] = [Member(userID: me.userID, role: .owner, joinedAt: Date())]
-        return kitchenID
+        kitchens[id] = name
+        roster[id] = [Member(userID: me.userID, role: .owner, joinedAt: Date())]
+        return id
     }
 
     func renameKitchen(_ kitchenID: KitchenID, to name: String) async throws {
@@ -317,5 +320,21 @@ final class KitchenLinkTests: XCTestCase {
         XCTAssertEqual(url.absoluteString, "https://bagged.app/j/\(token)")
         XCTAssertEqual(KitchenLink.token(from: url), token)
         XCTAssertTrue(KitchenLink.isInvite(url))
+    }
+}
+
+extension KitchenStoreTests {
+    /// Sharing must not strand the list you already have. Every op this phone wrote is stamped
+    /// with its local kitchen id; if the server minted a new one, the engine would correctly
+    /// refuse to push those ops and the kitchen-blind projection would keep showing them to the
+    /// owner — so the guest joins an empty list and neither phone can see why.
+    func testSharingKeepsTheKitchenTheOpsAreAlreadyAddressedTo() async throws {
+        let harness = try Harness()
+        let before = harness.store.kitchen.id
+        try await harness.signIn()
+
+        XCTAssertTrue(await harness.store.name("Flat 2B"))
+        XCTAssertEqual(harness.backend.askedToKeep, before, "the id goes up, not down")
+        XCTAssertEqual(harness.store.kitchen.id, before, "and the phone keeps it")
     }
 }

@@ -224,7 +224,14 @@ revoke all on sequence scan_audit_id_seq from anon, authenticated;
 -- auth.uid() — never a client-supplied owner column).
 ------------------------------------------------------------------------------
 
-create function public.create_kitchen(p_name text)
+-- p_id lets the phone keep the kitchen id its ops are ALREADY stamped with. Minting a fresh
+-- one here stranded every op written before sharing: the engine is kitchen-scoped, so those ops
+-- correctly never pushed, and the local projection is kitchen-blind, so the owner's own screen
+-- still showed them. The guest joined to an empty list and nobody could see why.
+-- Taking a caller id is safe because a uuid the caller already holds grants nothing: membership
+-- is what SELECT is gated on, and this function writes the owner row itself. A collision with an
+-- existing kitchen raises rather than joining one.
+create function public.create_kitchen(p_name text, p_id uuid default gen_random_uuid())
 returns uuid
 language plpgsql security definer
 set search_path = public, pg_temp
@@ -243,7 +250,13 @@ begin
   if (select count(*) from member where user_id = uid and role = 'owner') >= 20 then
     raise exception 'kitchen_limit' using errcode = '54000';
   end if;
-  insert into kitchen (name) values (btrim(p_name)) returning id into kid;
+  if p_id is null then
+    raise exception 'invalid_id' using errcode = '22023';
+  end if;
+  if exists (select 1 from kitchen where id = p_id) then
+    raise exception 'kitchen_exists' using errcode = '23505';
+  end if;
+  insert into kitchen (id, name) values (p_id, btrim(p_name)) returning id into kid;
   insert into member (kitchen_id, user_id, role) values (kid, uid, 'owner');
   return kid;
 end;

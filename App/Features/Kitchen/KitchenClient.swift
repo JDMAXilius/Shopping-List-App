@@ -11,7 +11,7 @@ protocol KitchenBackend: Sendable {
     /// Goes through the `join-kitchen` function, which calls the SECURITY DEFINER
     /// `join_kitchen(token)`. There is no anon SELECT on `invite` anywhere in this app.
     func join(token: String) async throws -> KitchenID
-    func createKitchen(name: String) async throws -> KitchenID
+    func createKitchen(name: String, id: KitchenID) async throws -> KitchenID
     func renameKitchen(_ kitchenID: KitchenID, to name: String) async throws
     /// Mints a NEW token and revokes every earlier one (the trigger does it server-side).
     func createInvite(kitchenID: KitchenID) async throws -> String
@@ -67,8 +67,13 @@ struct KitchenClient: KitchenBackend {
         return KitchenID(decoded.kitchenID)
     }
 
-    func createKitchen(name: String) async throws -> KitchenID {
-        let response = try await rpc("create_kitchen", ["p_name": name])
+    /// The id goes UP, not down. Every op this phone has already written is stamped with its
+    /// local kitchen id; letting the server mint a new one strands all of them, invisibly —
+    /// the engine correctly refuses to push another kitchen's ops and the local projection is
+    /// kitchen-blind, so the owner keeps seeing a list the guest will never receive.
+    func createKitchen(name: String, id: KitchenID) async throws -> KitchenID {
+        let response = try await rpc("create_kitchen",
+                                     ["p_name": name, "p_id": identifier(id)])
         guard let id = UUID(uuidString: Self.scalar(response)) else { throw KitchenError.malformed }
         return KitchenID(id)
     }

@@ -135,8 +135,10 @@ final class KitchenStore {
                 return true
             }
             // create_kitchen writes the kitchen AND its owner member row in one transaction:
-            // there is no moment where a kitchen exists without an owner.
-            let created = try await backend.createKitchen(name: trimmed)
+            // there is no moment where a kitchen exists without an owner. It is handed THIS
+            // phone's kitchen id, so every op already written keeps its address and reaches the
+            // guest — the list you shared is the list they get.
+            let created = try await backend.createKitchen(name: trimmed, id: kitchen.id)
             let shared = Kitchen(id: created, name: trimmed, currencyCode: kitchen.currencyCode)
             try repository.saveKitchen(shared)
             kitchen = shared
