@@ -113,12 +113,17 @@ create policy invite_select on invite
   for select to authenticated
   using (public.is_kitchen_member(kitchen_id));
 
-create policy invite_update on invite
-  for update to authenticated
-  using (public.is_kitchen_member(kitchen_id))
-  with check (public.is_kitchen_member(kitchen_id));
-
-revoke insert, delete, truncate on invite from anon, authenticated;
+-- NO client UPDATE. There was an `invite_update` policy open to any member, and one
+-- PATCH against it could (a) set revoked_at back to null, resurrecting every link the
+-- owner believed they had killed — one of which may be a photo of a QR code in a group
+-- chat — and (b) set token to a string of the caller's choosing, which is exactly the
+-- client-chosen guessable token this section says cannot exist. Proven by execution:
+-- an evicted guest wrote themselves a token and rejoined.
+--
+-- No narrower policy was needed, because no client ever legitimately writes here.
+-- Revocation happens in `create_invite` and in the two triggers below, all SECURITY
+-- DEFINER, so they still do their work with this revoked.
+revoke insert, update, delete, truncate on invite from anon, authenticated;
 
 -- Trigger, not only create_invite() logic: the one-live-token invariant then
 -- holds for EVERY insert path (any future function), not just the wrapper.
@@ -353,7 +358,12 @@ $$;
 -- enough: Supabase's default privileges grant EXECUTE to anon/authenticated
 -- directly on every new function — each role must be revoked by name, or any
 -- authenticated user could call consume_scan(p_user) and burn someone else's quota.
-revoke execute on function public.create_kitchen(text) from public, anon, authenticated;
+--
+-- The signature here must list EVERY argument, defaults included: Postgres does not
+-- match create_kitchen(text) against create_kitchen(text, uuid default …), and a
+-- signature that does not match does not fail quietly in the right direction — it
+-- aborts the whole migration, leaving a database with RLS on and no policies at all.
+revoke execute on function public.create_kitchen(text, uuid) from public, anon, authenticated;
 revoke execute on function public.join_kitchen(text) from public, anon, authenticated;
 revoke execute on function public.create_invite(uuid) from public, anon, authenticated;
 revoke execute on function public.push_ops(jsonb) from public, anon, authenticated;
@@ -366,7 +376,7 @@ revoke execute on function public.member_guard_last_owner() from public, anon, a
 revoke execute on function public.member_revoke_invites() from public, anon, authenticated;
 revoke execute on function public.op_assign_seq() from public, anon, authenticated;
 
-grant execute on function public.create_kitchen(text) to authenticated;
+grant execute on function public.create_kitchen(text, uuid) to authenticated;
 grant execute on function public.join_kitchen(text) to authenticated;  -- anonymous-auth guests ARE `authenticated`
 grant execute on function public.create_invite(uuid) to authenticated;
 grant execute on function public.push_ops(jsonb) to authenticated;
