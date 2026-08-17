@@ -34,6 +34,7 @@ struct SetupScreen: View {
     @Binding var sheet: Sheet?
 
     private let defaults: UserDefaults
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var soundOn: Bool
     @State private var hapticsOn: Bool
 
@@ -150,15 +151,32 @@ struct SetupScreen: View {
 
     private func link(_ title: String, _ detail: String?, _ route: Route) -> some View {
         NavigationLink(value: route) {
+            // At accessibility sizes the detail moves under the title rather than squeezing
+            // it: sharing one line broke "Places" mid-word into "Place / s", and a word
+            // broken in half is the thing the tab-label ruling exists to prevent.
             HStack(spacing: 12) {
-                Text(title)
-                    .font(Typography.body)
-                    .foregroundStyle(Palette.ink.color)
-                Spacer(minLength: 12)
-                if let detail {
-                    Text(detail)
-                        .font(Typography.footnote)
-                        .foregroundStyle(Palette.muted.color)
+                if typeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(Typography.body)
+                            .foregroundStyle(Palette.ink.color)
+                        if let detail {
+                            Text(detail)
+                                .font(Typography.footnote)
+                                .foregroundStyle(Palette.muted.color)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                } else {
+                    Text(title)
+                        .font(Typography.body)
+                        .foregroundStyle(Palette.ink.color)
+                    Spacer(minLength: 12)
+                    if let detail {
+                        Text(detail)
+                            .font(Typography.footnote)
+                            .foregroundStyle(Palette.muted.color)
+                    }
                 }
                 Image(systemName: "chevron.right")
                     .font(.system(.footnote, weight: .semibold))

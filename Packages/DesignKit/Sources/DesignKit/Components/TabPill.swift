@@ -46,6 +46,10 @@ public struct TabPill: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Capture")
         }
+        // The row must never run off the screen: at accessibility sizes the pill grows past
+        // the display width and clipped the `+` clean off the right edge.
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 12)
     }
 
     private func tabButton(_ tab: Tab) -> some View {

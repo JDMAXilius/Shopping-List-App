@@ -327,3 +327,23 @@ PostgREST `op` select with `seq=gt`, the anonymous-signup body, the OTP verify s
 - **Still blocked, unchanged**: the guest-never-paywalled check needs a real join (the binding
   is `.onChange(of: kitchenStore?.isGuest)` and only a live roster answers it), and the ten
   Supabase request shapes need a live project. Both are FOUNDER_BLOCKERS item 1.
+
+**2026-08-17 · terminal · Dynamic Type sweep over wave 9 — two more real bugs, both fixed.**
+Ran the whole You tab at `accessibility-extra-extra-extra-large` (`simctl ui content_size`),
+the method that has now found four bugs nothing else caught:
+- **"Places" broke mid-word into "Place / s"** on the You root. The row shared one line between
+  title and detail ("none yet"), and at AX there was no width left. Fixed the same way TotalBar
+  was: at accessibility sizes the LAYOUT gives — the detail moves under the title, which then
+  has the full width. Same principle as the tab-label ruling: a word is never broken in half.
+- **The tab pill's `+` was clipped clean off the right edge.** The pill grows at AX until the
+  row exceeds the display; the persimmon circle was half gone on every screen. `TabPill` now
+  constrains its row (`maxWidth: .infinity` + 12pt horizontal padding) so it can never run off.
+  Both TabPill references re-recorded — the old ones were taken before this and did not show it
+  because the snapshot frame is exactly 390pt while the device row had no bound.
+- Re-captured at AX to confirm: "Places" whole with "none yet" beneath it, `+` fully on screen.
+- The other five wave-9 screens wrap correctly at word boundaries at AX3XL; paywall, Data &
+  privacy, Why it works this way and About are all legible and scrollable.
+- Full sweep after: DesignKit 89/89 · BaggedTests 252/252 · WidgetTests 23/23 · UI 10/10.
+  (Note for the next person: leaving the simulator at an AX content size makes the capture UI
+  tests fail — they assert on layout-sensitive controls. `simctl ui booted content_size medium`
+  resets it.)
