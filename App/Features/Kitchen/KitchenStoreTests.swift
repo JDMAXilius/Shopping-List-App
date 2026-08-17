@@ -329,12 +329,16 @@ extension KitchenStoreTests {
     /// refuse to push those ops and the kitchen-blind projection would keep showing them to the
     /// owner — so the guest joins an empty list and neither phone can see why.
     func testSharingKeepsTheKitchenTheOpsAreAlreadyAddressedTo() async throws {
-        let harness = try Harness()
+        // Signed in from the start, like the other owner tests: `makeHarness(identity:)` is
+        // this file's sign-in, and `nameKitchen` is the call that mints the shared kitchen.
+        let harness = try makeHarness(
+            identity: KitchenIdentity(userID: UserID(), isAnonymous: false, email: "a@b.c"))
         let before = harness.store.kitchen.id
-        try await harness.signIn()
 
-        XCTAssertTrue(await harness.store.name("Flat 2B"))
-        XCTAssertEqual(harness.backend.askedToKeep, before, "the id goes up, not down")
+        let named = await harness.store.nameKitchen("Flat 2B")
+        XCTAssertTrue(named)
+        let asked = await harness.backend.askedToKeep  // the fake is an actor
+        XCTAssertEqual(asked, before, "the id goes up, not down")
         XCTAssertEqual(harness.store.kitchen.id, before, "and the phone keeps it")
     }
 }

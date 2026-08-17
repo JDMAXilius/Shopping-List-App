@@ -258,7 +258,7 @@ extension MigrationTests {
     /// setting it would arm a wake-up on a phone with no pin and tell the household which shops
     /// someone watches.
     func testTheGeofenceColumnsAreGoneInV7() throws {
-        let database = try AppDatabase(url: temporaryURL())
+        let database = try makeDatabase()
         try database.migrate()
         try database.pool.read { db in
             let columns = try db.columns(in: "shop").map(\.name)

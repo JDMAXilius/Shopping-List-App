@@ -60,10 +60,13 @@ final class PlaceStoreTests: XCTestCase {
         // Ops are the whole sync protocol (ARCHITECTURE §5). Not appending one IS the promise.
         XCTAssertEqual(try repository.unpushedOps().count, opsAfterTheShop,
                        "a pin, a radius and a wake-up switch produced an op")
-        // The shop syncs and keeps its defaults: nothing about the pin was written onto it.
+        // The shop syncs and carries nothing about the pin. Since v7 that is structural —
+        // `Shop` has no geofence fields at all and the columns are gone (MigrationTests
+        // .testTheGeofenceColumnsAreGoneInV7) — so what is left to assert is that the shop
+        // itself round-trips unchanged through a pin, a radius and a wake-up switch.
         let shop = try XCTUnwrap(repository.shops().first { $0.id == shopID })
-        XCTAssertEqual(shop.wakeRadius, 150)
-        XCTAssertFalse(shop.wakeEnabled)
+        XCTAssertEqual(shop.name, "Trader Joe's")
+        XCTAssertNil(shop.branch)
     }
 
     func testTheCoordinateIsInTheLocalFileAndNowhereNearTheDatabase() throws {

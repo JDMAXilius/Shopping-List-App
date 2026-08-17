@@ -312,7 +312,8 @@ final class SubscriptionStoreTests: XCTestCase {
     func testABoughtSubscriptionIsHeldImmediately() async throws {
         let store = try makeStore(purchase: { _ in .purchased })
 
-        XCTAssertEqual(await store.purchase(.annual), .purchased)
+        let outcome = await store.purchase(.annual)
+        XCTAssertEqual(outcome, .purchased)
         XCTAssertTrue(store.isPlus)
         XCTAssertEqual(store.gate(.priceHistory), .allowed)
     }

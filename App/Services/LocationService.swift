@@ -9,7 +9,9 @@ import Observation
 final class LocationService {
     /// iOS watches 20 regions per app, app-wide and unnegotiable. WHICH 20 is `Place.monitored`'s
     /// decision; this only refuses to hand the system more than it will honour.
-    static let fenceLimit = 20
+    /// `nonisolated`: a constant Int is safe anywhere, and `Place.monitored` — which is not
+    /// MainActor — takes it as a default argument.
+    nonisolated static let fenceLimit = 20
     /// CLMonitor state outlives the process and is keyed by this name, so it must never change.
     private static let monitorName = "app.bagged.places"
 

@@ -20,10 +20,16 @@
 	<string>1</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Bagged uses your camera to photograph a receipt or scan a barcode so the items and prices on it can go straight onto your list.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Checking arrivals in the background is what makes the list already right when you take your phone out. The spots you pin stay on this phone and are never uploaded.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Bagged remembers the spot you pin for a shop so your list can switch to that shop when you walk in. The spot stays on this phone and is never uploaded.</string>
 	<key>ScanReceiptEndpoint</key>
 	<string>$(SCAN_RECEIPT_ENDPOINT)</string>
 	<key>SupabaseAnonKey</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>SupabaseURL</key>
+	<string>$(SUPABASE_URL)</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
