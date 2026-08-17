@@ -116,7 +116,9 @@ struct AboutScreen: View {
             paragraph("Barcode names come from Open Food Facts, used under the Open Database "
                       + "Licence (ODbL). Bagged queries it and shows you the answer; nothing from "
                       + "it is copied into Bagged's own catalog.")
-            paragraph("The database layer is GRDB.swift. Subscriptions run on RevenueCat.")
+            // RevenueCat is the sanctioned choice and is not in the binary yet, so this credits
+            // only what actually ships. Add it back with the dependency, not before.
+            paragraph("The database layer is GRDB.swift.")
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
