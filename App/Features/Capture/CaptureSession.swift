@@ -38,6 +38,9 @@ final class CaptureSession {
     private let kitchenID: KitchenID
     private let catalog: ListCatalog
     private let backend: any ScanBackend
+    /// Every answer the reader gives, handed back out. The function's `is_plus` and `scans_used`
+    /// are app-lifetime facts, and a per-flow store must not be their second owner.
+    private let onOutcome: (ScanOutcome) -> Void
 
     private(set) var stage: Stage = .idle
     private(set) var lines: [CaptureLine] = []
@@ -64,12 +67,14 @@ final class CaptureSession {
     private var printedTotalMinor: Int?
 
     init(repository: Repository, kitchenID: KitchenID, store: ListStore,
-         catalog: ListCatalog, backend: any ScanBackend) {
+         catalog: ListCatalog, backend: any ScanBackend,
+         onOutcome: @escaping (ScanOutcome) -> Void) {
         self.repository = repository
         self.kitchenID = kitchenID
         self.store = store
         self.catalog = catalog
         self.backend = backend
+        self.onOutcome = onOutcome
         shopID = store.activeShopID
         resume()
     }
@@ -125,6 +130,9 @@ final class CaptureSession {
     }
 
     private func apply(_ outcome: ScanOutcome, to pending: PendingScan) {
+        // Before any stage is decided: what tab 3 says about a plan and a quota is what the
+        // function just said, on every answer including the ones that refuse.
+        onOutcome(outcome)
         switch outcome {
         case .scanned(let receipt):
             // Still queued: the receipt row is written by commit and by nothing else.

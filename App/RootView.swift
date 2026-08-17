@@ -88,8 +88,13 @@ struct RootView: View {
     private func presentCapture() {
         guard let listStore, let repository, let kitchenID, let catalog, let scanBackend
         else { return }
+        // The server's answer is the app's: entitlement and quota reach the store on every scan,
+        // through here and nowhere else.
         capture = CaptureSession(repository: repository, kitchenID: kitchenID, store: listStore,
-                                 catalog: catalog, backend: scanBackend)
+                                 catalog: catalog, backend: scanBackend,
+                                 onOutcome: { [subscriptionStore] outcome in
+                                     subscriptionStore?.record(outcome)
+                                 })
     }
 
     @ViewBuilder private var content: some View {
@@ -190,7 +195,10 @@ struct RootView: View {
     @ViewBuilder private func priceDestination(_ route: Route, store: PriceStore) -> some View {
         switch route {
         case .priceHistory(let itemID):
-            PriceHistoryScreen(store: store, itemID: itemID)
+            if let subscriptionStore {
+                PriceHistoryScreen(store: store, itemID: itemID, subscription: subscriptionStore,
+                                   sheet: $sheet)
+            }
         case .monthSpend:
             MonthSpendScreen(store: store)
         default:
@@ -215,7 +223,9 @@ struct RootView: View {
             case .itemDetail(let id):
                 ItemDetailSheet(store: listStore, listItemID: id)
             case .shopSwitcher, .firstShop:
-                ShopSwitcherSheet(store: listStore)
+                if let subscriptionStore {
+                    ShopSwitcherSheet(store: listStore, subscription: subscriptionStore)
+                }
             case .capture:
                 // Unreachable today — capture presents through `.sheet(item: $capture)` —
                 // but the case stays total for any later wave that sets it.

@@ -5,8 +5,30 @@ import SwiftUI
 /// Screen 09 — one item over time, per shop, dated. Deltas are stated in ink: a price going
 /// up is information, not a failure (PRODUCT §2 bans valuative colour on money).
 struct PriceHistoryScreen: View {
+    /// What sits below the current price. `estimateOnly` is the case that keeps this honest:
+    /// an item nothing has priced has no history to withhold, so no gate is advertised over it.
+    enum Shown: Equatable {
+        case estimateOnly
+        case full
+        case plus
+        case unavailable(String)
+    }
+
     let store: PriceStore
     let itemID: ItemID
+    let subscription: SubscriptionStore
+    @Binding var sheet: Sheet?
+
+    /// The current price is free wherever it appears — the list and the price book already show
+    /// it. What Plus buys is every dated price, and what each shop charged (PRODUCT §6).
+    static func shown(entries: Int, shops: Int, gate: Gate) -> Shown {
+        guard entries > 0 || shops > 0 else { return .estimateOnly }
+        switch gate {
+        case .allowed: return .full
+        case .paywall: return .plus
+        case .unavailable(let sentence): return .unavailable(sentence)
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -40,11 +62,24 @@ struct PriceHistoryScreen: View {
                 .foregroundStyle(Palette.muted.color)
         }
         .accessibilityElement(children: .combine)
-        if !history.shops.isEmpty { shopSection(history.shops) }
-        if history.entries.isEmpty {
+        switch Self.shown(entries: history.entries.count, shops: history.shops.count,
+                          gate: subscription.gate(.priceHistory)) {
+        case .estimateOnly:
             Notice("No receipt has priced this yet — the figure above is the catalog's estimate.",
                    on: .paper)
-        } else {
+        case .full:
+            fullHistory(history)
+        case .plus:
+            plusSection
+        // A joiner is told what this is and what stays theirs. No price, no offer, no button.
+        case .unavailable(let sentence):
+            Notice(sentence, on: .paper)
+        }
+    }
+
+    @ViewBuilder private func fullHistory(_ history: ItemHistory) -> some View {
+        if !history.shops.isEmpty { shopSection(history.shops) }
+        if !history.entries.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel("EVERY PRICE")
                 ForEach(history.entries) { entry in
@@ -54,6 +89,32 @@ struct PriceHistoryScreen: View {
             Notice("Prices accumulate — new receipts never erase old ones.", on: .paper)
         }
     }
+
+    /// Names the gate before the tap and sends the tap to the one screen that carries the price.
+    /// A gate that hides what it costs is the dark pattern this project bans.
+    private var plusSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionLabel("EVERY PRICE")
+            Text(Self.plusSentence)
+                .font(Typography.body)
+                .foregroundStyle(Palette.ink.color)
+                .fixedSize(horizontal: false, vertical: true)
+            Button { sheet = .paywall } label: {
+                Text("See what Plus costs")
+                    .font(.system(.body, weight: .semibold))
+                    .foregroundStyle(Palette.persimmon.color)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Palette.card.color))
+    }
+
+    static let plusSentence = "Every dated price for this item, and what each shop charged, is "
+        + "part of Bagged Plus. The price above stays free, and nothing you've recorded is "
+        + "deleted — it's all in your export."
 
     /// The comparison people actually want: the same item, each shop's latest, side by side.
     private func shopSection(_ shops: [ShopComparison]) -> some View {

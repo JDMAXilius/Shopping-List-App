@@ -16,9 +16,13 @@ final class CaptureSessionTests: XCTestCase {
         let repository: Repository
         let store: ListStore
         let backend: FakeScanBackend
+        /// Wired exactly as `RootView` wires it: the flow reports outward, the app-lifetime
+        /// store is the only owner of entitlement and quota.
+        let subscription: SubscriptionStore
     }
 
-    private func makeHarness(_ outcomes: [ScanOutcome]) throws -> Harness {
+    private func makeHarness(_ outcomes: [ScanOutcome],
+                             role: Member.Role = .owner) throws -> Harness {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("capture-\(UUID().uuidString).sqlite")
         let database = try AppDatabase(url: url)
@@ -30,9 +34,12 @@ final class CaptureSessionTests: XCTestCase {
                                   defaults: defaults)
         store.addShop(named: "Trader Joe's")
         let backend = FakeScanBackend(outcomes: outcomes)
+        let subscription = SubscriptionStore(defaults: defaults, role: role)
         let session = CaptureSession(repository: repository, kitchenID: kitchenID, store: store,
-                                     catalog: catalog, backend: backend)
-        return Harness(session: session, repository: repository, store: store, backend: backend)
+                                     catalog: catalog, backend: backend,
+                                     onOutcome: { subscription.record($0) })
+        return Harness(session: session, repository: repository, store: store, backend: backend,
+                       subscription: subscription)
     }
 
     private let receiptJSON = """
@@ -282,7 +289,8 @@ final class CaptureSessionTests: XCTestCase {
 
         let session = CaptureSession(repository: harness.repository, kitchenID: kitchenID,
                                      store: harness.store, catalog: ListCatalog(database: nil),
-                                     backend: FakeScanBackend(outcomes: []))
+                                     backend: FakeScanBackend(outcomes: []),
+                                     onOutcome: { harness.subscription.record($0) })
 
         XCTAssertEqual(session.waiting.map(\.id), [stranded.id])
         XCTAssertEqual(session.stage, .idle)
@@ -297,7 +305,8 @@ final class CaptureSessionTests: XCTestCase {
 
         let session = CaptureSession(repository: harness.repository, kitchenID: kitchenID,
                                      store: harness.store, catalog: ListCatalog(database: nil),
-                                     backend: FakeScanBackend(outcomes: []))
+                                     backend: FakeScanBackend(outcomes: []),
+                                     onOutcome: { harness.subscription.record($0) })
 
         XCTAssertEqual(session.waiting.map(\.id), [orphan.id])
         XCTAssertTrue(try harness.repository.pendingScans().allSatisfy { $0.state == .queued })
@@ -382,6 +391,96 @@ final class CaptureSessionTests: XCTestCase {
         XCTAssertEqual(harness.session.stage, .handoff(.paywall(scansUsed: 3)))
         XCTAssertEqual(try harness.repository.queuedScans().count, 1)
         XCTAssertTrue(try harness.repository.receipts().isEmpty)
+    }
+
+    // MARK: - The server's answer about money reaches the app
+
+    /// The receipt the function answers for a subscriber: same shape, `is_plus` true.
+    private let plusReceiptJSON = """
+        {"lines":[{"raw_text":"MILK 1L","amount_minor":189,"quantity":1,"confidence":"sure",
+        "match_hint":"milk"}],
+        "shop_name":"Trader Joe's","total_minor":189,"currency":"USD","is_plus":true,
+        "scans_used":7}
+        """
+
+    func testTheScansTheAppShowsAreTheScansTheServerCounted() async throws {
+        let harness = try makeHarness([try parsed(receiptJSON)])
+        XCTAssertEqual(harness.subscription.freeScansLeft, 3)
+
+        await harness.session.capture(jpeg: jpeg)
+
+        // The function counted one. Tab 3 is one swipe from this flow and must say the same.
+        XCTAssertEqual(harness.subscription.scansUsed, 1)
+        XCTAssertEqual(harness.subscription.freeScansLeft, 2)
+        XCTAssertEqual(SetupScreen.scansChip(harness.subscription.freeScansLeft),
+                       "2 free scans left")
+        XCTAssertEqual(PaywallCopy.scansLine(used: harness.subscription.scansUsed),
+                       "You've used 1 free receipt scan.")
+    }
+
+    func testAQuotaTheAppShowsIsNeverMoreGenerousThanTheOneTheServerEnforces() async throws {
+        let harness = try makeHarness([.quotaExhausted(scansUsed: nil)])
+
+        await harness.session.capture(jpeg: jpeg)
+
+        // The 402 refused a fourth scan; a screen still promising three is the app being more
+        // generous than the server, which is the one direction that is a lie about money.
+        XCTAssertEqual(harness.subscription.freeScansLeft, 0)
+        XCTAssertEqual(harness.subscription.gate(.receiptScanning), .paywall)
+        XCTAssertEqual(SetupScreen.scansChip(harness.subscription.freeScansLeft),
+                       "3 free scans used")
+    }
+
+    func testASubscribersOwnScanIsWhatTellsTheAppTheyAreASubscriber() async throws {
+        let harness = try makeHarness([try parsed(plusReceiptJSON)])
+        XCTAssertTrue(harness.subscription.mayBeOffered, "free until the server says otherwise")
+
+        await harness.session.capture(jpeg: jpeg)
+
+        XCTAssertTrue(harness.subscription.isPlus)
+        XCTAssertFalse(harness.subscription.mayBeOffered, "nobody is sold what they already own")
+        for capability in Capability.allCases {
+            XCTAssertEqual(harness.subscription.gate(capability), .allowed, "\(capability)")
+        }
+    }
+
+    func testANetworkFailureSaysNothingAboutEntitlementOrQuota() async throws {
+        let harness = try makeHarness([.notReachable])
+
+        await harness.session.capture(jpeg: jpeg)
+
+        XCTAssertEqual(harness.session.stage, .waiting)
+        XCTAssertEqual(harness.subscription.freeScansLeft, 3)
+        XCTAssertFalse(harness.subscription.isPlus)
+    }
+
+    /// The function's `free_scan_charged` is the server saying a scan was really spent, even
+    /// though the read failed. The app counts it or it is the more generous of the two.
+    func testAFreeScanTheServerChargedIsCountedEvenThoughNothingWasRead() async throws {
+        let harness = try makeHarness([.unreadableImage(freeScan: .charged)])
+
+        await harness.session.capture(jpeg: jpeg)
+
+        XCTAssertEqual(harness.session.stage, .failed(.unreadable))
+        XCTAssertEqual(harness.subscription.scansUsed, 1)
+
+        let refunded = try makeHarness([.upstreamFailure(freeScan: .refunded)])
+        await refunded.session.capture(jpeg: jpeg)
+        XCTAssertEqual(refunded.subscription.scansUsed, 0, "a refunded scan was not spent")
+    }
+
+    func testAJoinerScanningIsNeverShownAPriceOrAPaywall() async throws {
+        let harness = try makeHarness([.quotaExhausted(scansUsed: 3)], role: .guest)
+
+        await harness.session.capture(jpeg: jpeg)
+
+        XCTAssertFalse(harness.subscription.mayBeOffered)
+        for capability in Capability.allCases {
+            XCTAssertNotEqual(harness.subscription.gate(capability), .paywall, "\(capability)")
+        }
+        let sentence = SubscriptionStore.joinerSentence(.receiptScanning)
+        XCTAssertFalse(sentence.contains("$"), sentence)
+        XCTAssertFalse(sentence.contains(where: \.isNumber), sentence)
     }
 
     // MARK: - The shop this receipt is filed under

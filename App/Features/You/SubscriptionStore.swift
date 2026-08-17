@@ -178,8 +178,12 @@ final class SubscriptionStore {
         case .quotaExhausted(let used):
             // The function only refuses a free account, so a 402 settles both fields.
             apply(isPlus: false, scansUsed: used ?? max(scansUsed, PlusPlan.freeScanLimit))
+        case .unreadableImage(let freeScan), .upstreamFailure(let freeScan):
+            // `free_scan_charged: true` is the server saying one was really spent. Absent or
+            // refunded claims nothing — the count here is never the more generous of the two.
+            if freeScan == .charged { apply(isPlus: isPlus, scansUsed: scansUsed + 1) }
         case .unauthenticated, .signInRequired, .kitchenRequired, .rejected, .imageTooLarge,
-             .rateLimited, .unreadableImage, .upstreamFailure, .notReachable, .unexpected:
+             .rateLimited, .notReachable, .unexpected:
             break
         }
     }

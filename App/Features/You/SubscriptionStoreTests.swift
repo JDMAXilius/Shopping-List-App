@@ -136,6 +136,114 @@ final class SubscriptionStoreTests: XCTestCase {
         }
     }
 
+    // MARK: - Sold only where it is withheld
+
+    /// Every capability the paywall sells, and the file that withholds it. Exhaustive, so a new
+    /// Plus feature cannot be sold without someone naming where it is refused.
+    private func gateSite(_ capability: Capability) -> (file: String, pin: String)? {
+        switch capability {
+        // The server withholds this one: it 402s, and the answer reaches the store through here.
+        case .receiptScanning:
+            return ("Capture/CaptureSession.swift", "onOutcome(outcome)")
+        case .priceHistory:
+            return ("Prices/PriceHistoryScreen.swift", "subscription.gate(.priceHistory)")
+        case .moreThanOneShop:
+            return ("List/ShopSwitcherSheet.swift", "subscription.gate(.moreThanOneShop)")
+        case .theList, .sharing, .offline, .aisleOrder, .estimates, .oneShop, .siri, .widget:
+            return nil
+        }
+    }
+
+    func testEveryFeatureThePaywallSellsIsOneTheAppActuallyWithholds() throws {
+        let features = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent()
+        for capability in Capability.allCases {
+            guard capability.isPlus else {
+                XCTAssertNil(gateSite(capability), "\(capability) is free and must not be gated")
+                continue
+            }
+            let site = try XCTUnwrap(gateSite(capability),
+                                     "\(capability) is on the paywall with nowhere it is refused")
+            let source = try String(contentsOf: features.appendingPathComponent(site.file),
+                                    encoding: .utf8)
+            XCTAssertTrue(source.contains(site.pin),
+                          "\(site.file) no longer withholds \(capability): \(site.pin)")
+        }
+    }
+
+    func testTheFullHistoryIsWithheldFromAFreeOwnerAndNothingElseIs() throws {
+        let store = try makeStore()
+        let gate = store.gate(.priceHistory)
+
+        XCTAssertEqual(PriceHistoryScreen.shown(entries: 4, shops: 2, gate: gate), .plus)
+        // An item nothing has priced has no history to withhold, so no gate is advertised over it.
+        XCTAssertEqual(PriceHistoryScreen.shown(entries: 0, shops: 0, gate: gate), .estimateOnly)
+        // The current price above it is never withheld — the list and the price book show it free.
+        XCTAssertTrue(PriceHistoryScreen.plusSentence.contains("The price above stays free"))
+        XCTAssertTrue(PriceHistoryScreen.plusSentence.contains("nothing you've recorded is deleted"))
+        XCTAssertEqual(PriceHistoryScreen.shown(entries: 4, shops: 2, gate: .allowed), .full)
+    }
+
+    func testTheFirstShopIsFreeAndTheOnesAKitchenHasAreNeverTakenAway() throws {
+        let free = try makeStore()
+        let plus = try makeStore()
+        plus.record(try scanned(isPlus: true, scansUsed: 0))
+
+        XCTAssertEqual(ShopSwitcherSheet.addShopGate(shopCount: 0, free), .allowed)
+        XCTAssertEqual(ShopSwitcherSheet.addShopGate(shopCount: 1, free), .paywall)
+        // Three shops already: the gate is on adding a fourth, and the three keep working —
+        // `.moreThanOneShop` is the only capability consulted, and it removes nothing.
+        XCTAssertEqual(ShopSwitcherSheet.addShopGate(shopCount: 3, free), .paywall)
+        XCTAssertEqual(free.gate(.oneShop), .allowed)
+        XCTAssertEqual(free.gate(.aisleOrder), .allowed)
+        XCTAssertEqual(ShopSwitcherSheet.addShopGate(shopCount: 3, plus), .allowed)
+    }
+
+    func testAJoinerMeetingAPlusSurfaceIsToldWhatItIsAndNeverShownAPrice() throws {
+        let joiner = try makeStore(.guest)
+        let sentence = SubscriptionStore.joinerSentence(.priceHistory)
+
+        XCTAssertEqual(PriceHistoryScreen.shown(entries: 4, shops: 2,
+                                                gate: joiner.gate(.priceHistory)),
+                       .unavailable(sentence))
+        XCTAssertEqual(ShopSwitcherSheet.addShopGate(shopCount: 2, joiner),
+                       .unavailable(SubscriptionStore.joinerSentence(.moreThanOneShop)))
+        // A statement, never an offer: no figure, no currency, and nothing to buy.
+        XCTAssertFalse(sentence.contains(where: \.isNumber), sentence)
+        XCTAssertFalse(sentence.contains("$"), sentence)
+        XCTAssertFalse(sentence.lowercased().contains("upgrade"), sentence)
+        XCTAssertFalse(joiner.mayBeOffered, "so the paywall's purchase block never renders")
+    }
+
+    // MARK: - The quota the app shows is the one the server counted
+
+    func testTheAppSaysWhatTheServerSaidAboutTheQuotaInBothDirections() throws {
+        let store = try makeStore()
+
+        store.record(.quotaExhausted(scansUsed: nil))
+        XCTAssertEqual(store.freeScansLeft, 0, "a 402 is never shown as scans still left")
+        XCTAssertEqual(SetupScreen.scansChip(store.freeScansLeft), "3 free scans used")
+
+        // And downward: the count the function reports wins over the one cached here.
+        store.record(try scanned(isPlus: false, scansUsed: 1))
+        XCTAssertEqual(store.scansUsed, 1)
+        XCTAssertEqual(SetupScreen.scansChip(store.freeScansLeft), "2 free scans left")
+    }
+
+    func testAFreeScanTheServerChargedIsNeverShownAsUnspent() throws {
+        let store = try makeStore()
+
+        store.record(.unreadableImage(freeScan: .charged))
+        XCTAssertEqual(store.scansUsed, 1)
+        store.record(.upstreamFailure(freeScan: .charged))
+        XCTAssertEqual(store.scansUsed, 2)
+        // Absent and refunded are not "spent", and neither is a claim we may invent.
+        store.record(.upstreamFailure(freeScan: .refunded))
+        store.record(.unreadableImage(freeScan: .notReached))
+        store.record(.unreadableImage(freeScan: .unreported))
+        XCTAssertEqual(store.scansUsed, 2)
+    }
+
     // MARK: - No dark patterns, structurally
 
     func testAMonthlyPlanCannotShowATrialOrAnIntroPrice() {
