@@ -89,10 +89,15 @@ struct MonthSpendScreen: View {
                 .fixedSize(horizontal: false, vertical: true)
             ForEach(aisles) { aisle in
                 HStack(spacing: 12) {
+                    // The column is fixed so every bar starts at the same x — that alignment
+                    // is what makes them readable as a chart. But a fixed width with one line
+                    // truncated "Dairy & Eggs" to "Dairy & Eg…", and an aisle whose name is
+                    // cut is an aisle the reader has to guess at. Two lines, wrapped at a
+                    // word: the alignment is kept and nothing is cut.
                     Text(aisle.title)
                         .font(Typography.body)
                         .foregroundStyle(Palette.ink.color)
-                        .lineLimit(1)
+                        .lineLimit(2)
                         .frame(width: 92, alignment: .leading)
                     Capsule()
                         .fill((aisle.tint ?? Palette.line).color)
