@@ -33,6 +33,8 @@ final class ListStore {
     /// that made it. Only an action with no other one-tap way back earns one — a check-off is
     /// reversed by its own tick, and a brand-new row by the row you are looking at.
     private(set) var pendingUndo: PendingUndo?
+    /// A shop change nobody asked for, and the way back. Nil unless a geofence moved the list.
+    private(set) var arrival: ShopArrival?
     // Fed by the SyncEngine once a transport exists (wave 9); until then always .synced.
     var syncStatus: SyncStatus = .synced
 
@@ -193,11 +195,31 @@ final class ListStore {
         pendingUndo = nil
     }
 
-    func switchShop(_ shopID: ShopID) {
+    /// `arrived` is true only when a geofence moved the list, never when a person did.
+    /// An arrival is meant to be silent — the list is simply already right. But silence about
+    /// WHICH SHOP'S PRICES are on screen is not a small thing: two shops share a car park, the
+    /// wrong fence fires, and every measured price the user reads at the till belongs to the
+    /// shop next door. A wrong measured price is worse than no price, so the change says itself
+    /// and offers the way back.
+    func switchShop(_ shopID: ShopID, arrived: Bool = false) {
+        let previous = activeShopID
         activeShopID = shopID
         defaults.set(shopID.rawValue.uuidString, forKey: ListStore.activeShopKey)
         loadAisleOrder()
+        guard arrived, shopID != previous else { return }
+        arrival = ShopArrival(shopName: shops.first { $0.id == shopID }?.name ?? "this shop",
+                              previous: previous)
     }
+
+    /// Back to the shop the user chose. Nothing was written, so there is nothing to undo but
+    /// the choice itself.
+    func undoArrival() {
+        guard let previous = arrival?.previous else { return arrival = nil }
+        arrival = nil
+        switchShop(previous)
+    }
+
+    func dismissArrival() { arrival = nil }
 
     /// Makes a shop without making it the active one — filing a receipt at a shop you have not
     /// shopped at yet must not re-point the list you are standing in front of.

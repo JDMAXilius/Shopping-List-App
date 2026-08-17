@@ -547,3 +547,34 @@ extension ListStoreTests {
         XCTAssertEqual(QuantityText.label(quantity: 3, unit: nil), "×3")
     }
 }
+
+extension ListStoreTests {
+    /// Two shops share a car park, the wrong fence fires, and every measured price on screen
+    /// belongs to the shop next door. The switch may be quiet; which shop's prices are being
+    /// shown may not be.
+    func testAnArrivalSaysSoAndOffersTheWayBack() throws {
+        let (store, _) = try makeStore()
+        let aldi = try XCTUnwrap(store.createShop(named: "Aldi"))
+        let lidl = try XCTUnwrap(store.createShop(named: "Lidl"))
+        store.switchShop(aldi)
+        XCTAssertNil(store.arrival, "a shop the user chose announces nothing")
+
+        store.switchShop(lidl, arrived: true)
+        XCTAssertEqual(store.arrival?.shopName, "Lidl")
+        XCTAssertEqual(store.arrival?.previous, aldi)
+
+        store.undoArrival()
+        XCTAssertEqual(store.activeShopID, aldi, "the way back must actually go back")
+        XCTAssertNil(store.arrival)
+    }
+
+    /// Arriving where you already were is not news, and a notice with nothing behind it trains
+    /// people to dismiss the ones that matter.
+    func testArrivingAtTheShopYouAreAlreadyAtSaysNothing() throws {
+        let (store, _) = try makeStore()
+        let aldi = try XCTUnwrap(store.createShop(named: "Aldi"))
+        store.switchShop(aldi)
+        store.switchShop(aldi, arrived: true)
+        XCTAssertNil(store.arrival)
+    }
+}

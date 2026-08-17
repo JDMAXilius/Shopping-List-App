@@ -42,6 +42,13 @@ struct PendingUndo {
     let phrase: String
 }
 
+/// A geofence moved the list. Not an op and not undoable through the log — nothing was written,
+/// only which shop's prices are being shown.
+struct ShopArrival: Equatable {
+    let shopName: String
+    let previous: ShopID?
+}
+
 // The one place a price becomes a tier: measured only from this shop's own observations,
 // then the catalog's seeded estimate, then nothing. `—` beats a guess.
 @MainActor

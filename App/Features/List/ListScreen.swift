@@ -82,6 +82,30 @@ struct ListScreen: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Palette.card.color))
     }
 
+    /// A geofence moved the list. The switch itself is meant to be invisible — the list is
+    /// simply already right — but WHICH SHOP'S PRICES are on screen is not something to change
+    /// in silence: two shops share a car park, the wrong fence fires, and the numbers a person
+    /// reads at the till belong to the shop next door. Attention, not a footnote, and the way
+    /// back is one tap.
+    @ViewBuilder private var arrivalRow: some View {
+        if let arrival = store.arrival {
+            VStack(alignment: .leading, spacing: 8) {
+                Notice("Switched to \(arrival.shopName) — you arrived. The prices below are that "
+                       + "shop's.", tone: .attention, on: .paper)
+                if arrival.previous != nil {
+                    Button { store.undoArrival() } label: {
+                        Text("No, stay where I was")
+                            .font(.system(.footnote, weight: .semibold))
+                            .foregroundStyle(Palette.persimmon.color)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
     /// The way back from an action that changed the list quietly — a remove, or an add that
     /// merged into a row already there. It sits in the flow, covers nothing and takes no focus;
     /// when there is nothing to undo it is absent, never a disabled control.
@@ -301,8 +325,9 @@ struct ListScreen: View {
 
     private var bottomStack: some View {
         VStack(spacing: 12) {
-            // Undo lives here, not in the scroll: a merge is triggered from the input bar
-            // an inch below, and an undo the user can scroll away from is not an undo.
+            // Both live here, not in the scroll: a merge is triggered from the input bar an
+            // inch below, and a way back the user can scroll away from is not a way back.
+            arrivalRow
             undoRow
             suggestionResults
             TotalBar(prices: store.prices)
