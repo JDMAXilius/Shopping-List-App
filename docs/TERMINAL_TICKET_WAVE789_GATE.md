@@ -269,8 +269,8 @@ Two structural changes worth knowing before you read the first error:
 - **`Sheet` gained `case join(String)`** for invite links, and `Route.setup` is now unused —
   Setup is tab 3's root, not a push destination.
 
-- [ ] Everything compiles and every suite is green — counts
-- [ ] `SupabaseURL` reaches the app: with it absent the transport is nil, the phone is `.local`,
+- [x] Everything compiles and every suite is green — counts
+- [x] `SupabaseURL` reaches the app: with it absent the transport is nil, the phone is `.local`,
       and **nothing syncs, silently.** `Config/Base.xcconfig` and the template both declare it now
       and the Release preflight fails without it. Confirm the Debug warning actually fires.
 - [ ] **A guest never sees the paywall.** The role is bound to `kitchenStore.isGuest`, which
@@ -296,3 +296,34 @@ PostgREST `op` select with `seq=gt`, the anonymous-signup body, the OTP verify s
 - **The local projection is kitchen-blind.** A guest's own pre-join items stay in their list and
   mix with the shared one, on their phone only. Fixing it needs a kitchen filter in
   `Repository`/`Merge`.
+
+**2026-08-17 · terminal · V8 — wave 9 compiled, five mechanical fixes, tab 3 seen for the first time.**
+- Five fixes, all mechanical, none touching a contract:
+  1. `LocationService.fenceLimit` is `static let` on a `@MainActor` class and was used as a
+     DEFAULT ARGUMENT of nonisolated `Place.monitored` — now `nonisolated` (a constant Int is
+     safe anywhere). This was the only non-test compile error in the whole wave.
+  2. `MigrationTests.testTheGeofenceColumnsAreGoneInV7` called `temporaryURL()`, which this file
+     does not have; switched to its own `makeDatabase()`.
+  3. `KitchenStoreTests.testSharingKeepsTheKitchenTheOpsAreAlreadyAddressedTo` was written
+     against a harness shape this file does not have (`Harness()` + `signIn()` + `store.name`).
+     Rewritten to `makeHarness(identity:)` + `nameKitchen`, assertions unchanged, and the
+     `askedToKeep` read now awaits — `FakeKitchenBackend` is an actor.
+  4. `PlaceStoreTests` asserted `shop.wakeRadius == 150` / `wakeEnabled == false`, but v7
+     DELETED those fields on purpose. The claim is now structural, so the test asserts what
+     survives: the shop round-trips unchanged through a pin, a radius and a wake switch.
+  5. One `XCTAssertEqual(await …)` autoclosure in `SubscriptionStoreTests`.
+- Counts: Core 59/59 · Catalog 57/57 · Data **59/59** (SupabaseTransport's fake-server suite
+  included) · DesignKit 89/89 · **BaggedTests 252/252** · WidgetTests 23/23 · UI 9→10/10.
+- **SupabaseURL box closed by execution**: Debug prints `warning: backend config absent — this
+  build … never syncs`; Release **fails** with the actionable error naming all three keys.
+- **Tab 3 rendered for the first time** (`YouTabUITests`, 1/1): You root, paywall, Kitchen,
+  Places, Data & privacy, Why it works this way, About → `design/built/25–31`. Each screen is
+  opened from its own launch: Kitchen and Places hide the navigation bar (their back control is
+  a custom circular chevron), so chaining back-navigation between them is fragile in XCUI.
+- What the screens say with no backend configured, and it is all honest: Kitchen — "This
+  kitchen is on this phone only. Invite someone and the list is on both." · Paywall — the
+  features, the free-forever list, and "Bagged Plus isn't on sale in this build. Nothing is
+  charged" instead of a fabricated price · You — "3 free scans left" chip, Places "none yet".
+- **Still blocked, unchanged**: the guest-never-paywalled check needs a real join (the binding
+  is `.onChange(of: kitchenStore?.isGuest)` and only a live roster answers it), and the ten
+  Supabase request shapes need a live project. Both are FOUNDER_BLOCKERS item 1.
