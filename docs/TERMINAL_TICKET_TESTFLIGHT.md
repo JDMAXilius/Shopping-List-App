@@ -346,3 +346,19 @@ they work for us unchanged.
   belong to, and using the wrong one would act on somebody else's team. If one is yours for
   A6J6HGNWZK, say which, and send the **Issuer ID** (the UUID at the top of Users and Access →
   Integrations). Then the upload and the internal-group setup are both scriptable from here.
+
+**2026-08-17 · terminal · State of play, stated plainly so it is not mistaken for progress.**
+- **Nothing has been uploaded. No archive exists.** `/tmp/Bagged.xcarchive` is absent and every
+  archive attempt ends `** ARCHIVE FAILED **` on our own preflight, because
+  `Config/Secrets.xcconfig` does not exist. Re-verified just now, not assumed.
+- **Founder's request, recorded so it is not lost: invite `jdmaxinius` as an internal tester.**
+  Two things needed before that can happen: a build must exist and be attached to an internal
+  group, and I need either the ASC key trio (Key ID + Issuer ID + .p8) to do it by API, or the
+  founder does it in App Store Connect → TestFlight → Internal Testing. **An internal tester is
+  added by App Store Connect account email, not by a handle** — so the exact email for
+  `jdmaxinius` is needed too.
+- Everything else is finished: signing, both App IDs, the App Group in both profiles, build
+  number, encryption declaration, export options, the upload command, and the internal-group
+  script from the skill. **One decision is in front of all of it** and it is the founder's:
+  supply a Supabase project, or rule that a deliberately-marked no-backend build may ship to
+  internal testing.
