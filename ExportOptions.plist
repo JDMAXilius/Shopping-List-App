@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Export options for the TestFlight upload (TERMINAL_TICKET_TESTFLIGHT §A5).
+  Configuration, not a secret — committed on purpose.
+
+    xcodebuild -exportArchive -archivePath /tmp/Bagged.xcarchive \
+      -exportOptionsPlist ExportOptions.plist -exportPath /tmp/Bagged-export
+
+  teamID is deliberately absent: it is the founder's (§B1) and goes into
+  project.yml's DEVELOPMENT_TEAM, from which the archive already carries it.
+-->
+<plist version="1.0">
+<dict>
+  <key>method</key>
+  <string>app-store-connect</string>
+  <key>destination</key>
+  <string>export</string>
+  <key>signingStyle</key>
+  <string>automatic</string>
+  <!-- Symbols go up so a TestFlight crash arrives readable rather than as addresses. -->
+  <key>uploadSymbols</key>
+  <true/>
+  <!-- Our own build, our own bitcode decision: Apple dropped bitcode, and stripping
+       Swift symbols would make the first tester crash report useless. -->
+  <key>stripSwiftSymbols</key>
+  <false/>
+</dict>
+</plist>

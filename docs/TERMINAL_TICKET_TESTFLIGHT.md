@@ -1,5 +1,6 @@
 # TERMINAL_TICKET_TESTFLIGHT — get a build onto TestFlight internal testing
 
+> STATUS: in-progress — terminal 2026-08-17
 > STATUS: open — written by cloud 2026-08-17.
 > Same operating mode and honesty laws as `TERMINAL_TICKET_GATE_AUTOPILOT.md`.
 > **Founder has an Apple Developer account and the terminal has push access to the repo.**
@@ -44,7 +45,7 @@ Everything else below can be prepared while that is open.
       the ID — §B1). A Team ID is not a secret; it is fine committed.
 - [ ] Xcode must be signed in with the Apple ID (Settings → Accounts). If it is not, say so in the
       Log — that is a §B item, not something to force.
-- [ ] Regenerate and confirm `xcodebuild -scheme Bagged -destination generic/platform=iOS archive`
+- [x] Regenerate and confirm `xcodebuild -scheme Bagged -destination generic/platform=iOS archive`
       gets as far as a signing error rather than a configuration error. **Different errors, and the
       difference is the whole point of this step.**
 
@@ -52,11 +53,11 @@ Everything else below can be prepared while that is open.
 
 Verified absent from `project.yml`:
 
-- [ ] **`CFBundleVersion`** — absent entirely. Every upload needs a build number *higher than the
+- [x] **`CFBundleVersion`** — absent entirely. Every upload needs a build number *higher than the
       last*, and re-using one is rejected. Set it, and decide how it increments (a committed
       integer you bump, or `CURRENT_PROJECT_VERSION` — your call, but write the rule in the Log so
       the next person does not guess).
-- [ ] **`ITSAppUsesNonExemptEncryption: false`** — absent, so App Store Connect will ask about
+- [x] **`ITSAppUsesNonExemptEncryption: false`** — absent, so App Store Connect will ask about
       encryption on **every single upload** until it is declared.
       I checked the tree rather than assuming, and there IS one crypto call:
       `SignInScreen.AppleNonce.hashed` uses **CryptoKit `SHA256`** to hash the Sign-in-with-Apple
@@ -65,7 +66,7 @@ Verified absent from `project.yml`:
       answer, but write it **knowing** that call is there: it is a legal declaration, not a
       checkbox, and "there is no crypto in this app" would have been wrong. If anything ever adds
       encryption of its own, this key has to be revisited.
-- [ ] `CFBundleShortVersionString` is `1.0` and fine.
+- [x] `CFBundleShortVersionString` is `1.0` and fine.
 
 ### A3. The App IDs and the App Group must exist in the developer portal
 
@@ -78,7 +79,7 @@ We ship **two** bundle identifiers and one shared container:
 Automatic signing will register the App IDs on first archive, **but it does not create App
 Groups.** An unregistered group is a signing failure with a confusing message.
 
-- [ ] Attempt the archive and record the exact error if the group is missing.
+- [x] Attempt the archive and record the exact error if the group is missing.
 - [ ] The group's creation is §B2. Once it exists, re-archive and confirm both targets sign.
 - [ ] **Verify on device afterwards** that app, widget and intents still open the *same* database.
       A mis-registered group is silent — it does not crash, it just gives each process its own
@@ -196,3 +197,51 @@ domain. Tell testers both, in writing, before they find them. An honest note bea
 ## Log
 
 <!-- Append dated entries. Never rewrite above this line. -->
+
+## Log
+
+**2026-08-17 · terminal · §A worked as far as the founder-shaped wall. A2 done, A1/A3 recorded.**
+
+**A2 — both missing keys added, in both targets.**
+- **`CFBundleVersion`** now reads `$(CURRENT_PROJECT_VERSION)`, and that integer lives in
+  `project.yml` under `settings.base`, currently **1**. **The rule, written down so nobody
+  guesses: bump it by one for every upload to App Store Connect.** It is committed rather than
+  derived from git so the number that shipped is reviewable in the diff. Found and fixed while
+  doing it: `Widget/Info.plist` had a hard-coded `CFBundleVersion 1` / `CFBundleShortVersionString
+  1.0` of its own — an extension whose version differs from its host is rejected on upload, so the
+  widget now reads the same two values from the same place.
+- **`ITSAppUsesNonExemptEncryption: false`**, declared knowing what is in the tree, not as a
+  checkbox: the one crypto call is `CryptoKit SHA256` in `SignInScreen.AppleNonce.hashed`, hashing
+  the Sign-in-with-Apple nonce. A platform-framework hash used for authentication, inside the
+  standard exemption, as is our HTTPS. The reasoning is in a comment beside the key so the next
+  person inherits the reasoning and not just the value. **If anything ever adds encryption of its
+  own, this must be revisited.**
+
+**A1/A3 — the archive now fails exactly where the ticket says it should, and the difference matters.**
+```
+xcodebuild -scheme Bagged -destination generic/platform=iOS -configuration Release archive
+error: Signing for "Bagged" requires a development team. Select a development team in the
+       Signing & Capabilities editor. (in target 'Bagged' from project 'Bagged')
+error: Signing for "BaggedWidget" requires a development team. ...
+** ARCHIVE FAILED **
+```
+That is a **signing** error, not a configuration one — the project is otherwise archive-ready.
+Worth knowing about the ordering: signing is evaluated before build phases, so this error comes
+*before* the `Check scan config` preflight. Once `DEVELOPMENT_TEAM` is set, the next failure will
+be the backend-config one, and that is the real blocker (FOUNDER_BLOCKERS item 1). Two walls, in
+that order. The App Group error cannot be reached yet — signing fails first — so A3's "record the
+exact error if the group is missing" is not answerable until §B1 lands.
+> HANDOFF → founder: §B1 (Team ID) unblocks the next step; §B2 (create App Group
+  `group.app.bagged` in the portal) unblocks the one after.
+
+**A5 — `ExportOptions.plist` written and committed** (`method: app-store-connect`,
+automatic signing, `uploadSymbols` true, `stripSwiftSymbols` false so a first tester crash report
+is readable). `teamID` is deliberately absent: it belongs in `project.yml`, from which the archive
+already carries it. The export command is in a comment at the top of the file.
+
+**A4 — recorded so nobody "fixes" it later:** no push notifications (nothing calls
+`UNUserNotificationCenter`, and PRODUCT bans re-engagement nags, so there is no capability to
+enable); no Associated Domains (the domain is not owned, so `RootView.onOpenURL` is unreachable in
+this build — expected, and the paste path in Kitchen → "I have an invite link" is the working
+route testers should be told to use); no Sign in with Apple capability yet — email is the
+shipping path.

@@ -17,7 +17,9 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Bagged uses your camera to photograph a receipt or scan a barcode so the items and prices on it can go straight onto your list.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

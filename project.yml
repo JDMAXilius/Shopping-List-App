@@ -7,6 +7,10 @@ options:
   createIntermediateGroups: true
 settings:
   base:
+    # THE BUILD NUMBER RULE: bump this integer by one for every upload to App Store
+    # Connect — a re-used build number is rejected outright. It lives here, committed,
+    # so it is reviewable in the diff; both targets read it as CFBundleVersion.
+    CURRENT_PROJECT_VERSION: 1
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     PRODUCT_BUNDLE_IDENTIFIER: app.bagged
@@ -91,6 +95,13 @@ targets:
       properties:
         UILaunchScreen: {}
         CFBundleShortVersionString: "1.0"
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Declared false deliberately, and not as a checkbox: the one crypto call in the
+        # tree is CryptoKit SHA256 hashing the Sign-in-with-Apple nonce
+        # (SignInScreen.AppleNonce.hashed), which is a platform-framework hash used for
+        # authentication — inside the standard exemption, as is our HTTPS traffic. If
+        # anything ever adds encryption of its own, this key must be revisited.
+        ITSAppUsesNonExemptEncryption: false
         NSCameraUsageDescription: >-
           Bagged uses your camera to photograph a receipt or scan a barcode so
           the items and prices on it can go straight onto your list.
@@ -137,6 +148,10 @@ targets:
       path: Widget/Info.plist
       properties:
         CFBundleDisplayName: Bagged
+        # Must match the app exactly — App Store Connect rejects an extension whose
+        # version or build number differs from its host.
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 
