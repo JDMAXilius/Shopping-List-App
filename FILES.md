@@ -12,10 +12,10 @@ Bagged/
 │   │   ├── Sources/Core/
 │   │   │   ├── Item.swift             # Item, ListItem, quantity + unit
 │   │   │   ├── Kitchen.swift          # Kitchen, Member, InviteToken
-│   │   │   ├── Shop.swift             # Shop, AisleOrder
+│   │   │   ├── Shop.swift             # Shop, AisleOrder — no coordinate, ever
 │   │   │   ├── Money.swift            # Money, rounding — ~$4.50 never $4.37
 │   │   │   ├── PriceObservation.swift # measured vs estimate, 90-day decay
-│   │   │   ├── Operation.swift        # the op enum: add/check/uncheck/edit/delete/price/shop
+│   │   │   ├── Operation.swift        # add/check/uncheck/edit/delete/price/shop/alias/name
 │   │   │   ├── LogicalClock.swift     # per-device counter
 │   │   │   ├── Merge.swift          ★ # LWW per field, idempotent add — the sync brain
 │   │   │   └── Identifiers.swift      # typed UUID wrappers
@@ -30,8 +30,8 @@ Bagged/
 │   │   │   ├── Normalizer.swift       # case, articles, singularise, qualifiers
 │   │   │   ├── QuantityParser.swift   # "2 lb chicken" → qty, unit, name
 │   │   │   ├── EditDistance.swift     # typos = mis-transcriptions, same fix
-│   │   │   ├── PriceSeed.swift        # 414 × 8 regions, hard rounding
-│   │   │   └── Resources/catalog.db   # 200 KB, built by data/catalog/build.mjs
+│   │   │   ├── PriceSeed.swift        # 461 items × 8 regions, hard rounding
+│   │   │   └── Resources/catalog.db   # 220 KB, built by data/catalog/build.mjs
 │   │   └── Tests/CatalogTests/
 │   │       ├── ResolverTests          # the 23 golden cases, ported
 │   │       ├── QuantityParserTests · NormalizerTests · PriceSeedTests
@@ -44,8 +44,9 @@ Bagged/
 │   │   │   ├── Repository.swift     ★ # the ONLY file that writes SQL
 │   │   │   ├── Records/               # ListItem · Kitchen · Shop · Price · Receipt · Op
 │   │   │   └── Sync/
-│   │   │       ├── SyncEngine.swift   # actor — drain, retry, backoff
-│   │   │       ├── SyncTransport.swift# protocol + SupabaseTransport
+│   │   │       ├── SyncEngine.swift   # actor — kitchen-scoped drain, retry, backoff
+│   │   │       ├── SyncTransport.swift# the protocol
+│   │   │       ├── SupabaseTransport.swift  # push_ops + PostgREST, cursor-ordered
 │   │   │       └── DeviceIdentity.swift
 │   │   └── Tests/DataTests/
 │   │       ├── MigrationTests · RepositoryTests · SyncEngineTests (fake transport)
@@ -66,15 +67,17 @@ Bagged/
 │       │   │                          #   · InputBar · TabPill · EmptyState
 │       │   │                          #   · SectionLabel · UndoBar
 │       │   │                          #   · Chip · Notice · Field (+ OptionalFocus)
+│       │   │                          #   · PaidTotal — money PAID, not prices summed
 │       │   └── Resources/             # check.wav · complete.wav (generated, spec-tested)
 │       └── Tests/DesignKitTests/
 │           └── SnapshotTests          # ONE style · default + largest Dynamic Type
 │
 ├── App/
-│   ├── BaggedApp.swift                # @main, environment wiring, db bootstrap
+│   ├── BaggedApp.swift                # @main + AppSession: joining a kitchen rebuilds
+│   │                                  #   every store, so they cannot be `let`s
 │   ├── RootView.swift                 # TabView: List · Prices · You, + capture button
 │   ├── Route.swift · Sheet.swift      # the two navigation enums — all of navigation
-│   ├── Environment+.swift             # @Entry keys for the three stores
+│   ├── Environment+.swift             # @Entry keys for every store
 │   │
 │   ├── Features/
 │   │   ├── List/                      # tab 1 — the product
@@ -101,50 +104,55 @@ Bagged/
 │   │   │
 │   │   ├── Prices/                    # tab 2 — the differentiator
 │   │   │   ├── PricesScreen.swift     # the price book
-│   │   │   ├── PriceStore.swift
+│   │   │   ├── PriceStore.swift · PriceDerivation.swift
 │   │   │   ├── PriceHistoryScreen.swift    # per store, dated, deltas
-│   │   │   └── MonthSpendScreen.swift      # Δ vs your usual, ink never red
+│   │   │   └── MonthSpendScreen.swift      # from RECEIPTS, not observations
 │   │   │
 │   │   ├── Kitchen/                   # sharing — the growth loop
-│   │   │   ├── KitchenScreen.swift    # members + activity
-│   │   │   ├── InviteSheet.swift      # link + QR; new link revokes old
+│   │   │   ├── KitchenStore.swift     # the store · KitchenScreen.swift
+│   │   │   ├── KitchenClient.swift    # RPC + PostgREST · KitchenAuth.swift  sessions
+│   │   │   ├── KitchenServices.swift  # nil when this build has no SupabaseURL
+│   │   │   ├── KitchenLink.swift      # parses a token out of anything a person pastes
+│   │   │   ├── SyncCoordinator.swift  # poll on foreground + kick after a write
+│   │   │   ├── InviteSheet.swift      # link + QR; a new link revokes the old
 │   │   │   ├── JoinScreen.swift       # guests: no account, ever
-│   │   │   ├── NameKitchenSheet.swift # contextual — appears at first invite
+│   │   │   ├── NameKitchenSheet.swift # contextual — at first invite
 │   │   │   └── SignInScreen.swift     # owners only
 │   │   │
-│   │   ├── Places/
-│   │   │   ├── PlacesScreen.swift     # shops, wake-up radius
-│   │   │   ├── ShopEditorScreen.swift # pin + radius + aisle order
-│   │   │   └── FirstShopSheet.swift   # contextual — first switcher use
+│   │   ├── Places/                    # a coordinate is never an op
+│   │   │   ├── Place.swift            # pin + radius, LOCAL FILE, not the App Group
+│   │   │   ├── PlaceStore.swift       # 20-region cap, deterministic choice
+│   │   │   ├── PlacesScreen.swift · ShopEditorScreen.swift · FirstShopSheet.swift
 │   │   │
-│   │   └── You/                       # tab 3
-│   │       ├── SetupScreen.swift
-│   │       ├── DataPrivacyScreen.swift# everything held, and where · CSV export
-│   │       ├── AboutScreen.swift
-│   │       ├── WhyItWorksThisWay.swift# the ADHD page — rationale, no health claims
+│   │   └── You/                       # tab 3 — Setup is the root, not a push
+│   │       ├── SetupScreen.swift      # + SetupSettings: sound/haptics, applied at launch
+│   │       ├── DataPrivacyScreen.swift# what leaves, what doesn't · the barcode switch
+│   │       ├── AboutScreen.swift      # credits only what ships · WhyItWorksThisWay.swift
 │   │       ├── PaywallScreen.swift    # $2.99/mo · $29.99/yr · zero dark patterns
-│   │       └── SubscriptionStore.swift
+│   │       └── SubscriptionStore.swift# a joiner is never paywalled
 │   │
 │   └── Services/                      # thin wrappers returning plain values
-│       ├── SpeechService.swift        # on-device only, requiresOnDeviceRecognition
 │       ├── VisionService.swift        # barcode + printed text
-│       ├── LocationService.swift      # geofences, on-device, never uploaded
-│       ├── ScanClient.swift           # calls scan-receipt Edge Function — NO AI key in app
-│       ├── FoundationModelsService.swift  # iOS 26+, availability-gated
-│       └── CSVExporter.swift
+│       ├── LocationService.swift      # CLMonitor; never logs a coordinate
+│       ├── ScanClient.swift           # calls scan-receipt — NO AI key in the app
+│       ├── ProductLookup.swift        # Open Food Facts: a NAME, never an image, never stored
+│       ├── ScriptedScanBackend.swift  # DEBUG only — how the receipt path is UI-tested
+│       └── CSVExporter.swift          # money as minor units, never a formatted string
 │
-├── Widget/                            # own process — reads db, never stores
+├── Widget/                            # own process — reads db, NEVER migrates it
 │   ├── BaggedWidget.swift · ListWidgetView.swift
-│   ├── WidgetProvider.swift           # timeline via Repository
-│   └── ToggleItemIntent.swift         # the tappable lock-screen checkbox → op-log
+│   ├── WidgetProvider.swift           # timeline; resolves the shop where the repo exists
+│   └── ToggleItemIntent.swift         # the lock-screen checkbox → op-log, or refuses
 │
 ├── Intents/                           # Siri · Shortcuts · Action Button · Control Center
-│   ├── Entities/                      # ListEntity · ItemEntity · SectionEntity
-│   ├── CreateReminderIntent.swift     # "add milk"        (.reminders schema)
-│   ├── UpdateReminderIntent.swift     # check off, edit
-│   ├── DeleteRemindersIntent.swift
-│   ├── SectionIntents.swift           # aisle groups
-│   └── BaggedShortcuts.swift          # ⚠️ whole cluster or Xcode fails the build
+│   ├── Entities/                      # ListItemEntity · ShopEntity
+│   ├── AddItemIntent.swift            # "add milk at Trader Joe's" — moves the list there
+│   ├── CheckOffIntent.swift · RemoveItemIntent.swift   # remove confirms; voice > touch risk
+│   ├── WhatsLeftIntent.swift          # the one the .reminders schema could not do
+│   ├── ReadListIntent.swift           # in aisle order — the order you hear it in
+│   ├── IntentContext.swift            # ONE schema check; refuses rather than writing
+│   ├── BaggedShortcuts.swift
+│   └── Schema27/                      # Apple's .reminders cluster — PARKED, in no target
 │
 └── supabase/                          # the entire backend
     ├── migrations/
@@ -157,9 +165,14 @@ Bagged/
     └── tests/rls.test.sql             # kitchen A cannot read kitchen B — proven
 ```
 
-**~120 files total** — ~95 Swift sources, 12 test files, 5 resource bundles, 6 backend files —
-covering 28 surfaces, the widget, the full Siri cluster, and the backend. States (empty ·
-offline · scan failed · primers) are view states inside their screens, not files.
+**183 source files** — 78 in `Packages/`, 65 under `App/`, 7 widget, 10 intents (+ 12 parked),
+plus the backend. All nine waves are built. States (empty · offline · scan failed · primers) are
+view states inside their screens, not files.
+
+Four things are NOT here and are deliberate: `SpeechService` (the mic stays off until it exists —
+an affordance must not promise voice one screen before a sheet denies it),
+`FoundationModelsService`, `AisleOrderEditor`'s duplicate in Places, and Apple's `.reminders`
+cluster, parked in `Intents/Schema27/` for an OS that can run it.
 
 ## Where a change lands
 
