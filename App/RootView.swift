@@ -8,12 +8,17 @@ struct RootView: View {
     @Environment(\.kitchenID) private var kitchenID
     @Environment(\.catalog) private var catalog
     @Environment(\.scanBackend) private var scanBackend
+    @Environment(\.kitchenStore) private var kitchenStore
+    @Environment(\.placeStore) private var placeStore
+    @Environment(\.subscriptionStore) private var subscriptionStore
+    @Environment(\.syncCoordinator) private var syncCoordinator
     @Environment(\.scenePhase) private var scenePhase
     // DesignKit's Tab, not SwiftUI's iOS 18 TabView `Tab`.
     @State private var tab: DesignKit.Tab = .list
     @State private var sheet: Sheet?
     @State private var listPath = NavigationPath()
     @State private var pricePath = NavigationPath()
+    @State private var youPath = NavigationPath()
     /// Lives as long as the capture sheet does (ARCHITECTURE §3), and is built before the sheet
     /// is asked for — a session minted in a body pass would lose a half-checked review.
     @State private var capture: CaptureSession?
@@ -48,7 +53,31 @@ struct RootView: View {
             if phase == .active {
                 listStore?.refresh()
                 priceStore?.refresh()
+                syncCoordinator?.start()
+                syncCoordinator?.kick()
+            } else {
+                syncCoordinator?.stop()
             }
+        }
+        // An invite is a bearer token: it opens the join sheet and nothing else, and a URL that
+        // is not one is ignored rather than guessed at.
+        .onOpenURL { url in
+            guard KitchenLink.isInvite(url), let token = KitchenLink.token(from: url) else { return }
+            sheet = .join(token)
+        }
+        // The status the list shows is the engine's, not a guess. A queue that has not drained
+        // is not "synced", and a phone with no server configured is local, not failing.
+        .onChange(of: syncCoordinator?.status) { _, status in
+            if let status { listStore?.syncStatus = status }
+        }
+        // A joiner is never paywalled — sharing is the growth loop and the owner already paid.
+        // Bound to the answer rather than set once at launch, because `load()` resolves the
+        // identity asynchronously: setting it before the answer arrives is how a guest meets
+        // the paywall on their third scan.
+        .task { await kitchenStore?.load() }
+        .onChange(of: kitchenStore?.isGuest) { _, isGuest in
+            guard let isGuest else { return }
+            subscriptionStore?.adopt(isGuest ? .guest : .owner)
         }
     }
 
@@ -83,10 +112,7 @@ struct RootView: View {
                     .toolbar(.hidden, for: .tabBar)
                     .padding(.bottom, pillHeight)
                     .tag(DesignKit.Tab.prices)
-                // Wave 9 replaces this root with its own screens.
-                EmptyState(
-                    glyph: .household,
-                    message: "Your kitchen, sharing and settings live here.")
+                youRoot(listStore)
                     .toolbar(.hidden, for: .tabBar)
                     .padding(.bottom, pillHeight)
                     .tag(DesignKit.Tab.you)
@@ -110,6 +136,52 @@ struct RootView: View {
             EmptyState(
                 glyph: .other,
                 message: "Bagged couldn't open your price book on this device. Reopening the app usually fixes it.")
+        }
+    }
+
+    /// Tab 3's root is Setup itself, not a push destination — everything else in the tab is
+    /// reached from it, so `Route.setup` is never pushed.
+    @ViewBuilder private func youRoot(_ listStore: ListStore) -> some View {
+        if let subscriptionStore {
+            NavigationStack(path: $youPath) {
+                SetupScreen(store: listStore, subscription: subscriptionStore, sheet: $sheet,
+                            defaults: .appGroup())
+                    .navigationDestination(for: Route.self) { route in
+                        youDestination(route, store: listStore)
+                    }
+            }
+        } else {
+            EmptyState(
+                glyph: .other,
+                message: "Bagged couldn't open your settings on this device. Reopening the app usually fixes it.")
+        }
+    }
+
+    @ViewBuilder private func youDestination(_ route: Route, store: ListStore) -> some View {
+        switch route {
+        case .kitchen:
+            if let kitchenStore, let syncCoordinator {
+                KitchenScreen(store: kitchenStore, sync: syncCoordinator, sheet: $sheet)
+            }
+        case .places:
+            if let placeStore {
+                PlacesScreen(store: store, places: placeStore)
+            }
+        case .shopEditor(let shopID):
+            if let placeStore, let shopID {
+                ShopEditorScreen(store: store, places: placeStore, shopID: shopID)
+            }
+        case .aisleOrder(let shopID):
+            AisleOrderEditor(store: store, shopID: shopID)
+        case .dataPrivacy:
+            DataPrivacyScreen(exporter: repository.map(CSVExporter.init), defaults: .appGroup())
+        case .about:
+            AboutScreen()
+        case .whyItWorksThisWay:
+            WhyItWorksThisWay()
+        default:
+            // Pushed from another tab's stack, or `.setup`, which is this tab's root.
+            EmptyView()
         }
     }
 
@@ -149,18 +221,14 @@ struct RootView: View {
                     glyph: .other,
                     message: "Capture couldn't start on this device. Reopening the app usually fixes it.")
                     .presentationDetents([.medium])
-            // Neither screen exists yet (wave 9), and a sheet the user can only escape by
-            // guessing is worse than one that says so.
             case .invite:
-                EmptyState(
-                    glyph: .household,
-                    message: "Sharing your kitchen arrives with accounts and invites.")
-                    .presentationDetents([.medium])
+                if let kitchenStore { InviteSheet(store: kitchenStore) }
+            case .join(let token):
+                if let kitchenStore {
+                    JoinScreen(store: kitchenStore, link: token, onJoined: { sheet = nil })
+                }
             case .paywall:
-                EmptyState(
-                    glyph: .other,
-                    message: "Bagged Plus isn't on sale yet. Everything you already have keeps working.")
-                    .presentationDetents([.medium])
+                if let subscriptionStore { PaywallScreen(store: subscriptionStore) }
             }
         }
     }

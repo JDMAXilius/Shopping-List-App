@@ -3,66 +3,80 @@ import Data
 import Foundation
 import SwiftUI
 
-@main
-@MainActor
-struct BaggedApp: App {
-    // Data owns the string; the entitlement on every target must match it.
-    static let appGroupID = AppGroup.identifier
-
-    private let store: ListStore?
-    private let prices: PriceStore?
-    private let repository: Repository?
-    private let kitchenID: KitchenID?
-    private let catalog: ListCatalog
-    private let scanBackend: any ScanBackend
+/// Everything the app is holding, in one place that can be rebuilt. Joining a kitchen changes
+/// which kitchen every store reads, and a `let` on the App struct cannot answer that — so the
+/// stores live here and `adopt(_:)` is the one path that swaps them.
+@Observable @MainActor
+final class AppSession {
+    private(set) var list: ListStore?
+    private(set) var prices: PriceStore?
+    private(set) var kitchen: KitchenStore?
+    private(set) var subscription: SubscriptionStore?
+    private(set) var sync: SyncCoordinator?
+    private(set) var kitchenID: KitchenID?
+    private(set) var catalog: ListCatalog
+    let places = PlaceStore()
+    let repository: Repository?
+    let scanBackend: any ScanBackend
 
     init() {
-        #if DEBUG
-        // UI tests launch with a clean slate; unreachable in a release build.
-        if CommandLine.arguments.contains("--uitest-reset"), let url = try? BaggedApp.databaseURL() {
-            try? FileManager.default.removeItem(at: url)
-            UserDefaults.appGroup().removePersistentDomain(forName: BaggedApp.appGroupID)
-        }
-        #endif
-        let opened = try? BaggedApp.openStore()
+        let opened = try? AppSession.open()
+        repository = opened?.repository
         // A catalog built before the kitchen was read would price its seeds in a guessed
         // currency; without a database there is no kitchen, and the device's own is all there is.
         catalog = opened?.catalog ?? ListCatalog()
-        store = opened?.store
-        prices = opened?.prices
-        repository = opened?.repository
-        kitchenID = opened?.kitchenID
-        scanBackend = BaggedApp.makeScanBackend()
+        let services = KitchenServices.make()
+        scanBackend = AppSession.makeScanBackend(auth: services?.auth)
+        guard let repository, let opened else { return }
+        adopt(opened.kitchen, services: services)
+        // Arriving switches the list to that shop so the prices and the walk are already right.
+        // The store announces it — a silent switch is how the wrong shop's prices get read.
+        places.onArrival = { [weak self] shopID in self?.list?.switchShop(shopID, arrived: true) }
+        kitchen = KitchenStore(repository: repository, kitchen: opened.kitchen,
+                               backend: services?.backend,
+                               onKitchenChange: { [weak self] id in self?.rebuild(id) })
     }
 
-    var body: some Scene {
-        WindowGroup {
-            RootView()
-                .environment(\.listStore, store)
-                .environment(\.priceStore, prices)
-                .environment(\.repository, repository)
-                .environment(\.kitchenID, kitchenID)
-                .environment(\.catalog, catalog)
-                .environment(\.scanBackend, scanBackend)
+    /// The stores for one kitchen. Rebuilt whole rather than re-pointed: every one of them
+    /// caches something keyed on the kitchen it was built for.
+    private func adopt(_ kitchen: Kitchen, services: KitchenServices.Services?) {
+        guard let repository else { return }
+        catalog = ListCatalog(currencyCode: kitchen.currencyCode)
+        list = try? ListStore(repository: repository, kitchenID: kitchen.id, catalog: catalog)
+        prices = list.flatMap {
+            try? PriceStore(repository: repository, kitchen: kitchen, catalog: catalog, list: $0)
         }
+        kitchenID = kitchen.id
+        sync = SyncCoordinator(repository: repository, kitchenID: kitchen.id,
+                               transport: services?.transport)
+        subscription = SubscriptionStore(defaults: .appGroup())
     }
 
-    private static func openStore()
-        throws -> (store: ListStore, prices: PriceStore, repository: Repository,
-                   kitchenID: KitchenID, catalog: ListCatalog) {
-        let database = try AppDatabase(url: try databaseURL())
+    private func rebuild(_ kitchenID: KitchenID) {
+        guard let repository,
+              let kitchen = (try? repository.kitchens())?.first(where: { $0.id == kitchenID })
+        else { return }
+        adopt(kitchen, services: KitchenServices.make())
+        sync?.start()
+        sync?.kick()
+        // A joiner is never paywalled: sharing is the growth loop, and the owner already paid.
+        subscription?.adopt(self.kitchen?.isGuest == true ? .guest : .owner)
+    }
+
+    private static func open()
+        throws -> (repository: Repository, kitchen: Kitchen, catalog: ListCatalog) {
+        let database = try AppDatabase(url: try BaggedApp.databaseURL())
         // Only the app migrates; the widget renders last-known state on a version mismatch.
         try database.migrate()
         let repository = try Repository(database: database)
         sweepStrandedScans(repository)
         let kitchens = try repository.kitchens()
-        let kitchen = kitchens.first ?? Kitchen(name: "your kitchen")
+        // The one you last used, not the alphabetically first: a guest who joined "Flat 2B"
+        // would otherwise reopen into their own "your kitchen" and see an empty list.
+        let kitchen = ActiveKitchen.resolve(kitchens, defaults: .appGroup())
+            ?? kitchens.first ?? Kitchen(name: "your kitchen")
         if kitchens.isEmpty { try repository.saveKitchen(kitchen) }
-        let catalog = ListCatalog(currencyCode: kitchen.currencyCode)
-        let store = try ListStore(repository: repository, kitchenID: kitchen.id, catalog: catalog)
-        let prices = try PriceStore(repository: repository, kitchen: kitchen, catalog: catalog,
-                                    list: store)
-        return (store, prices, repository, kitchen.id, catalog)
+        return (repository, kitchen, ListCatalog(currencyCode: kitchen.currencyCode))
     }
 
     /// Any scan not in the queue is stranded — nothing else will ever pick it up. `.parsing` is
@@ -74,20 +88,60 @@ struct BaggedApp: App {
         }
     }
 
-    /// The endpoint and the Supabase anon key come from this build's Info.plist — never a
-    /// literal here, and no key is committed. Absent is a normal build, not a crash.
-    private static func makeScanBackend() -> any ScanBackend {
+    /// The endpoint and the anon key come from this build's Info.plist — never a literal here,
+    /// and no key is committed. Absent is a normal build, not a crash.
+    private static func makeScanBackend(auth: KitchenAuth?) -> any ScanBackend {
         #if DEBUG
         if ScriptedScanBackend.isRequested { return ScriptedScanBackend() }
         #endif
-        guard let endpoint = configuration("ScanReceiptEndpoint").flatMap(URL.init(string:)),
-              let apiKey = configuration("SupabaseAnonKey") else { return SignedOutScanBackend() }
-        // Wave 9 owns sign-in. With no session there is no token, so the client answers
-        // `.unauthenticated` without sending anything — the true state, not a stub.
-        return ScanClient(endpoint: endpoint, apiKey: apiKey, accessToken: { nil })
+        guard let endpoint = BaggedApp.configuration("ScanReceiptEndpoint").flatMap(URL.init(string:)),
+              let apiKey = BaggedApp.configuration("SupabaseAnonKey") else {
+            return SignedOutScanBackend()
+        }
+        return ScanClient(endpoint: endpoint, apiKey: apiKey,
+                          accessToken: { await auth?.accessToken() })
+    }
+}
+
+@main
+@MainActor
+struct BaggedApp: App {
+    // Data owns the string; the entitlement on every target must match it.
+    static let appGroupID = AppGroup.identifier
+
+    @State private var session: AppSession
+
+    init() {
+        #if DEBUG
+        // UI tests launch with a clean slate; unreachable in a release build.
+        if CommandLine.arguments.contains("--uitest-reset"), let url = try? BaggedApp.databaseURL() {
+            try? FileManager.default.removeItem(at: url)
+            UserDefaults.appGroup().removePersistentDomain(forName: BaggedApp.appGroupID)
+        }
+        #endif
+        // Sound and haptics are process globals read at the moment a tick fires, so the switches
+        // have to be applied before anything can tick — not when tab 3 first opens.
+        SetupSettings.apply(UserDefaults.appGroup())
+        _session = State(initialValue: AppSession())
     }
 
-    private static func configuration(_ key: String) -> String? {
+    var body: some Scene {
+        WindowGroup {
+            RootView()
+                .environment(\.listStore, session.list)
+                .environment(\.priceStore, session.prices)
+                .environment(\.kitchenStore, session.kitchen)
+                .environment(\.placeStore, session.places)
+                .environment(\.subscriptionStore, session.subscription)
+                .environment(\.syncCoordinator, session.sync)
+                .environment(\.repository, session.repository)
+                .environment(\.kitchenID, session.kitchenID)
+                .environment(\.catalog, session.catalog)
+                .environment(\.scanBackend, session.scanBackend)
+        }
+    }
+
+    static func configuration(_ key: String) -> String? {
         guard let value = Bundle.main.object(forInfoDictionaryKey: key) as? String,
               !value.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
         return value
@@ -100,8 +154,8 @@ struct BaggedApp: App {
     }
 }
 
-// No endpoint in this build, and no account either until wave 9 — so the answer a signed-out
-// caller would get from the reader is the true one, and the photo stays queued for when there is.
+// No endpoint in this build — so the answer a signed-out caller would get from the reader is the
+// true one, and the photo stays queued for when there is one.
 private struct SignedOutScanBackend: ScanBackend {
     func scan(image: Foundation.Data, mediaType: ScanMediaType,
               shopHint: String?) async -> ScanOutcome {
@@ -111,7 +165,7 @@ private struct SignedOutScanBackend: ScanBackend {
 
 extension UserDefaults {
     // The active shop and add-history live beside the database: the widget and intents
-    // (wave 8) can only see the App Group, never this process's own sandbox.
+    // can only see the App Group, never this process's own sandbox.
     @MainActor static func appGroup() -> UserDefaults {
         UserDefaults(suiteName: BaggedApp.appGroupID) ?? .standard
     }
