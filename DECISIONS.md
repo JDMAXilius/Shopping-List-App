@@ -36,6 +36,22 @@ One page. Everything decided, everything recommended, and what's still open.
 - ✅ Warm paper base (`#F6F4F1`), persimmon action (`#C9502C`), green **semantic only** (done/verified). The warm base is the real differentiator in a cool-toned category
 - ⚠️ **Buy the domain and handles before anything else** — the only piece someone else can take while you deliberate
 - ⚠️ **Then** the paid Class 9 + 42 search with phonetic variants. Commission nothing visual until it clears
+- ❗ **2026-08-17, corrected by contact with App Store Connect: the name `Bagged` was NOT available.**
+  The starred line above says "no app of that name in either store" — that was a store-search
+  result, and App Store Connect's uniqueness check is a different, stricter thing. The founder
+  reserved **`GroceryBody`**, which was free, and the app record exists under that name.
+  Neither `BagList` (the recorded fallback) nor the planned store title
+  `Bagged: Shared Grocery List` was used.
+- ❓ **Open, and only the founder decides: does the product follow the store listing?** Everything
+  in the tree says Bagged — the bundle id `app.bagged`, the App Group `group.app.bagged`, the
+  target, PRODUCT.md, the design system, every doc. The store record says GroceryBody. Nothing
+  breaks: bundle id and listing name are independent, and internal TestFlight does not care. But
+  a tester installs an icon that says one thing from a listing that says another.
+  Three ways out, cheapest first: (a) leave it — the listing name is a marketing surface and can
+  change until submission; (b) set `CFBundleDisplayName` so the HOME SCREEN says GroceryBody while
+  the code stays Bagged — one line in `project.yml`; (c) rename the product, which is PRODUCT.md,
+  the docs, the design language and possibly the bundle id — expensive, and a bundle id cannot be
+  changed after the first upload. **Not the terminal's call.**
 
 ## Platform
 
