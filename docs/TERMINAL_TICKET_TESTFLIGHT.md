@@ -314,3 +314,35 @@ Founder signed Xcode in (account list is now non-empty). Re-archived with
   says so on the capture screen") is now the ONLY thing that could produce a testable build before
   the Supabase project exists. It is a design ruling, so it stays yours — but it is worth ruling
   on now rather than later, because everything else is finished.
+
+**2026-08-17 · terminal · B3's open question is ANSWERED, plus two traps worth inheriting.**
+Ran the `eas-ios-testflight` skill. It is written for Expo/EAS and most of it does not apply to a
+native Xcode project, but three parts do — and its App Store Connect scripts are pure ASC API, so
+they work for us unchanged.
+1. **B3, settled: the App Store Connect API CANNOT create an app record.** `POST /v1/apps` returns
+   **403 FORBIDDEN**; the web UI is the only way. The ticket asked the terminal to "try it once via
+   the API and record the answer, because it settles this for good" — I could not try it (no ASC
+   key here), but this is documented from a run that did. Treat B3 as web-UI-only forever.
+   **The founder has since created the record by hand, named `GroceryBody`** — `Bagged` was not
+   available in App Store Connect (see DECISIONS.md; the store-search result we relied on was not
+   the same check).
+2. **The App Group trap, and we are already clear of it.** The ASC API cannot create or assign app
+   groups (`/v1/appGroups` is 404), and the classic silent failure is enabling the capability
+   without doing Configure → tick → Save on *every* App ID that shares it — codesign then fails, or
+   worse, the profile carries an empty group array. **Verified by reading our own signed profiles:
+   both `app.bagged` and `app.bagged.widget` carry
+   `com.apple.security.application-groups → group.app.bagged`.** Nothing to do.
+3. **The trap that would have bitten us at the very end: a submitted build reaches NOBODY until it
+   is attached to an internal group**, and `hasAccessToAllBuilds: true` (auto-distribution) is
+   **create-only** — PATCHing it later returns 409, so a group created without it needs every
+   future build attached by hand forever. The skill's `testflight-internal.mjs` creates the group
+   correctly and attaches the build; `tf-attach.mjs` fixes up a group that already lacks it.
+   Both need `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_PATH`, `ASC_APP_ID`.
+- Upload path for a native app is `xcrun altool --upload-app -f <ipa> --apiKey <KeyID>
+  --apiIssuer <IssuerID>` — no interactive login, no 2FA. Alternatively the founder uploads the
+  archive from Xcode's Organizer, which needs no key at all.
+> HANDOFF → founder: two `AuthKey_*.p8` files sit in ~/Downloads (K23R777BPW, NTMZWLG54S) from
+  July. I have not opened or used either — nothing on this machine says which Apple account they
+  belong to, and using the wrong one would act on somebody else's team. If one is yours for
+  A6J6HGNWZK, say which, and send the **Issuer ID** (the UUID at the top of Users and Access →
+  Integrations). Then the upload and the internal-group setup are both scriptable from here.
