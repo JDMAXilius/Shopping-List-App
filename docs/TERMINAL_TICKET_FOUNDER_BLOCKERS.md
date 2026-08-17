@@ -86,12 +86,6 @@ Both predate the code and neither has been done. They gate quality, not compilat
 - [ ] **Open Food Facts attribution.** The barcode lookup shows their name inline. If you want the
       About screen to carry the ODbL notice too, that is a wave-9 line of copy
 
----
-
-## Log
-
-<!-- Terminal: append what you discover that belongs on this list. -->
-
 ## 7. Two App Review blockers found while building wave 9
 
 Both are structural, not cosmetic, and both will fail submission rather than merely look bad.
@@ -116,3 +110,9 @@ renders its honest not-on-sale state and **cannot sell anything**. That is corre
 key is committed and none should be — but it means the entire purchase path is unexercised. Adding
 the dependency is a deliberate act (`project.yml` `packages:`), and it should happen at the same
 time as the account and the products, not before.
+
+---
+
+## Log
+
+<!-- Terminal: append what you discover that belongs on this list. -->
