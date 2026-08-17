@@ -87,6 +87,29 @@ W10-P3 proved the SQL. Two things are yours:
       satisfied. Both halves ship together or neither does.
 - [ ] Neither can actually be deployed: still `TERMINAL_TICKET_FOUNDER_BLOCKERS` item 1.
 
+## V4b — What the refuter found and what is still open behind it
+
+`W10-P2-REFUTE` returned **holed**. Four findings were fixed on the spot (`b4db985`): an absent row
+revoking Plus from a paying subscriber, a per-instance guard over shared state, a foreground read
+swallowed by its own in-flight flag, and a compile error that would have taken the whole test
+target down. Two it found are recorded rather than fixed, and both are wave-11 packets:
+
+1. **A signed-in joiner can be sold to.** `SubscriptionStore.storedRole` defaults an unknown role to
+   `.owner`, and `KitchenStore.refreshMembers` swallows a failed roster read — so a person who joins
+   someone else's kitchen over a bad connection is classified an owner, the wrong role is persisted
+   to the App Group, and they meet the paywall they were invited past. `KitchenStore` is careful
+   that "unknown is never a promotion to owner"; `SubscriptionStore` is not. **Ruling for wave 11:**
+   persist role **per kitchen id**, and when there is no answer for the current kitchen, offer
+   nothing until the roster answers. Do not simply flip the default to `.guest` — that tells a real
+   owner they joined, which is its own lie.
+2. **The purchase grace window is wall-clock with no lower bound.** Setting the device clock back a
+   few days makes `age` negative, which is always inside the window, so a lapsed subscriber keeps
+   Plus indefinitely *while fully online*. Left permissive deliberately: clamping would revoke Plus
+   from a genuine buyer during an NTP correction, and the harm here is to revenue, not to a person.
+   It disappears entirely when RevenueCat's customer info becomes the source for `isPlus`.
+
+Both are in the log so a verifier does not rediscover them as new.
+
 ## V5 — What none of this proves
 
 Say so plainly in the log rather than letting a green suite imply otherwise:

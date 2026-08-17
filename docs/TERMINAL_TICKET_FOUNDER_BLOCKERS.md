@@ -150,6 +150,23 @@ StoreKit-backed, works offline — and the server read is reduced to the quota (
 is the only half the server owns.** That dissolves the race instead of timing it. Do it as part of
 adding the dependency, not afterwards.
 
+**And a second precondition, which is the root of a P1 the refuter traced end to end.** Nothing in
+this app ties RevenueCat's identity to Supabase's — there is no `Purchases.logIn` anywhere — and
+`revenuecat-webhook` skips any `app_user_id` that is not a uuid (its own comment names the case).
+So a purchase made by a device whose RevenueCat identity is still the anonymous alias **never
+writes an entitlement row at all**, and the renewal a year later is skipped for the same reason.
+
+- [ ] **`Purchases.logIn(<supabase user id>)` before anything can be bought**, and re-run on every
+      identity change. Without it the webhook has nothing to match and the purchase is invisible to
+      the server forever.
+- [ ] **Decide whether Plus can be sold to a device with no server identity at all.** Today the
+      paywall is reachable on a fresh install with no account — the app only asks for sign-in at
+      the first *invite*. Selling there is selling something the server can never attribute.
+      Recommendation: require an identity before the purchase sheet, not after.
+
+The damage that chain caused has been closed defensively — an absent row no longer revokes Plus —
+but that is a guard, not the fix. The fix is the identity.
+
 ## 9. Entitlement reaches a device ONLY by scanning on it
 
 Found by W9-P7 arguing against its own work, and it is a correctness gap that has to close
