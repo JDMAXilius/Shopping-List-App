@@ -43,6 +43,9 @@ final class KitchenStore {
     private let backend: (any KitchenBackend)?
     private let defaults: UserDefaults
     private let onKitchenChange: @MainActor (KitchenID) -> Void
+    /// Sign-out is the one place this store speaks to entitlement, and it does it through a
+    /// closure: nothing here knows a `SubscriptionStore` exists.
+    private let onSignOut: @MainActor () -> Void
 
     private(set) var kitchen: Kitchen
     private(set) var members: [Member] = []
@@ -56,12 +59,14 @@ final class KitchenStore {
 
     init(repository: Repository, kitchen: Kitchen, backend: (any KitchenBackend)?,
          defaults: UserDefaults = .appGroup(),
-         onKitchenChange: @escaping @MainActor (KitchenID) -> Void = { _ in }) {
+         onKitchenChange: @escaping @MainActor (KitchenID) -> Void = { _ in },
+         onSignOut: @escaping @MainActor () -> Void = {}) {
         self.repository = repository
         self.kitchen = kitchen
         self.backend = backend
         self.defaults = defaults
         self.onKitchenChange = onKitchenChange
+        self.onSignOut = onSignOut
         members = (try? repository.members(kitchenID: kitchen.id)) ?? []
     }
 
@@ -270,6 +275,12 @@ final class KitchenStore {
         await backend?.signOut()
         identity = nil
         invite = nil
+        // Entitlement is per `user_id`, so it leaves with the account rather than waiting for a
+        // read that can no longer happen — a signed-out phone has no session, and a session-less
+        // read claims nothing. A guest loses more than this and always did: their anonymous
+        // session IS the membership (ARCHITECTURE §7), so signing out costs them the kitchen too,
+        // and nothing here makes that better or worse. No screen offers this yet.
+        onSignOut()
     }
 
     private func adopt(_ name: String) {

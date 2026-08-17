@@ -345,6 +345,82 @@ final class SubscriptionStoreTests: XCTestCase {
         XCTAssertEqual(store.gate(.receiptScanning), .paywall)
     }
 
+    // MARK: - A purchase outranks a server that has not caught up
+
+    /// The case the write counter cannot cover: this read STARTS after the purchase, so it is the
+    /// newer request — and it still must not take Plus away from someone who has just paid.
+    func testAPurchaseSurvivesAServerAnswerTheWebhookHasNotReachedYet() async throws {
+        let lagging = try makeStore(purchase: { _ in .purchased },
+                                    entitlement: { .found(isPlus: false, scansUsed: 1) })
+        let bought = await lagging.purchase(.annual)
+        XCTAssertEqual(bought, .purchased)
+
+        await lagging.refreshEntitlement()
+
+        XCTAssertTrue(lagging.isPlus, "the money is spent; the webhook is seconds behind")
+        XCTAssertFalse(lagging.mayBeOffered)
+        XCTAssertEqual(lagging.scansUsed, 1, "the quota is not the contested fact")
+
+        // No row yet is the same lag wearing different clothes, not a lapse.
+        let noRowYet = try makeStore(purchase: { _ in .purchased }, entitlement: { .absent })
+        _ = await noRowYet.purchase(.monthly)
+        await noRowYet.refreshEntitlement()
+        XCTAssertTrue(noRowYet.isPlus)
+        XCTAssertEqual(noRowYet.scansUsed, 0)
+    }
+
+    func testOnceTheWindowHasPassedALapsedSubscriptionStopsBeingPlus() async throws {
+        let defaults = try makeDefaults()
+        let store = try makeStore(defaults: defaults, purchase: { _ in .purchased },
+                                  entitlement: { .found(isPlus: false, scansUsed: 3) })
+        _ = await store.purchase(.annual)
+        // Standing at the far side of the window: the purchase is older than the grace allows.
+        defaults.set(Date().timeIntervalSinceReferenceDate - SubscriptionStore.purchaseGrace - 1,
+                     forKey: SubscriptionStore.purchasedAtKey)
+
+        await store.refreshEntitlement()
+
+        XCTAssertFalse(store.isPlus, "the window bridges a webhook; it does not shield a lapse")
+        XCTAssertEqual(store.gate(.priceHistory), .paywall)
+        XCTAssertEqual(store.scansUsed, 3)
+    }
+
+    // MARK: - Signing out takes entitlement with it
+
+    func testSigningOutLeavesNoPlusOnTheDeviceForTheNextPerson() async throws {
+        let defaults = try makeDefaults()
+        let store = try makeStore(defaults: defaults, purchase: { _ in .purchased })
+        _ = await store.purchase(.annual)
+        store.record(try scanned(isPlus: true, scansUsed: 2))
+
+        store.forgetEntitlement()
+
+        XCTAssertFalse(store.isPlus, "one person's Plus is not the next person's")
+        XCTAssertEqual(store.scansUsed, 0)
+        // Including the purchase moment: the grace window must not outlive the account either.
+        let relaunched = SubscriptionStore(defaults: defaults,
+                                           entitlement: { .found(isPlus: false, scansUsed: 0) })
+        XCTAssertFalse(relaunched.isPlus)
+        XCTAssertEqual(relaunched.scansUsed, 0)
+        // Plus arriving again from a scan, with the server then saying no: with the purchase
+        // moment cleared there is nothing left to hold it up, which is what proves it is gone.
+        relaunched.record(try scanned(isPlus: true, scansUsed: 0))
+        await relaunched.refreshEntitlement()
+        XCTAssertFalse(relaunched.isPlus, "no purchase moment survived the sign-out")
+    }
+
+    func testAfterSigningOutTheNextReadIsWhatTheAppShows() async throws {
+        let store = try makeStore(entitlement: { .found(isPlus: true, scansUsed: 1) })
+        store.record(try scanned(isPlus: false, scansUsed: 3))
+        store.forgetEntitlement()
+
+        // Signing back in — or a second person signing in — is answered by their own row.
+        await store.refreshEntitlement()
+
+        XCTAssertTrue(store.isPlus, "nobody is punished for signing out; the read restores it")
+        XCTAssertEqual(store.scansUsed, 1)
+    }
+
     /// A read that a scan answers underneath — the whole race, with no scheduling to hope for:
     /// the scan lands while the reader is still deciding what to say.
     @MainActor private final class StaleReader {

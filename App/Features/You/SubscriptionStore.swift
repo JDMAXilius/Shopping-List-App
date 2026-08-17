@@ -124,6 +124,15 @@ final class SubscriptionStore {
     private static let plusKey = "plus.isPlus"
     private static let scansKey = "plus.scansUsed"
     private static let roleKey = "plus.role"
+    /// Not private so a test can stand at the far side of the window below.
+    static let purchasedAtKey = "plus.purchasedAt"
+
+    /// How long this device's own purchase outranks a server answer that says it is not Plus.
+    /// RevenueCat's webhook fires in seconds and retries over minutes, so 15 minutes covers every
+    /// plausible delay before `apply_entitlement_event` has written the row; it is shorter than
+    /// any billing period by three orders of magnitude, so it can never keep a genuinely lapsed
+    /// subscription alive for long enough that anyone could notice, let alone rely on it.
+    static let purchaseGrace: TimeInterval = 15 * 60
 
     private let defaults: UserDefaults
     /// RevenueCat plugs in here and nowhere else (ARCHITECTURE §9). No key is committed, so in
@@ -211,6 +220,16 @@ final class SubscriptionStore {
     /// Entitlement asked for directly, on launch and on every foreground: someone buys Plus on
     /// their phone and opens Bagged on their iPad, and until this existed the iPad sold them what
     /// they had already paid for (TERMINAL_TICKET_FOUNDER_BLOCKERS §9).
+    ///
+    /// Where this ends up: **once RevenueCat is in the binary, `isPlus` belongs to its customer
+    /// info** — StoreKit-backed, answers offline, and it is what the App Store actually knows —
+    /// **and this read is reduced to `scans_used`, the only half the server owns.** That dissolves
+    /// the purchase/webhook race instead of timing it, and the grace window below can then go.
+    ///
+    /// To check this on TestFlight, three steps: buy Plus on device one; foreground Bagged on
+    /// device two, signed in to the same account; the Setup sales card is gone. (Both devices
+    /// signed in with email or Apple — entitlement is per `user_id`, so an anonymous session on
+    /// device two proves nothing.)
     func refreshEntitlement() async {
         guard let readEntitlement, !isReading else { return }
         isReading = true
@@ -226,13 +245,45 @@ final class SubscriptionStore {
             // The server wins in both directions, downward included: a lapsed subscription has to
             // stop being Plus. That is only safe because `.unavailable` writes nothing — losing
             // Plus takes the server actually saying so, never a phone with no signal.
-            apply(isPlus: isPlus, scansUsed: scansUsed)
+            apply(isPlus: keptPlus(serverSays: isPlus), scansUsed: scansUsed)
         case .absent:
             // No row is what a user who has never scanned looks like, and the server would grant
             // them three scans. A real answer, so it is allowed to write.
-            apply(isPlus: false, scansUsed: 0)
+            apply(isPlus: keptPlus(serverSays: false), scansUsed: 0)
         case .unavailable:
             break
+        }
+    }
+
+    /// The server turning Plus off is honoured — unless this device bought Plus minutes ago and
+    /// the webhook that writes the row has not landed yet. The quota is never held back this way:
+    /// `scans_used` is not the contested fact and the server owns it.
+    private func keptPlus(serverSays isPlus: Bool) -> Bool {
+        if isPlus { return true }
+        return self.isPlus && withinPurchaseGrace
+    }
+
+    private var withinPurchaseGrace: Bool {
+        let purchasedAt = defaults.double(forKey: SubscriptionStore.purchasedAtKey)
+        guard purchasedAt > 0 else { return false }
+        let age = Date().timeIntervalSinceReferenceDate - purchasedAt
+        return age < SubscriptionStore.purchaseGrace
+    }
+
+    /// Signing out is the person saying they are not this account any more, and entitlement is per
+    /// `user_id` — a statement, not a failed read, so nothing about ruling 3 applies. Signing back
+    /// in restores it on the next read, and once the SDK lands the receipt restores it with no
+    /// network at all; one person's Plus sitting on a device for the next person to inherit is the
+    /// worse outcome, and it is about someone's money.
+    func forgetEntitlement() {
+        // Counted like any other write, so a read already on the wire — carrying the row of the
+        // account that just left — cannot put it back.
+        writes += 1
+        isPlus = false
+        scansUsed = 0
+        for key in [SubscriptionStore.plusKey, SubscriptionStore.scansKey,
+                    SubscriptionStore.purchasedAtKey] {
+            defaults.removeObject(forKey: key)
         }
     }
 
@@ -243,15 +294,23 @@ final class SubscriptionStore {
     func purchase(_ term: PlusPlan.Term) async -> PurchaseResult {
         guard let purchaseAction else { return .unavailable }
         let result = await purchaseAction(term)
-        if result == .purchased { apply(isPlus: true, scansUsed: scansUsed) }
+        if result == .purchased { adoptPurchase() }
         return result
     }
 
     func restore() async -> PurchaseResult {
         guard let restoreAction else { return .unavailable }
         let result = await restoreAction()
-        if result == .purchased { apply(isPlus: true, scansUsed: scansUsed) }
+        if result == .purchased { adoptPurchase() }
         return result
+    }
+
+    /// The moment is kept, not just the fact: the server row is written by a webhook that arrives
+    /// after this, and `keptPlus(serverSays:)` needs to know how long ago this was.
+    private func adoptPurchase() {
+        defaults.set(Date().timeIntervalSinceReferenceDate,
+                     forKey: SubscriptionStore.purchasedAtKey)
+        apply(isPlus: true, scansUsed: scansUsed)
     }
 
     private func apply(isPlus: Bool, scansUsed: Int) {

@@ -145,7 +145,8 @@ final class KitchenStoreTests: XCTestCase {
         let local: Kitchen
     }
 
-    private func makeHarness(identity: KitchenIdentity? = nil) throws -> Harness {
+    private func makeHarness(identity: KitchenIdentity? = nil,
+                             onSignOut: @escaping @MainActor () -> Void = {}) throws -> Harness {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("kitchen-\(UUID().uuidString).sqlite")
         let database = try AppDatabase(url: url)
@@ -156,7 +157,7 @@ final class KitchenStoreTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "bagged.kitchen.\(UUID().uuidString)"))
         let backend = FakeKitchenBackend(identity: identity)
         let store = KitchenStore(repository: repository, kitchen: local, backend: backend,
-                                 defaults: defaults)
+                                 defaults: defaults, onSignOut: onSignOut)
         return Harness(store: store, repository: repository, backend: backend,
                        defaults: defaults, local: local)
     }
@@ -279,6 +280,24 @@ final class KitchenStoreTests: XCTestCase {
         XCTAssertNotNil(harness.store.invite)
         harness.store.forgetInvite()
         XCTAssertNil(harness.store.invite, "a bearer token does not outlive the sheet")
+    }
+
+    // MARK: - Signing out
+
+    /// Entitlement is per `user_id`, so leaving the account has to take it: the hook is how that
+    /// reaches `SubscriptionStore` without this store knowing one exists.
+    func testSigningOutTellsTheAppToForgetEntitlement() async throws {
+        let forgotten = expectation(description: "entitlement forgotten")
+        let harness = try makeHarness(
+            identity: KitchenIdentity(userID: UserID(), isAnonymous: false, email: "a@b.c"),
+            onSignOut: { forgotten.fulfill() })
+
+        await harness.store.signOut()
+
+        await fulfillment(of: [forgotten], timeout: 1)
+        XCTAssertNil(harness.store.identity)
+        let calls = await harness.backend.calls
+        XCTAssertTrue(calls.contains("signOut"), "and the session itself is gone")
     }
 
     // MARK: - Which kitchen the app opens

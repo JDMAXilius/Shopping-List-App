@@ -37,7 +37,12 @@ final class AppSession {
         places.onArrival = { [weak self] shopID in self?.list?.switchShop(shopID, arrived: true) }
         kitchen = KitchenStore(repository: repository, kitchen: opened.kitchen,
                                backend: services?.backend,
-                               onKitchenChange: { [weak self] id in self?.rebuild(id) })
+                               onKitchenChange: { [weak self] id in self?.rebuild(id) },
+                               // Read at the moment of sign-out, not captured: `adopt` replaces
+                               // the store whenever the kitchen changes.
+                               onSignOut: { [weak self] in
+                                   self?.subscription?.forgetEntitlement()
+                               })
     }
 
     /// The stores for one kitchen. Rebuilt whole rather than re-pointed: every one of them
