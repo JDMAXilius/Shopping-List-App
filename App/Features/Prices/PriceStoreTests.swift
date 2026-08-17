@@ -211,9 +211,11 @@ final class PriceStoreTests: XCTestCase {
         let short = PriceDerivation.month(
             observations: [observation(400, shopA, now)], receipts: [receipt(1_000, shopA, now)],
             shops: shops, catalog: catalog, currencyCode: "USD", now: now)
+        // The sentence stopped naming causes it cannot separate (f945ce9): observations carry
+        // no quantity, so "tax, deposits, fees" was a claim the month screen could not back.
         XCTAssertEqual(short.coverageText,
-                       "$4.00 of the $10.00 is matched to items. The rest is tax, deposits, "
-                       + "fees and lines nothing could be matched to.")
+                       "$4.00 of the $10.00 is matched to individual items. The rest is "
+                       + "everything a single item's price can't account for.")
 
         // Prices recorded by hand can exceed the receipts. That is not tax — say the truth.
         let over = PriceDerivation.month(

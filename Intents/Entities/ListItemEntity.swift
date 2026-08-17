@@ -35,11 +35,14 @@ struct ListItemEntity: AppEntity {
     /// costing three fifty. The price here is the price of ONE — the row's own figure,
     /// unforked — and "at" is the word that says so in both English and arithmetic.
     private static func detail(_ row: ListRow) -> String? {
-        let quantity = QuantityText.label(quantity: row.item.quantity, unit: row.item.unit)
+        // The bare multiplier, not the row's unit label: "4 L at $3.50" reads as four
+        // litres costing $3.50, which is the very misreading ruling 5 exists to kill.
+        // "at" needs a count on its left; the unit vocabulary stays on the list row.
+        let count = row.item.quantity == 1 ? nil : "×\(QuantityText.number(row.item.quantity))"
         let price = row.price == .none ? nil : row.price.accessibilityPhrase
-        guard let quantity else { return price }
-        guard let price else { return quantity }
-        return "\(quantity) at \(price)"
+        guard let count else { return price }
+        guard let price else { return count }
+        return "\(count) at \(price)"
     }
 }
 

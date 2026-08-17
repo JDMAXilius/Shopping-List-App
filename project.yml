@@ -76,6 +76,7 @@ targets:
       path: App/Info.plist
       properties:
         UILaunchScreen: {}
+        CFBundleShortVersionString: "1.0"
         NSCameraUsageDescription: >-
           Bagged uses your camera to photograph a receipt or scan a barcode so
           the items and prices on it can go straight onto your list.
