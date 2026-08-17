@@ -5,6 +5,22 @@ files themselves hold the detail.
 
 ## Open
 
+### TERMINAL_TICKET_TESTFLIGHT — opened 2026-08-17 by cloud · **split terminal / founder**
+
+Get a build onto TestFlight internal testing, which is how the six device-only questions in
+FOUNDER_BLOCKERS §4 finally get answered — the camera on a real receipt, haptics, the widget's
+undersized tap targets, the silent switch.
+
+**The headline finding: TestFlight is blocked on the Supabase project, not on Apple.** An archive
+is a Release build, and our own preflight fails a Release build with no backend config. That check
+is correct and must not be weakened, so blockers §1 is now the critical path to a testable build
+as well as to the receipt feature.
+
+Concrete gaps found by inspection rather than assumed: no `DEVELOPMENT_TEAM` (so an archive cannot
+sign), no `CFBundleVersion` (so no upload can be numbered), no `ITSAppUsesNonExemptEncryption` (so
+Connect asks about encryption on every upload). §B lists what only the founder can do and marks
+which of it works from a phone.
+
 ### TERMINAL_TICKET_WAVE789_GATE — opened 2026-08-16 by cloud · **terminal**
 
 The gate for Prices, Surfaces and the barcode lookup. Waves 7, 8 and 9 are on main and have never
