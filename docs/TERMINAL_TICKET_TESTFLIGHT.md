@@ -1,5 +1,6 @@
 # TERMINAL_TICKET_TESTFLIGHT — get a build onto TestFlight internal testing
 
+> STATUS: done (internal testing) — terminal 2026-08-17. Build 1.0 (1) is installed on a phone.
 > STATUS: in-progress — terminal 2026-08-17
 > STATUS: open — written by cloud 2026-08-17.
 > Same operating mode and honesty laws as `TERMINAL_TICKET_GATE_AUTOPILOT.md`.
@@ -112,11 +113,11 @@ is how a tester reaches a screen that would otherwise cost a real receipt.
 
 ### A5. Build, archive, export
 
-- [ ] `xcodebuild -scheme Bagged -destination 'generic/platform=iOS' -configuration Release archive`
+- [x] `xcodebuild -scheme Bagged -destination 'generic/platform=iOS' -configuration Release archive`
       with an `-archivePath`.
-- [ ] `xcodebuild -exportArchive` with an `ExportOptions.plist` (`method: app-store-connect`).
+- [x] `xcodebuild -exportArchive` with an `ExportOptions.plist` (`method: app-store-connect`).
       Commit the plist — it is configuration, not a secret.
-- [ ] Confirm the `.ipa` contains **both** the app and the `.appex`, and that the entitlements in
+- [x] Confirm the `.ipa` contains **both** the app and the `.appex`, and that the entitlements in
       the built product carry `group.app.bagged`. `codesign -d --entitlements :- <path>` shows it.
 
 ### A6. Upload
@@ -392,3 +393,40 @@ the ticket prescribed rather than by weakening the check:
   signed-in account, needs no key), OR generate a fresh App Store Connect API key, **download the
   .p8 immediately**, and send the Key ID, the Issuer ID and the file. Then the internal group and
   the invite to **jdmaxinius@gmail.com** are one scripted command from here.
+
+**2026-08-17 · terminal · SHIPPED. Build 1.0 (1) is on TestFlight and installed on a phone.**
+The upload path that worked needed **no API key at all**: `xcodebuild -exportArchive` with
+`destination: upload` in the options plist authenticates with the account signed into Xcode.
+Recorded because it makes the whole ASC-key detour optional for a native app —
+`ExportOptions.plist` is committed; copy it, change `export` to `upload`.
+
+Apple's validation caught three real defects on the way up, all fixed here:
+1. **No app icon at all.** Implemented `design/brand-sheet.png`'s own specification — persimmon
+   field, one white check, no text, no gradient — as a 1024 asset catalog, with `CFBundleIconName`
+   wired. Nothing invented: the brand sheet had already decided it.
+2. **`CFBundleIconName` missing** from Info.plist.
+3. **iPad multitasking.** Apple requires all four orientations from anything claiming iPad; the
+   design is portrait-only. Set **iPhone only** rather than break the design or claim a device
+   this app was never built for. Note for whoever meets this next: XcodeGen writes
+   `TARGETED_DEVICE_FAMILY = "1,2"` at TARGET level, which silently beats `settings.base` — it has
+   to be set on each shipping target.
+
+Credential findings worth keeping:
+- `SubscriptionKey_HTA6549CWG.p8` is an **In-App Purchase key, not an App Store Connect API key**.
+  They sit on the same page and look identical; a subscription key cannot touch TestFlight. That
+  is why no `AuthKey_HTA6549CWG.p8` ever existed.
+- The only real API key on this Mac (`K23R777BPW`, July) 401s against both issuer IDs findable
+  here. Unusable. Never needed, in the end.
+
+Last mile, which is the trap this whole workflow hides: **a processed build reaches nobody until
+it is attached to an internal group that contains testers**, internal testers must already be
+App Store Connect team users, and the phone's TestFlight must be signed in with the same Apple ID
+as the invited address. Founder completed those steps by hand.
+
+**What this build is:** 1.0 (1), iPhone only, no backend. Receipt scanning, sync and kitchen
+sharing do not work, and the capture screen says so before a photo is taken. Everything else —
+the list, the 461-item catalog, aisle order, hand-entered prices, the price book, month spend,
+the widget, Siri, CSV export — is real.
+> NEXT: the Supabase project (FOUNDER_BLOCKERS item 1) turns this into a complete build. Nothing
+  else about the pipeline needs to change: fill `Config/Secrets.xcconfig`, bump
+  `CURRENT_PROJECT_VERSION` to 2, archive, upload.
