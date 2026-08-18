@@ -362,3 +362,33 @@ they work for us unchanged.
   script from the skill. **One decision is in front of all of it** and it is the founder's:
   supply a Supabase project, or rule that a deliberately-marked no-backend build may ship to
   internal testing.
+
+**2026-08-17 · terminal · THE FIRST SHIPPABLE BUILD EXISTS. Upload is blocked on bad API credentials.**
+Founder ruled (in effect: "can I do Supabase later?" + supplying an API key) that a no-backend
+build may go to internal testing. Taken as the ruling the ticket reserved, and implemented the way
+the ticket prescribed rather than by weakening the check:
+- `Config/Secrets.xcconfig` (local, gitignored) points at **`no-backend.bagged.invalid`**. `.invalid`
+  is reserved by RFC 2606 and can never resolve, so it satisfies the preflight while being
+  impossible to mistake for a real deployment.
+- `BaggedApp.hasNoBackend` recognises that marker in one place, and `CaptureChooserSheet` shows
+  an attention Notice **before** the choice: *"This test build has no receipt reader. Photos you
+  take are kept on this phone and never read. Enter by hand works normally."* Pinned by
+  `NoBackendNoticeUITests`, which also asserts the other half — a configured build must not show
+  it. Screenshot `design/built/34-no-backend-notice.png`.
+- **`** ARCHIVE SUCCEEDED **` and `** EXPORT SUCCEEDED **`.** `/tmp/Bagged-export/Bagged.ipa`,
+  8.8 MB. Verified by inspection, not assumption: it contains `Payload/Bagged.app` **and**
+  `PlugIns/BaggedWidget.appex`; both are signed to `A6J6HGNWZK`; both entitlements carry
+  `com.apple.security.application-groups → group.app.bagged`; both have `beta-reports-active`.
+- **Upload FAILED, and the cause is the credentials, not the build.**
+  `xcrun altool --upload-app --apiKey K23R777BPW --apiIssuer 268efeb2-cd80-4421-a9a1-075c159ac97b`
+  → `status 401 … Authentication credentials are missing or invalid`. Same 401 from four other
+  combinations tried directly against the ASC API. Findings: `AuthKey_HTA6549CWG.p8` (the other
+  Key ID the founder gave) **does not exist anywhere on this Mac** — Apple offers that download
+  once — and the only two `.p8` files present are from July, one of them belonging to the
+  Recipe-App project. The copied key was removed from `~/.appstoreconnect/private_keys` after the
+  test; nothing was left lying around.
+> HANDOFF → founder: the build is made and valid. To land it, EITHER upload
+  `/tmp/Bagged-export/Bagged.ipa` from **Xcode → Window → Organizer → Distribute App** (uses the
+  signed-in account, needs no key), OR generate a fresh App Store Connect API key, **download the
+  .p8 immediately**, and send the Key ID, the Issuer ID and the file. Then the internal group and
+  the invite to **jdmaxinius@gmail.com** are one scripted command from here.

@@ -59,6 +59,13 @@ struct CaptureChooserSheet: View {
                     .font(Typography.screenTitle)
                     .foregroundStyle(Palette.ink.color)
                 waitingRow
+                // A test build with no reader says so here, once, before the choice —
+                // not after a photo has been taken and queued for a server that is not there.
+                if BaggedApp.hasNoBackend {
+                    Notice("This test build has no receipt reader. Photos you take are kept on "
+                           + "this phone and never read. Enter by hand works normally.",
+                           tone: .attention, on: .paper)
+                }
                 option("Scan a receipt", "Every line at once, in about six seconds.", .camera)
                 option("Scan a barcode", "One item, straight off the packet.", .barcode)
                 option("Enter by hand", "No camera, no signal, same prices.", .byHand)

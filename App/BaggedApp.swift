@@ -165,6 +165,14 @@ struct BaggedApp: App {
         }
     }
 
+    /// True when this build was deliberately configured with no backend: the reserved
+    /// `.invalid` TLD (RFC 2606) can never resolve, so a host inside it is a marker and
+    /// not a deployment that happens to be down. Screens that depend on the server say so
+    /// rather than letting a person wait for a reply that cannot come.
+    static var hasNoBackend: Bool {
+        configuration("SupabaseURL")?.hasSuffix(".invalid") ?? false
+    }
+
     static func configuration(_ key: String) -> String? {
         guard let value = Bundle.main.object(forInfoDictionaryKey: key) as? String,
               !value.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
