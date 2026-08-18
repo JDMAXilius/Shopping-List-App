@@ -85,6 +85,7 @@
 		87958CCA15C7684177EC9214 /* WidgetProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3CB1DC0FE08E993E8C6B65C /* WidgetProvider.swift */; };
 		879639136075214345BBACD1 /* ProductLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8970529A2B723D6A182B32DB /* ProductLookup.swift */; };
 		888AC9E68B33E154F8EC00AA /* FlowWalkthroughUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 826336EF0FFBFF4CB84F2202 /* FlowWalkthroughUITests.swift */; };
+		95744E7E0EA90015FB346EFD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E2A5938C78C171013B587E53 /* Assets.xcassets */; };
 		9EF22FE66B10D603C9750054 /* testAccessoryRectangular.ax5.png in Resources */ = {isa = PBXBuildFile; fileRef = 199F0068BDD6549236FB4440 /* testAccessoryRectangular.ax5.png */; };
 		A0A52BF88ACE2AEF6D00C476 /* ScriptedScanBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB083884337E10E4CF6D3D4C /* ScriptedScanBackend.swift */; };
 		A0ECEB0EA9EC0C7A2A0AEC6B /* ListDerivation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D553ED7891F6E02C157FEB4F /* ListDerivation.swift */; };
@@ -294,6 +295,7 @@
 		DBC77068DA6BB4083D2328B2 /* AboutScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutScreen.swift; sourceTree = "<group>"; };
 		DDAA0A35E7E1A3665AEF5C1C /* WidgetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotTests.swift; sourceTree = "<group>"; };
 		E092602DFFFF39152F5AD7D7 /* BarcodeScanScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScanScreen.swift; sourceTree = "<group>"; };
+		E2A5938C78C171013B587E53 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E2A7243F24ECAE9C1318B444 /* PlacesScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacesScreen.swift; sourceTree = "<group>"; };
 		E3CB1DC0FE08E993E8C6B65C /* WidgetProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetProvider.swift; sourceTree = "<group>"; };
 		E68A44A667F870C4583F4647 /* SyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncCoordinator.swift; sourceTree = "<group>"; };
@@ -426,6 +428,7 @@
 		546A7DD22AD6A04C8A230C4B /* App */ = {
 			isa = PBXGroup;
 			children = (
+				E2A5938C78C171013B587E53 /* Assets.xcassets */,
 				9FBFC3AED40D99DD3CEF8558 /* Bagged.entitlements */,
 				C9496DAE4A6A8F94B61CD1BC /* BaggedApp.swift */,
 				B72D41E78E2AFD648E6A4575 /* Environment+.swift */,
@@ -704,6 +707,7 @@
 			buildPhases = (
 				76282AEE2AD35971C9CFE2F2 /* Check scan config */,
 				8DE14268B6476BD5C5948EA2 /* Sources */,
+				168D7AD1B2951BD3FE9ED165 /* Resources */,
 				DA492530799193FD8D2E7B7C /* Frameworks */,
 				AC4DBE3DC12158038B50230F /* Embed Foundation Extensions */,
 			);
@@ -810,6 +814,14 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		168D7AD1B2951BD3FE9ED165 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				95744E7E0EA90015FB346EFD /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C2CD317CB6081A41E98B5C4B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1038,7 +1050,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = app.bagged.widget;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -1101,6 +1113,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -1116,7 +1129,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = app.bagged.widget;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -1149,7 +1162,7 @@
 					"@executable_path/Frameworks",
 				);
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -1200,7 +1213,7 @@
 					"@executable_path/Frameworks",
 				);
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -1269,6 +1282,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};

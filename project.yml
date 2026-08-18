@@ -11,6 +11,9 @@ settings:
     # Connect — a re-used build number is rejected outright. It lives here, committed,
     # so it is reviewable in the diff; both targets read it as CFBundleVersion.
     CURRENT_PROJECT_VERSION: 1
+    # 1 = iPhone only. PRODUCT is a phone product (lock-screen widget, camera at the till,
+    # Siri on the move) and the design is portrait-only; iPad requires all four orientations.
+    TARGETED_DEVICE_FAMILY: 1
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     PRODUCT_BUNDLE_IDENTIFIER: app.bagged
@@ -50,6 +53,9 @@ targets:
   Bagged:
     type: application
     platform: iOS
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: 1
     configFiles:
       Debug: Config/Base.xcconfig
       Release: Config/Base.xcconfig
@@ -75,6 +81,7 @@ targets:
           # Test-only directories: reference images must never ship inside the app bundle.
           - "SnapshotTests/**"
           - "UITests/**"
+      - path: App/Assets.xcassets
       # App target, not an extension: the intents call ListDerivation.addPlan and ListCatalog,
       # which are @MainActor app-target types. An extension would compile a second copy of them.
       # Schema27 is Apple's .reminders cluster, parked for iOS 27 — see its README.
@@ -97,6 +104,7 @@ targets:
       path: App/Info.plist
       properties:
         UILaunchScreen: {}
+        CFBundleIconName: AppIcon
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # Declared false deliberately, and not as a checkbox: the one crypto call in the
@@ -131,6 +139,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.bagged.widget
+        TARGETED_DEVICE_FAMILY: 1
     sources:
       - path: Widget
         excludes:
