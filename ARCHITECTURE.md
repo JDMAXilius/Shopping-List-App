@@ -116,6 +116,15 @@ intents never observe stores — they read the database through `Repository`.** 
 > ⚠️ **Correction to the previous plan:** it placed `ClaudeClient` in the app. That ships the
 > Anthropic API key inside a public binary. **The Claude API is called only from a Supabase Edge
 > Function.** The app holds no AI credentials, ever.
+>
+> ⚠️ **Second correction, 2026-09-11 — this one to the sentence above it.** That rule was right
+> about the key and wrong about the default path: it made the product's one differentiator depend
+> on a server that was never stood up, and receipt scanning consequently never worked once in the
+> project's history. **The default receipt reader is now the phone** — Vision on every device,
+> Apple's on-device model where it exists — and the cloud is the escalation for receipts the phone
+> could not read. The key rule is unchanged and unchangeable: no AI credential ever ships in the
+> app, so the escalation still goes through an endpoint that holds the key.
+> See `DECISIONS.md` → "The phone reads the receipt" and `docs/TERMINAL_TICKET_ONDEVICE_READING.md`.
 
 ### Schema (Postgres)
 

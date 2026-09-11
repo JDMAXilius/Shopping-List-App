@@ -21,6 +21,15 @@ history.** The whole capture flow — camera, upload, Claude, review, commit —
 exercised against scripted fakes. It is the app's differentiator and it is the least-proven thing
 in it.
 
+> **UPDATE 2026-09-11 — this stopped being the critical path for scanning.** The founder tested the
+> app, found scanning inert, and the answer was this item: the only reader lived here. Rather than
+> stay blocked, **the reader moves onto the phone** (`DECISIONS.md` → "The phone reads the receipt",
+> `docs/TERMINAL_TICKET_ONDEVICE_READING.md`). Vision and the on-device model need no project, no
+> key and no network.
+>
+> This item is still required — but for **sharing, sync, invites and entitlement**, not for the
+> core feature. Its urgency dropped; its scope did not.
+
 - [ ] Create a Supabase project for Bagged
 - [ ] Apply `supabase/migrations/0001_schema.sql` then `0002_rls.sql`
 - [ ] Deploy `scan-receipt`, `join-kitchen`, `revenuecat-webhook`
@@ -31,6 +40,25 @@ in it.
 
 Until this exists, the build-time config check does its job — Debug warns, Release fails — so
 nothing ships blind.
+
+## 1b. Where the escalation call lives — one decision, and it is small
+
+Tiers 1 and 2 of the new reader need nothing from you. Tier 3 — the receipts the phone could not
+read — needs an endpoint that holds the Anthropic key, because **the key can never ship in the
+app**: an `.ipa` is a zip, anyone can open it, and it is your account and your bill.
+
+Three ways, and any of them is fine:
+
+- [ ] **The Supabase function already written** (`scan-receipt`). Correct, already tested, and
+      blocked on item 1 above.
+- [ ] **A ~30-line Cloudflare Worker or Vercel function** holding the key. Minutes to deploy, free
+      tier, no Postgres, no migrations. **Recommended if you want tier 3 working this week** — the
+      app only needs a URL, and `ScanClient` already speaks to a URL.
+- [ ] **Nothing yet.** Ship tiers 1 and 2, see how often the phone actually fails, and add the
+      escalation when the number justifies it. Honest, and costs nothing.
+
+Whichever you pick, the key goes in that service's environment and nowhere else — never in
+`Config/Secrets.xcconfig`, never in Info.plist, never in a commit.
 
 ## 2. `bagged.app` is not owned
 

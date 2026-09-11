@@ -172,6 +172,47 @@ Two engineering facts found while settling this, both of which will bite the pac
 has to be ordered, or the constraint changed in a migration. And `Repository` has **no wipe API**
 at all; the local half of this is as much work as the server half.
 
+## The phone reads the receipt — decided 2026-09-11, and it reverses a default
+
+The founder tested the app and found the differentiator inert. The diagnosis was not a bug: **there
+is exactly one receipt reader in this app and it lives on a Supabase project that has never been
+created.** `ARCHITECTURE.md:22` says "Claude API — called only from an Edge Function, never from the
+app", and that rule was right about the *key* and wrong about the *default path*: it made the one
+feature the product is built on depend on an account nobody had set up, for a month.
+
+- ✅ **The default receipt reader is the phone.** Vision text recognition with geometry on every
+  supported device (offline, free, no key, photo never leaves), Apple's on-device Foundation Models
+  where the hardware has them, and the cloud only for receipts the phone could not read.
+- ✅ **This does not weaken the key rule, it strengthens it.** The Anthropic key still never ships
+  in the app — it cannot, any `.ipa` can be unzipped. What changes is that the app no longer needs
+  a server *at all* for its core feature.
+- ✅ **The seam is `ScanBackend`, which already exists.** The on-device reader is a conformance;
+  the review screen, the confidence tiers and the `>3×` flag are untouched.
+- ✅ **A model may structure text. It may never invent money.** Every amount must trace to
+  characters the recogniser actually read, or the line is `not_sure`. The failure mode of a small
+  language model on a blurry receipt is a confident, plausible, wrong number — and a plausible
+  wrong price is the one thing this app cannot ship.
+- ⚠️ **It has a pricing consequence and it is the founder's call.** `PRODUCT.md` sells receipt
+  scanning as Plus after three free scans, and that gate was priced when every scan cost an API
+  call. On-device scanning has no marginal cost. Charging for it is still defensible — it is the
+  work, not the compute — but the honest version of the paywall may be that **the price book and
+  its history are Plus, and scanning is free**. Decide before the paywall goes live.
+
+## There is no store discovery, and that was on purpose — 2026-09-11
+
+The founder reported "the GPS for knowing the stores doesn't really work". It works; it does not do
+what the words describe. `grep` finds no MapKit, no `MKLocalSearch`, no `CLGeocoder` anywhere in the
+app. The only way a shop gets a location is to **stand inside it and tap the pin control**, because
+`PlaceStore.pinHere` says a "search nearby" box "sends a coordinate to somebody's server, which is
+the one thing this app promises not to do".
+
+- ❓ **Open, and the founder's to answer: may Bagged send a coordinate to Apple to name nearby
+  shops?** A one-tap "you're at Trader Joe's, pin it?" needs `MKLocalSearch`, which is a query to
+  Apple carrying a location. It would make the feature feel like the founder expected it to feel.
+  The alternative that costs nothing: **the receipt already names the shop**, so a scan can offer to
+  create and pin it. That is slower to bootstrap and gives up nothing.
+- ✅ Until that is answered, the behaviour stays as built and nobody adds a search box.
+
 ## Go to market
 
 - ✅ **ASO is the entire marketing budget** — 65–70% of downloads start with store search, top-3 takes >50% of clicks
